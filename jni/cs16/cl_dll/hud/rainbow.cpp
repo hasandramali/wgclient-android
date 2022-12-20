@@ -155,7 +155,7 @@ int CRainbow::DrawRainbowString(int x, int y, const char *str, const DrawStringF
     {
         char c = str[i];
 
-        if ((c & 0b1110'0000) == (0b1100'0000))
+        if ((c & 0b11100000) == (0b11000000))
         {
             // Two bytes
             buf[0] = str[i];
@@ -163,7 +163,7 @@ int CRainbow::DrawRainbowString(int x, int y, const char *str, const DrawStringF
             buf[2] = '\0';
             i += 2;
         }
-        else if ((c & 0b1111'0000) == (0b1110'0000))
+        else if ((c & 0b11110000) == (0b11100000))
         {
             // Three bytes
             buf[0] = str[i];
@@ -172,7 +172,7 @@ int CRainbow::DrawRainbowString(int x, int y, const char *str, const DrawStringF
             buf[3] = '\0';
             i += 3;
         }
-        else if ((c & 0b1111'1000) == (0b1111'0000))
+        else if ((c & 0b11111000) == (0b11110000))
         {
             // Four bytes
             buf[0] = str[i];
