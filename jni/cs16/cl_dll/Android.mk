@@ -21,6 +21,7 @@ SRCS := \
 	./cdll_int.cpp \
 	./demo.cpp \
 	./entity.cpp \
+	./discord_integration.cpp \
 	./in_camera.cpp \
 	./input.cpp \
 	./rain.cpp \
