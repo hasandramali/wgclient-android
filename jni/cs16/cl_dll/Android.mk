@@ -130,7 +130,7 @@ SRCS := \
 	./events/event_vehicle.cpp \
 	./events/event_xm1014.cpp \
 	./discord_integration.cpp \
-	./rainbow.cpp \
+	./hud/rainbow.cpp \
 	./events/hl_events.cpp \
 	./ev_common.cpp
 
