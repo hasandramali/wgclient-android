@@ -46,12 +46,28 @@ void CRainbow::Think()
 
 void CRainbow::GetRainbowColor(int x, int y, int &r, int &g, int &b)
 {
+	if ( m_iDisableStack > 0 )
+		return;
+
     float phase = m_pCvarRainbowSpeed->value * gHUD.m_flTime;
     phase += m_pCvarRainbowXPhase->value * x;
     phase += m_pCvarRainbowYPhase->value * y;
     phase = fmod(phase, 360);
+	if ( phase < 0 )
+		phase += 360;
 
     HSVtoRGB(phase, m_flSat, m_flVal, r, g, b);
+}
+
+void CRainbow::PushDisable( )
+{
+	m_iDisableStack++;
+}
+
+void CRainbow::PopDisable( )
+{
+	m_iDisableStack--;
+	assert( m_iDisableStack >= 0 );
 }
 
 void CRainbow::HookFuncs()
@@ -96,7 +112,14 @@ void CRainbow::SPR_DrawAdditiveRainbow(int frame, int x, int y, const rect_s *pr
 
 int CRainbow::DrawString(int x, int y, const char *str, int r, int g, int b)
 {
-    return DrawRainbowString(x, y, str, gHUD.m_Rainbow.m_pfnDrawString);
+	if ( r == 0 && g == 0 && b == 0 )
+	{
+		return gHUD.m_Rainbow.m_pfnDrawString( x, y, str, r, g, b );
+	}
+	else
+	{
+		return DrawRainbowString( x, y, str, gHUD.m_Rainbow.m_pfnDrawString );
+	}
 }
 
 int CRainbow::DrawStringReverse(int x, int y, const char *str, int r, int g, int b)

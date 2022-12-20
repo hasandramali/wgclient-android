@@ -98,16 +98,25 @@ namespace discord_integration
 
 			if (current_state != state::NOT_PLAYING && !current_gamemode.empty())
 				presence.details = current_gamemode.c_str();
+
+			Discord_UpdatePresence(&presence);
 		}
 	}
 
 	void initialize()
 	{
 		DiscordEventHandlers handlers{};
+		Discord_Initialize(CLIENT_ID, &handlers, 1, STEAM_APP_ID);
+
+		current_state = state::NOT_PLAYING;
+		update();
+
+		Discord_RunCallbacks();
 	}
 
 	void shutdown()
 	{
+		Discord_Shutdown();
 	}
 
 	void set_state(state new_state)
@@ -145,5 +154,7 @@ namespace discord_integration
 			set_state(state::PLAYING);
 
 		updated_client_data = false;
+
+		Discord_RunCallbacks();
 	}
 }

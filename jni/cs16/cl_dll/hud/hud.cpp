@@ -81,9 +81,9 @@ void __CmdFunc_GunSmoke()
 		gEngfuncs.Cvar_SetValue( "cl_gunsmoke", 1 );
 }
 
-#define XASH_GENERATE_BUILDNUM
+/*#define XASH_GENERATE_BUILDNUM
 
-/*#if defined(XASH_GENERATE_BUILDNUM)
+#if defined(XASH_GENERATE_BUILDNUM)
 static const char *date = __DATE__;
 static const char *mon[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 static char mond[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
