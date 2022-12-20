@@ -26,7 +26,7 @@ jobs:
      with:
       ndk-version: r10e
       add-to-path: false
-   - run: ./build.sh
+   - run: ./build
      env:
       ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
    - name: Upload artifacts
