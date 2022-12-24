@@ -132,7 +132,6 @@ SRCS := \
 	./events/event_xm1014.cpp \
 	./hud/rainbow.cpp \
 	./events/hl_events.cpp \
-	./calcscreen.cpp \
 	./hud/headname.cpp \
 	./ev_common.cpp
 
