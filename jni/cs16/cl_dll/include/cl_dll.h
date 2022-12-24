@@ -33,6 +33,8 @@ typedef float vec_t;
 typedef int (*pfnUserMsgHook)(const char *pszName, int iSize, void *pbuf);
 
 #include "util_vector.h"
+#include "vector.h"
+#define vec3_t Vector
 
 #include "../engine/cdll_int.h"
 #include "../dlls/cdll_dll.h"
