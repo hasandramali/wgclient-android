@@ -198,7 +198,7 @@ void CHud :: Init( void )
 	cl_weapon_wallpuff = CVAR_CREATE( "cl_weapon_wallpuff", "1", FCVAR_ARCHIVE );
 	zoom_sens_ratio = CVAR_CREATE( "zoom_sensitivity_ratio", "1.2", 0 );
 	sv_skipshield = gEngfuncs.pfnGetCvarPointer( "sv_skipshield" );
-
+	cl_headname = CVAR_CREATE("cl_headname", "1", FCVAR_ARCHIVE);
 	CVAR_CREATE( "cscl_ver", "1096", 1<<14 | FCVAR_USERINFO ); // init and userinfo
 
 	m_iLogo = 0;
@@ -253,6 +253,7 @@ void CHud :: Init( void )
 	m_ProgressBar.Init();
 	m_Menu.Init();
 	m_Scoreboard.Init();
+	m_HeadName.Init();
 	m_Rainbow.Init( );
 
 	InitRain();
