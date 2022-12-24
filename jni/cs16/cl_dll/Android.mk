@@ -133,7 +133,6 @@ SRCS := \
 	./hud/rainbow.cpp \
 	./events/hl_events.cpp \
 	./hud/headname.cpp \
-	./calcscreen.cpp \
 	./ev_common.cpp
 
 DEFINES = -Wno-write-strings -DLINUX -D_LINUX -Dstricmp=strcasecmp -D_strnicmp=strncasecmp -Dstrnicmp=strncasecmp -DCLIENT_WEAPONS -DCLIENT_DLL -Wl,--no-undefined
