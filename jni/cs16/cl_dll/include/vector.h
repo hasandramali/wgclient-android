@@ -23,8 +23,6 @@ GNU General Public License for more details.
 #undef DotProduct
 #endif
 
-#include "u_vector.hpp"
-
 #ifndef CLIENT_DLL
 using Vector2D = sv::moe::VectorBase<float, 2>;
 using Vector = sv::moe::VectorBase<float, 3>;
