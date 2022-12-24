@@ -5,6 +5,8 @@
 #include "draw_util.h"
 #include "com_model.h"
 
+SCREENINFO ScreenInfo;
+
 int CHudHeadName::Init(void)
 {
 	gHUD.AddHudElem(this);
@@ -16,12 +18,15 @@ int CHudHeadName::Init(void)
 
 int CHudHeadName::VidInit(void)
 {
+	ScreenInfo.iSize = sizeof(SCREENINFO);
+	gEngfuncs.pfnGetScreenInfo(&ScreenInfo);
+
 	return 1;
 }
 
 bool CHudHeadName::CheckForPlayer(cl_entity_s *pEnt)
 {
-	if (pEnt && pEnt->model && pEnt->model->name[0] && pEnt->player)
+	if (pEnt && pEnt->model && pEnt->model->name && pEnt->player)
 		return true;
 
 	return false;
@@ -32,7 +37,7 @@ int CHudHeadName::Draw(float flTime)
 	if ((gHUD.m_iHideHUDDisplay & HIDEHUD_ALL) || g_iUser1 || !gHUD.cl_headname->value)
 		return 1;
 
-	for (int i = 1; i < 33; i++)
+	for (int i = 0; i < 33; i++)
 	{
 		if (g_PlayerExtraInfo[i].dead)
 			continue;
@@ -58,9 +63,15 @@ int CHudHeadName::Draw(float flTime)
 			if (!(screen[0] < 1 && screen[1] < 1 && screen[0] > -1 && screen[1] > -1 && !iResult))
 				continue;
 
+			int w, t;
+			w = ScreenInfo.iWidth / 2;
+			t = ScreenInfo.iHeight / 2;
+			screen[0] = screen[0] * w + w;
+			screen[1] = -screen[1] * t + t;
+
 			int textlen = DrawUtils::HudStringLen(g_PlayerInfoList[i].name);
 
-			DrawUtils::DrawHudString(screen[0] - textlen * 0.5f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 150, 150, 150);
+			DrawUtils::DrawHudString(screen[0] - textlen / 2, screen[1], ScreenInfo.iWidth, g_PlayerInfoList[i].name, 15, 255, 15);
 		}
 	}
 
