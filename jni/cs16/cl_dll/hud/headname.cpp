@@ -4,7 +4,6 @@
 #include "triangleapi.h"
 #include "draw_util.h"
 #include "com_model.h"
-#include "calcscreen.h"
 
 int CHudHeadName::Init(void)
 {
@@ -54,8 +53,9 @@ int CHudHeadName::Draw(float flTime)
 			if (model)
 				origin.z += max(model->maxs.z, 35.0);
 
-			float screen[2]{ -1,-1 };
-			if (!CalcScreen(origin, screen))
+			float screen[2];
+			int iResult = gEngfuncs.pTriAPI->WorldToScreen(origin, screen);
+			if (!(screen[0] < 1 && screen[1] < 1 && screen[0] > -1 && screen[1] > -1 && !iResult))
 				continue;
 
 			int textlen = DrawUtils::HudStringLen(g_PlayerInfoList[i].name);
