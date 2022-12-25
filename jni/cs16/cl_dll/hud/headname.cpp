@@ -57,7 +57,7 @@ int CHudHeadName::Draw(float flTime)
 
 			if (g_PlayerExtraInfo[i].dead)
 			{
-				DrawUtils::DrawHudString( screen[0] - textlen * 0.2f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 0, 0, 0 );
+				continue;
 			}
 
 			if (g_PlayerExtraInfo[i].teamnumber != g_PlayerExtraInfo[gHUD.m_Scoreboard.m_iPlayerNum].teamnumber)
@@ -67,7 +67,7 @@ int CHudHeadName::Draw(float flTime)
 
 			if (i != gHUD.m_Scoreboard.m_iPlayerNum)
 			{
-				DrawUtils::DrawHudString( screen[0] - textlen * 0.2f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 0, 0, 255 );
+				DrawUtils::DrawHudString( screen[0] - textlen * 0.2f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 15, 250, 15 );
 			}
 	}
 
