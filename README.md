@@ -1,4 +1,4 @@
 # cs16advanced-android
 
-this is modifed client for android
+this is synced client from wgclient|android port|
 (whyghost'a teşekkürler)
