@@ -33,41 +33,40 @@ bool CHudHeadName::CheckForPlayer(cl_entity_s *pEnt)
 
 int CHudHeadName::Draw(float flTime)
 {
-	if ( ( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL ) || g_iUser1 || !gHUD.cl_headname->value )
+	if ((gHUD.m_iHideHUDDisplay & HIDEHUD_ALL) || g_iUser1 || !gHUD.cl_headname->value)
 		return 1;
 
-	for ( int i = 1; i < 33; i++ )	
+	for (int i = 1; i < 33; i++)
 	{
-	if (g_PlayerExtraInfo[i].dead)
+		if (g_PlayerExtraInfo[i].dead)
 			continue;
 
-		cl_entity_t *ent = gEngfuncs.GetEntityByIndex( i );
-
-		if ( !CheckForPlayer( ent ) )
-			continue;
-
-		model_t *model = ent->model;
-		vec3_t origin  = ent->origin;
-
-		if ( model )
-			origin.z += max( model->mins.z, 0.0 );
-
-		float screen[2]{ -1, -1 };
-		if ( !CalcScreen( origin, screen ) )
-			continue;
-
-		int textlen = DrawUtils::HudStringLen( g_PlayerInfoList[i].name );
-
-
-			if (g_PlayerExtraInfo[i].teamnumber != g_PlayerExtraInfo[gHUD.m_Scoreboard.m_iPlayerNum].teamnumber)
+		if (g_PlayerExtraInfo[i].teamnumber != g_PlayerExtraInfo[gHUD.m_Scoreboard.m_iPlayerNum].teamnumber)
 			{
 				DrawUtils::DrawHudString( screen[0] - textlen * 0.2f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 255, 0, 0 );
-			}
+                        }
 
-			if (i != gHUD.m_Scoreboard.m_iPlayerNum)
-			{
-				DrawUtils::DrawHudString( screen[0] - textlen * 0.2f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 15, 250, 15 );
-			}
+		if (i != gHUD.m_Scoreboard.m_iPlayerNum)
+		{
+			cl_entity_t *ent = gEngfuncs.GetEntityByIndex(i);
+
+			if (!CheckForPlayer(ent))
+				continue;
+
+			model_t *model = ent->model;
+			vec3_t origin = ent->origin;
+
+			if (model)
+				origin.z += max(model->maxs.z, 35.0);
+
+			float screen[2]{ -1,-1 };
+			if (!CalcScreen(origin, screen))
+				continue;
+
+			int textlen = DrawUtils::HudStringLen(g_PlayerInfoList[i].name);
+
+			DrawUtils::DrawHudString(screen[0] - textlen * 0.5f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 15, 250, 15);
+		}
 	}
 
 	return 1;
