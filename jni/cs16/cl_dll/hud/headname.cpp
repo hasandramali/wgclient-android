@@ -41,11 +41,6 @@ int CHudHeadName::Draw(float flTime)
 		if (g_PlayerExtraInfo[i].dead)
 			continue;
 
-		if (g_PlayerExtraInfo[i].teamnumber != g_PlayerExtraInfo[gHUD.m_Scoreboard.m_iPlayerNum].teamnumber)
-			{
-				DrawUtils::DrawHudString( screen[0] - textlen * 0.2f, screen[1], gHUD.m_scrinfo.iWidth, g_PlayerInfoList[i].name, 255, 0, 0 );
-                        }
-
 		if (i != gHUD.m_Scoreboard.m_iPlayerNum)
 		{
 			cl_entity_t *ent = gEngfuncs.GetEntityByIndex(i);
