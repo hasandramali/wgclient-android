@@ -1,156 +1,161 @@
 //
-// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
-// Copyright (c) YaPB Development Team.
+// Copyright (c) 2003-2009, by Yet Another POD-Bot Development Team.
 //
-// This software is licensed under the BSD-style license.
-// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
-//     https://yapb.jeefo.net/license
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the "Software"),
+// to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+// $Id$
 //
 
-#pragma once
+#ifndef PLATFORM_INCLUDED
+#define PLATFORM_INCLUDED
 
 // detects the build platform
 #if defined (__linux__) || defined (__debian__) || defined (__linux)
-   #define PLATFORM_LINUX 1
-#elif defined (__APPLE__)
-   #define PLATFORM_OSX 1
+#define PLATFORM_LINUX32 1
+#elif defined (__x86_64__) || defined (__amd64__)
+#define PLATFORM_LINUX64 1
 #elif defined (_WIN32)
-   #define PLATFORM_WIN32 1
+#define PLATFORM_WIN32 1
 #endif
 
 // detects the compiler
 #if defined (_MSC_VER)
-   #define COMPILER_VISUALC _MSC_VER
-#elif defined (__MINGW32_MAJOR_VERSION)
-   #define COMPILER_MINGW32 __MINGW32_MAJOR_VERSION
+#define COMPILER_VISUALC _MSC_VER
+#elif defined (__BORLANDC__)
+#define COMPILER_BORLAND __BORLANDC__
+#elif defined (__MINGW32__)
+#define COMPILER_MINGW32 __MINGW32__
 #endif
 
 // configure export macros
 #if defined (COMPILER_VISUALC) || defined (COMPILER_MINGW32)
-   #define SHARED_LIBRARAY_EXPORT extern "C" __declspec (dllexport)
-#elif defined (PLATFORM_LINUX) || defined (PLATFORM_OSX) 
-   #define SHARED_LIBRARAY_EXPORT extern "C" __attribute__((visibility("default")))
+#define export extern "C" __declspec (dllexport)
+#elif defined (PLATFORM_LINUX32) || defined (PLATFORM_LINUX64) || defined (COMPILER_BORLAND)
+#define export extern "C"
 #else
-   #error "Can't configure export macros. Compiler unrecognized."
+#error "Can't configure export macros. Compiler unrecognized."
 #endif
-
-// enable sse intrinsics
-#define ENABLE_SSE_INTRINSICS 1
 
 // operating system specific macros, functions and typedefs
 #ifdef PLATFORM_WIN32
 
-   #include <direct.h>
-   #include <string.h>
+#include <direct.h>
 
-   #define STD_CALL __stdcall
+#define DLL_ENTRYPOINT int STDCALL DllMain (void *, unsigned long dwReason, void *)
+#define DLL_DETACHING (dwReason == 0)
+#define DLL_RETENTRY return 1
 
-   #define DLL_ENTRYPOINT int STD_CALL DllMain (HINSTANCE, DWORD dwReason, LPVOID)
-   #define DLL_DETACHING (dwReason == DLL_PROCESS_DETACH)
-   #define DLL_RETENTRY return TRUE
-
-   #if defined (COMPILER_VISUALC)
-      #define DLL_GIVEFNPTRSTODLL extern "C" void STD_CALL
-   #elif defined (COMPILER_MINGW32)
-      #define DLL_GIVEFNPTRSTODLL SHARED_LIBRARAY_EXPORT void STD_CALL
-   #endif
-
-   // specify export parameter
-   #if defined (COMPILER_VISUALC) && (COMPILER_VISUALC > 1000)
-      #pragma comment (linker, "/EXPORT:GiveFnptrsToDll=_GiveFnptrsToDll@8,@1")
-      #pragma comment (linker, "/SECTION:.data,RW")
-   #endif
-
-#elif defined (PLATFORM_LINUX) || defined (PLATFORM_OSX)
-
-   #include <unistd.h>
-   #include <dlfcn.h>
-   #include <errno.h>
-   #include <fcntl.h>
-   #include <sys/stat.h>
-
-   #include <sys/types.h>
-   #include <sys/socket.h>
-   #include <netinet/in.h>
-   #include <netdb.h>
-   #include <arpa/inet.h>
-
-   #define DLL_ENTRYPOINT __attribute__((destructor))  void _fini (void)
-   #define DLL_DETACHING TRUE
-   #define DLL_RETENTRY return
-   #define DLL_GIVEFNPTRSTODLL extern "C" void __attribute__((visibility("default")))
-
-   #define STD_CALL /* */
-
-   #if defined (__ANDROID__)
-      #define PLATFORM_ANDROID 1
-      #undef ENABLE_SSE_INTRINSICS
-   #endif
-#else
-   #error "Platform unrecognized."
+#if defined (COMPILER_VISUALC)
+#define DLL_GIVEFNPTRSTODLL extern "C" void STDCALL
+#elif defined (COMPILER_MINGW32)
+#define DLL_GIVEFNPTRSTODLL export void STDCALL
 #endif
+
+// specify export parameter
+#if defined (COMPILER_VISUALC) && (COMPILER_VISUALC > 1000)
+#pragma comment (linker, "/EXPORT:GiveFnptrsToDll=_GiveFnptrsToDll@8,@1")
+#pragma comment (linker, "/SECTION:.data,RW")
+#endif
+
+typedef int (*EntityAPI_t) (DLL_FUNCTIONS*, int);
+typedef int (*NewEntityAPI_t) (NEW_DLL_FUNCTIONS*, int*);
+typedef int (*BlendAPI_t) (int, void**, void*, float(*)[3][4], float(*)[128][3][4]);
+typedef void(__stdcall* FuncPointers_t) (enginefuncs_t*, globalvars_t*);
+typedef void (*EntityPtr_t) (entvars_t*);
+
+#elif defined (PLATFORM_LINUX32) || defined (PLATFORM_LINUX64)
+
+#include <unistd.h>
+#include <dlfcn.h>
+#include <errno.h>
+#include <sys/stat.h>
+
+#define DLL_ENTRYPOINT void _fini (void)
+#define DLL_DETACHING TRUE
+#define DLL_RETENTRY return
+#define DLL_GIVEFNPTRSTODLL extern "C" void
+
+inline uint32 _lrotl(uint32 x, int r) { return (x << r) | (x >> (sizeof(x) * 8 - r)); }
+
+typedef int (*EntityAPI_t) (DLL_FUNCTIONS*, int);
+typedef int (*NewEntityAPI_t) (NEW_DLL_FUNCTIONS*, int*);
+typedef int (*BlendAPI_t) (int, void**, void*, float(*)[3][4], float(*)[128][3][4]);
+typedef void (*FuncPointers_t) (enginefuncs_t*, globalvars_t*);
+typedef void (*EntityPtr_t) (entvars_t*);
+
+#else
+#error "Platform unrecognized."
+#endif
+
+extern "C" void* __stdcall GetProcAddress(void*, const char*);
+extern "C" void* __stdcall LoadLibraryA(const char*);
+extern "C" int __stdcall FreeLibrary(void*);
 
 // library wrapper
 class Library
 {
 private:
-   void *m_ptr;
+    void* m_ptr;
 
 public:
 
-   Library (const char *fileName)
-   {
-      m_ptr = nullptr;
-
-      if (fileName == nullptr)
-         return;
-
-      LoadLib (fileName);
-   }
-
-   ~Library (void)
-   {
-      if (!IsLoaded ())
-         return;
+    Library(const char* fileName)
+    {
+        if (fileName == NULL)
+            return;
 
 #ifdef PLATFORM_WIN32
-      FreeLibrary ((HMODULE) m_ptr);
+        m_ptr = LoadLibraryA(fileName);
 #else
-      dlclose (m_ptr);
+        m_ptr = dlopen(fileName, RTLD_NOW);
 #endif
-   }
+    }
+
+    ~Library(void)
+    {
+        if (!IsLoaded())
+            return;
+
+#ifdef PLATFORM_WIN32
+        FreeLibrary(m_ptr);
+#else
+        dlclose(m_ptr);
+#endif
+    }
 
 public:
-   inline void *LoadLib (const char *fileName)
-   {
-#ifdef PLATFORM_WIN32
-      m_ptr = LoadLibrary (fileName);
-#else
-      m_ptr = dlopen (fileName, RTLD_NOW);
-#endif
-
-      return m_ptr;
-   }
-
-   template <typename R> R GetFuncAddr (const char *function)
-   {
-      if (!IsLoaded ())
-         return nullptr;
+    void* GetFunctionAddr(const char* functionName)
+    {
+        if (!IsLoaded())
+            return NULL;
 
 #ifdef PLATFORM_WIN32
-      return reinterpret_cast <R> (GetProcAddress (static_cast <HMODULE> (m_ptr), function));
+        return GetProcAddress(m_ptr, functionName);
 #else
-      return reinterpret_cast <R> (dlsym (m_ptr, function));
+        return dlsym(m_ptr, functionName);
 #endif
-   }
+    }
 
-   template <typename R> R GetHandle (void)
-   {
-      return (R) m_ptr;
-   }
-
-   inline bool IsLoaded (void) const
-   {
-      return m_ptr != nullptr;
-   }
+    inline bool IsLoaded(void) const
+    {
+        return m_ptr != NULL;
+    }
 };
+
+#endif
