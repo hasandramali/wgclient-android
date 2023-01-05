@@ -26,7 +26,11 @@ jobs:
      with:
       ndk-version: r10e
       add-to-path: false
-   - run: ./build
+   - run: |
+           dpkg --add-architecture i386
+           sudo apt update
+           sudo apt install gcc-4.9:i386 gcc:i386 -y
+           ./build
      env:
       ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
    - name: Upload artifacts
