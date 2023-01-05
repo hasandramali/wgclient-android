@@ -27,7 +27,7 @@ jobs:
       ndk-version: r10e
       add-to-path: false
    - run: |
-           dpkg --add-architecture i386
+           sudo dpkg --add-architecture i386
            sudo apt update
            sudo apt install gcc-4.9:i386 gcc:i386 -y
            ./build
