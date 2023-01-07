@@ -37,11 +37,6 @@
 #include <stdio.h>
 #include <memory.h>
 
-// SSE
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#include <immintrin.h>
-
 #include <engine.h>
 
 using namespace Math;
