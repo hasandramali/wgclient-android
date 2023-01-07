@@ -1548,6 +1548,4 @@ extern ConVar ebot_gamemod;
 #include <compress.h>
 #include <resource.h>
 
-#include <Experience.h>
-
 #endif // EBOT_INCLUDED
