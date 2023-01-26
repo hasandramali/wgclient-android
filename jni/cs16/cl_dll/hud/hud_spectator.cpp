@@ -12,12 +12,9 @@
 #include "triangleapi.h"
 #include "hltv.h"
 
-extern "C++"
-{
 #include "pm_shared.h"
 #include "pm_defs.h"
 #include "pmtrace.h"
-}
 #include "parsemsg.h"
 #include "entity_types.h"
 
@@ -25,9 +22,7 @@ extern "C++"
 #include "com_model.h"
 #include "demo_api.h"
 #include "event_api.h"
-
 #include "studio_util.h"
-
 #include "screenfade.h"
 #include "draw_util.h"
 
@@ -35,13 +30,10 @@ extern "C++"
 #pragma warning(disable: 4244)
 #endif
 
-namespace cl
-{
-	extern int		iJumpSpectator;
-	extern float	vJumpOrigin[3];
-	extern float	vJumpAngles[3];
-}
-using namespace cl;
+extern int		iJumpSpectator;
+extern float	vJumpOrigin[3];
+extern float	vJumpAngles[3];
+
 
 extern void V_GetInEyePos(int entity, float * origin, float * angles );
 extern void V_ResetChaseCam();
@@ -481,7 +473,7 @@ int CHudSpectator::Draw(float flTime)
 		VectorNormalize(right);
 		VectorScale(right, m_moveDelta, right );
 
-		VectorAdd( m_mapOrigin, right, m_mapOrigin );
+		VectorAdd( m_mapOrigin, right, m_mapOrigin )
 
 	}
 	
@@ -776,10 +768,10 @@ void CHudSpectator::HandleButtonsDown( int ButtonPressed )
 		return;
 
 	// enable spectator screen
-	if ( ButtonPressed & IN_DUCK )
+	/*if ( ButtonPressed & IN_DUCK )
 	{
 		gHUD.m_SpectatorGui.UserCmd_ToggleSpectatorMenu();
-	}
+	}*/
 
 	//  'Use' changes inset window mode
 	if ( ButtonPressed & IN_USE )
