@@ -3,7 +3,7 @@
       package="in.celest.xash3d.wg16client"
       android:versionCode="520"
       android:versionName="1.2">
-    <uses-sdk android:minSdkVersion="17" android:targetSdkVersion="24"/>
+    <uses-sdk android:minSdkVersion="9" android:targetSdkVersion="21"/>
     <application android:label="@string/app_name"
                  android:debuggable="false"
                  android:icon="@drawable/ic_launcher">
