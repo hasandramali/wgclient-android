@@ -28,6 +28,10 @@ jobs:
       add-to-path: false
    - run: |
            sudo apt install build-essential gcc-multilib g++-multilib gcc g++ -y
+           rm -rf jni/cs16/3rdparty/yapb
+           cd jni/cs16/3rdparty/
+           git clone --recursive https://github.com/yapb/yapb
+           cd ../../..
            ./build
      env:
       ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
