@@ -28,7 +28,7 @@ jobs:
       add-to-path: false
    - run: |
            sudo apt install android-sdk ant openjdk-8-jdk openjdk-8-jre ant-contrib python3-requests python3-pip build-essential gcc-multilib g++-multilib gcc g++ -y
-           expprt JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+           export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
            export ANDROID_HOME=/usr/lib/android-sdk/
            sudo chmod 777 build-apk.sh
            ./build-apk.sh debug noomp
