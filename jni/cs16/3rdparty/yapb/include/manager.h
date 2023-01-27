@@ -1,8 +1,9 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #pragma once
@@ -12,40 +13,10 @@ struct BotRequest {
    bool manual;
    int difficulty;
    int team;
-   int skin;
+   int member;
    int personality;
    String name;
 };
-
-// initial frustum data
-struct FrustumData : public Singleton <FrustumData> {
-private:
-   float Fov = 75.0f;
-   float AspectRatio = 1.33333f;
-
-public:
-   float MaxView = 4096.0f;
-   float MinView = 5.0f;
-
-public:
-   float farHeight; // height of the far frustum
-   float farWidth; // width of the far frustum
-
-   float nearHeight; // height of the near frustum
-   float nearWidth; // width of the near frustum
-
-public:
-   FrustumData () {
-      nearHeight = 2.0f * cr::tanf (Fov * 0.0174532925f * 0.5f) * MinView;
-      nearWidth = nearHeight * AspectRatio;
-
-      farHeight = 2.0f * cr::tanf (Fov * 0.0174532925f * 0.5f) * MaxView;
-      farWidth = farHeight * AspectRatio;
-   }
-};
-
-// declare global frustum data
-CR_EXPOSE_GLOBAL_SINGLETON (FrustumData, frustum);
 
 // manager class
 class BotManager final : public Singleton <BotManager> {
@@ -61,20 +32,20 @@ private:
    float m_autoKillCheckTime; // time to kill all the bots ?
    float m_maintainTime; // time to maintain bot creation
    float m_quotaMaintainTime; // time to maintain bot quota
-   float m_grenadeUpdateTime {}; // time to update active grenades
-   float m_entityUpdateTime {}; // time to update intresting entities
-   float m_plantSearchUpdateTime {}; // time to update for searching planted bomb
-   float m_lastChatTime {}; // global chat time timestamp
-   float m_timeBombPlanted {}; // time the bomb were planted
-   float m_lastRadioTime[kGameTeamNum] {}; // global radio time
+   float m_grenadeUpdateTime; // time to update active grenades
+   float m_entityUpdateTime; // time to update intresting entities
+   float m_plantSearchUpdateTime; // time to update for searching planted bomb
+   float m_lastChatTime; // global chat time timestamp
+   float m_timeBombPlanted; // time the bomb were planted
+   float m_lastRadioTime[kGameTeamNum]; // global radio time
 
    int m_lastWinner; // the team who won previous round
    int m_lastDifficulty; // last bots difficulty
    int m_bombSayStatus; // some bot is issued whine about bomb
-   int m_lastRadio[kGameTeamNum] {}; // last radio message for team
+   int m_lastRadio[kGameTeamNum]; // last radio message for team
 
-   bool m_leaderChoosen[kGameTeamNum] {}; // is team leader choose theese round
-   bool m_economicsGood[kGameTeamNum] {}; // is team able to buy anything
+   bool m_leaderChoosen[kGameTeamNum]; // is team leader choose theese round
+   bool m_economicsGood[kGameTeamNum]; // is team able to buy anything
    bool m_bombPlanted;
    bool m_botsCanPause;
    bool m_roundOver;
@@ -82,16 +53,14 @@ private:
    Array <edict_t *> m_activeGrenades; // holds currently active grenades on the map
    Array <edict_t *> m_intrestingEntities;  // holds currently intresting entities on the map
 
-   Deque <String> m_saveBotNames; // bots names that persist upon changelevel
-   Deque <BotRequest> m_addRequests; // bot creation tab
+   SmallArray <BotRequest> m_addRequests; // bot creation tab
    SmallArray <BotTask> m_filters; // task filters
    SmallArray <UniqueBot> m_bots; // all available bots
 
    edict_t *m_killerEntity; // killer entity for bots
-   FrustumData m_frustumData {};
 
 protected:
-   BotCreateResult create (StringRef name, int difficulty, int personality, int team, int skin);
+   BotCreateResult create (const String &name, int difficulty, int personality, int team, int member);
 
 public:
    BotManager ();
@@ -108,9 +77,8 @@ public:
 
    int getHumansCount (bool ignoreSpectators = false);
    int getAliveHumansCount ();
-
-   float getConnectTime (StringRef name, float original);
-   float getAverageTeamKPD (bool calcForBots);
+   int getBotCount ();
+   float getConnectionTime (int botId);
 
    void setBombPlanted (bool isPlanted);
    void frame ();
@@ -118,8 +86,8 @@ public:
    void destroyKillerEntity ();
    void touchKillerEntity (Bot *bot);
    void destroy ();
-   void addbot (StringRef name, int difficulty, int personality, int team, int skin, bool manual);
-   void addbot (StringRef name, StringRef difficulty, StringRef personality, StringRef team, StringRef skin, bool manual);
+   void addbot (const String &name, int difficulty, int personality, int team, int member, bool manual);
+   void addbot (const String &name, const String &difficulty, const String &personality, const String &team, const String &member, bool manual);
    void serverFill (int selection, int personality = Personality::Normal, int difficulty = -1, int numToAdd = -1);
    void kickEveryone (bool instant = false, bool zeroQuota = true);
    void kickBot (int index);
@@ -127,7 +95,6 @@ public:
    void killAllBots (int team = -1);
    void maintainQuota ();
    void maintainAutoKill ();
-   void maintainLeaders ();
    void initQuota ();
    void initRound ();
    void decrementQuota (int by = 1);
@@ -136,7 +103,6 @@ public:
    void setWeaponMode (int selection);
    void updateTeamEconomics (int team, bool setTrue = false);
    void updateBotDifficulties ();
-   void balanceBotDifficulties ();
    void reset ();
    void initFilters ();
    void resetFilters ();
@@ -144,7 +110,7 @@ public:
    void updateIntrestingEntities ();
    void captureChatRadio (const char *cmd, const char *arg, edict_t *ent);
    void notifyBombDefuse ();
-   void execGameEntity (edict_t *ent);
+   void execGameEntity (entvars_t *vars);
    void forEach (ForEachBot handler);
    void erase (Bot *bot);
    void handleDeath (edict_t *killer, edict_t *victim);
@@ -154,11 +120,11 @@ public:
    bool kickRandom (bool decQuota = true, Team fromTeam = Team::Unassigned);
 
 public:
-   const Array <edict_t *> &getActiveGrenades () {
+   const Array <edict_t *> &searchActiveGrenades () {
       return m_activeGrenades;
    }
 
-   const Array <edict_t *> &getIntrestingEntities () {
+   const Array <edict_t *> &searchIntrestingEntities () {
       return m_intrestingEntities;
    }
 
@@ -174,12 +140,8 @@ public:
       return m_economicsGood[team];
    }
 
-   int32 getLastWinner () const {
+   int getLastWinner () const {
       return m_lastWinner;
-   }
-
-   int32 getBotCount () {
-      return m_bots.length <int32> ();
    }
 
    // get the list of filters

@@ -1,8 +1,9 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #pragma once
@@ -30,9 +31,7 @@ CR_DECLARE_SCOPED_ENUM (NetMsg,
    NVGToggle = 19,
    FlashBat = 20,
    Fashlight = 21,
-   ItemStatus = 22,
-   ScoreInfo = 23,
-   ScoreAttrib = 24
+   ItemStatus = 22
 )
 
 // vgui menus (since latest steam updates is obsolete, but left for old cs)
@@ -65,39 +64,36 @@ CR_DECLARE_SCOPED_ENUM (StatusIconCache,
 class MessageDispatcher final : public Singleton <MessageDispatcher> {
 private:
    using MsgFunc = void (MessageDispatcher::*) ();
-   using MsgHash = Hash <int32>;
 
 private:
    struct Args {
       union {
          float float_;
-         int32 long_;
+         long long_;
          const char *chars_;
       };
 
    public:
       Args (float value) : float_ (value) { }
-      Args (int32 value) : long_ (value) { }
+      Args (int value) : long_ (value) { }
       Args (const char *value) : chars_ (value) { }
    };
 
 private:
-   HashMap <String, int32> m_textMsgCache; // cache strings for faster access for textmsg
-   HashMap <String, int32> m_showMenuCache; // cache for the showmenu message
-   HashMap <String, int32> m_statusIconCache; // cache for status icon message
-   HashMap <String, int32> m_teamInfoCache; // cache for teaminfo message
+   Dictionary <String, int32> m_textMsgCache; // cache strings for faster access for textmsg
+   Dictionary <String, int32> m_showMenuCache; // cache for the showmenu message
+   Dictionary <String, int32> m_statusIconCache; // cache for status icon message
+   Dictionary <String, int32> m_teamInfoCache; // cache for teaminfo message
 
 private:
-   Bot *m_bot {}; // owner of a message
-   NetMsg m_current {}; // ongoing message id
+   Bot *m_bot; // owner of a message
+   NetMsg m_current; // ongoing message id
 
    SmallArray <Args> m_args; // args collected from write* functions
+   Dictionary <String, NetMsg> m_wanted; // wanted messages
 
-   HashMap <String, NetMsg> m_wanted; // wanted messages
-   HashMap <int32, NetMsg> m_reverseMap; // maps engine message id to our message id
-
-   HashMap <NetMsg, int32, MsgHash> m_maps; // maps our message to id to engine message id
-   HashMap <NetMsg, MsgFunc, MsgHash> m_handlers; // maps our message id to handler function
+   Dictionary <NetMsg, int32, IntNoHash <int32>> m_maps; // maps our message to id to engine message id
+   Dictionary <NetMsg, MsgFunc, IntNoHash <int32>> m_handlers; // maps our message id to handler function
 
 private:
    void netMsgTextMsg ();
@@ -118,18 +114,13 @@ private:
    void netMsgItemStatus ();
    void netMsgNVGToggle ();
    void netMsgFlashBat ();
-   void netMsgScoreInfo ();
-   void netMsgScoreAttrib ();
-
-private:
-   Bot *pickBot (int32 index);
 
 public:
    MessageDispatcher ();
    ~MessageDispatcher () = default;
 
 public:
-   int32 add (StringRef name, int32 id);
+   int32 add (const String &name, int32 id);
    int32 id (NetMsg msg);
 
    void start (edict_t *ent, int32 type);

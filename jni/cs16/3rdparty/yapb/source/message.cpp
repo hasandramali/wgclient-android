@@ -1,8 +1,9 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #include <yapb.h>
@@ -41,6 +42,8 @@ void MessageDispatcher::netMsgTextMsg () {
       bots.updateTeamEconomics (Team::CT, true);
       bots.updateTeamEconomics (Team::Terrorist, true);
 
+      extern ConVar mp_startmoney;
+
       // set balance for all players
       bots.forEach ([] (Bot *bot) {
          bot->m_moneyAmount = mp_startmoney.int_ ();
@@ -59,11 +62,9 @@ void MessageDispatcher::netMsgTextMsg () {
       for (const auto &notify : bots) {
          if (notify->m_notKilled) {
             notify->clearSearchNodes ();
+            notify->clearTasks ();
 
-            // clear only camp tasks
-            notify->clearTask (Task::Camp);
-
-            if (cv_radio_mode.int_ () == 2 && rg.chance (55) && notify->m_team == Team::CT) {
+            if (yb_radio_mode.int_ () == 2 && rg.chance (55) && notify->m_team == Team::CT) {
                notify->pushChatterMessage (Chatter::WhereIsTheC4);
             }
          }
@@ -132,15 +133,15 @@ void MessageDispatcher::netMsgWeaponList () {
    }
 
    // store away this weapon with it's ammo information...
-   auto &prop = conf.getWeaponProp (m_args[id].long_);
-
-   prop.classname = m_args[classname].chars_;
-   prop.ammo1 = m_args[ammo_index_1].long_;
-   prop.ammo1Max = m_args[max_ammo_1].long_;
-   prop.slot = m_args[slot].long_;
-   prop.pos = m_args[slot_pos].long_;
-   prop.id = m_args[id].long_;
-   prop.flags = m_args[flags].long_;
+   conf.getWeaponProp (m_args[id].long_) = {
+      m_args[classname].chars_,
+      m_args[ammo_index_1].long_,
+      m_args[max_ammo_1].long_,
+      m_args[slot].long_,
+      m_args[slot_pos].long_,
+      m_args[id].long_,
+      m_args[flags].long_
+   };
 }
 
 void MessageDispatcher::netMsgCurWeapon () {
@@ -156,7 +157,6 @@ void MessageDispatcher::netMsgCurWeapon () {
    if (m_args[id].long_ < kMaxWeapons) {
       if (m_args[state].long_ != 0) {
          m_bot->m_currentWeapon = m_args[id].long_;
-         m_bot->m_weaponType = conf.getWeaponType (m_args[id].long_);
       }
 
       // ammo amount decreased ? must have fired a bullet...
@@ -170,9 +170,6 @@ void MessageDispatcher::netMsgCurWeapon () {
 void MessageDispatcher::netMsgAmmoX () {
    // this message is sent whenever ammo amounts are adjusted (up or down). NOTE: Logging reveals that CS uses it very unreliable!
 
-#if 1
-   netMsgAmmoPickup ();
-#else
    enum args { index = 0, value = 1, min = 2 };
 
    // check the minimum states
@@ -180,7 +177,6 @@ void MessageDispatcher::netMsgAmmoX () {
       return;
    }
    m_bot->m_ammo[m_args[index].long_] = m_args[value].long_; // store it away
-#endif
 }
 
 void MessageDispatcher::netMsgAmmoPickup () {
@@ -322,42 +318,6 @@ void MessageDispatcher::netMsgTeamInfo () {
    client.team = game.is (GameFlags::FreeForAll) ? m_args[index].long_ : client.team2;
 }
 
-void MessageDispatcher::netMsgScoreInfo () {
-   // this message gets sent when scoreboard info is update, we're use it to track k-d ratio
-
-   enum args { index = 0, score = 1, deaths = 2, class_id = 3, team_id = 4, min = 5 };
-
-   // check the minimum states
-   if (m_args.length () < min) {
-      return;
-   }
-   auto bot = pickBot (index);
-
-   // if we're have bot, set the kd ratio
-   if (bot != nullptr) {
-      bot->m_kpdRatio = bot->pev->frags / cr::max <long> (m_args[deaths].long_, 1);
-   }
-}
-
-void MessageDispatcher::netMsgScoreAttrib () {
-   // this message updates the scoreboard attribute for the specified player
-
-   enum args { index = 0, flags = 1, min = 2 };
-
-   // check the minimum states
-   if (m_args.length () < min) {
-      return;
-   }
-   auto bot = pickBot (index);
-
-   // if we're have bot, set the vip state
-   if (bot != nullptr) {
-      constexpr int32 kPlayerIsVIP = cr::bit (2);
-
-      bot->m_isVIP = !!(m_args[flags].long_ & kPlayerIsVIP);
-   }
-}
-
 void MessageDispatcher::netMsgBarTime () {
    enum args { enabled = 0, min = 1 };
 
@@ -410,61 +370,59 @@ void MessageDispatcher::netMsgFlashBat () {
    if (m_args.length () < min || !m_bot) {
       return;
    }
-   m_bot->m_flashLevel = m_args[value].long_;
+   m_bot->m_flashLevel = m_args[value].float_;
 }
 
 MessageDispatcher::MessageDispatcher () {
 
    // register wanted message
-   auto addWanted = [&] (StringRef name, NetMsg id, MsgFunc handler) -> void {
+   auto pushWanted = [&] (const String &name, NetMsg id, MsgFunc handler) -> void {
       m_wanted[name] = id;
       m_handlers[id] = handler;
    };
    reset ();
 
    // we want to handle next messages
-   addWanted ("TextMsg", NetMsg::TextMsg, &MessageDispatcher::netMsgTextMsg);
-   addWanted ("VGUIMenu", NetMsg::VGUIMenu, &MessageDispatcher::netMsgVGUIMenu);
-   addWanted ("ShowMenu", NetMsg::ShowMenu, &MessageDispatcher::netMsgShowMenu);
-   addWanted ("WeaponList", NetMsg::WeaponList, &MessageDispatcher::netMsgWeaponList);
-   addWanted ("CurWeapon", NetMsg::CurWeapon, &MessageDispatcher::netMsgCurWeapon);
-   addWanted ("AmmoX", NetMsg::AmmoX, &MessageDispatcher::netMsgAmmoX);
-   addWanted ("AmmoPickup", NetMsg::AmmoPickup, &MessageDispatcher::netMsgAmmoPickup);
-   addWanted ("Damage", NetMsg::Damage, &MessageDispatcher::netMsgDamage);
-   addWanted ("Money", NetMsg::Money, &MessageDispatcher::netMsgMoney);
-   addWanted ("StatusIcon", NetMsg::StatusIcon, &MessageDispatcher::netMsgStatusIcon);
-   addWanted ("DeathMsg", NetMsg::DeathMsg, &MessageDispatcher::netMsgDeathMsg);
-   addWanted ("ScreenFade", NetMsg::ScreenFade, &MessageDispatcher::netMsgScreenFade);
-   addWanted ("HLTV", NetMsg::HLTV, &MessageDispatcher::netMsgHLTV);
-   addWanted ("TeamInfo", NetMsg::TeamInfo, &MessageDispatcher::netMsgTeamInfo);
-   addWanted ("BarTime", NetMsg::BarTime, &MessageDispatcher::netMsgBarTime);
-   addWanted ("ItemStatus", NetMsg::ItemStatus, &MessageDispatcher::netMsgItemStatus);
-   addWanted ("NVGToggle", NetMsg::NVGToggle, &MessageDispatcher::netMsgNVGToggle);
-   addWanted ("FlashBat", NetMsg::FlashBat, &MessageDispatcher::netMsgFlashBat);
-   addWanted ("ScoreInfo", NetMsg::ScoreInfo, &MessageDispatcher::netMsgScoreInfo);
-   addWanted ("ScoreAttrib", NetMsg::ScoreAttrib, &MessageDispatcher::netMsgScoreAttrib);
+   pushWanted ("TextMsg", NetMsg::TextMsg, &MessageDispatcher::netMsgTextMsg);
+   pushWanted ("VGUIMenu", NetMsg::VGUIMenu, &MessageDispatcher::netMsgVGUIMenu);
+   pushWanted ("ShowMenu", NetMsg::ShowMenu, &MessageDispatcher::netMsgShowMenu);
+   pushWanted ("WeaponList", NetMsg::WeaponList, &MessageDispatcher::netMsgWeaponList);
+   pushWanted ("CurWeapon", NetMsg::CurWeapon, &MessageDispatcher::netMsgCurWeapon);
+   pushWanted ("AmmoX", NetMsg::AmmoX, &MessageDispatcher::netMsgAmmoX);
+   pushWanted ("AmmoPickup", NetMsg::AmmoPickup, &MessageDispatcher::netMsgAmmoPickup);
+   pushWanted ("Damage", NetMsg::Damage, &MessageDispatcher::netMsgDamage);
+   pushWanted ("Money", NetMsg::Money, &MessageDispatcher::netMsgMoney);
+   pushWanted ("StatusIcon", NetMsg::StatusIcon, &MessageDispatcher::netMsgStatusIcon);
+   pushWanted ("DeathMsg", NetMsg::DeathMsg, &MessageDispatcher::netMsgDeathMsg);
+   pushWanted ("ScreenFade", NetMsg::ScreenFade, &MessageDispatcher::netMsgScreenFade);
+   pushWanted ("HLTV", NetMsg::HLTV, &MessageDispatcher::netMsgHLTV);
+   pushWanted ("TeamInfo", NetMsg::TeamInfo, &MessageDispatcher::netMsgTeamInfo);
+   pushWanted ("BarTime", NetMsg::BarTime, &MessageDispatcher::netMsgBarTime);
+   pushWanted ("ItemStatus", NetMsg::ItemStatus, &MessageDispatcher::netMsgItemStatus);
+   pushWanted ("NVGToggle", NetMsg::NVGToggle, &MessageDispatcher::netMsgNVGToggle);
+   pushWanted ("FlashBat", NetMsg::FlashBat, &MessageDispatcher::netMsgFlashBat);
 
    // we're need next messages IDs but we're won't handle them, so they will be removed from wanted list as soon as they get engine IDs
-   addWanted ("BotVoice", NetMsg::BotVoice, nullptr);
-   addWanted ("SendAudio", NetMsg::SendAudio, nullptr);
+   pushWanted ("BotVoice", NetMsg::BotVoice, nullptr);
+   pushWanted ("SendAudio", NetMsg::SendAudio, nullptr);
 
    // register text msg cache
    m_textMsgCache["#CTs_Win"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
-   m_textMsgCache["#Bomb_Defused"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
+   m_textMsgCache["#Bomb_Defused"] = TextMsgCache::NeedHandle;
    m_textMsgCache["#Bomb_Planted"] = TextMsgCache::NeedHandle | TextMsgCache::BombPlanted;
    m_textMsgCache["#Terrorists_Win"] = TextMsgCache::NeedHandle | TextMsgCache::TerroristWin;
-   m_textMsgCache["#Round_Draw"] = TextMsgCache::NeedHandle | TextMsgCache::RestartRound;
-   m_textMsgCache["#All_Hostages_Rescued"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
-   m_textMsgCache["#Target_Saved"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
-   m_textMsgCache["#Hostages_Not_Rescued"] = TextMsgCache::NeedHandle | TextMsgCache::TerroristWin;
-   m_textMsgCache["#Terrorists_Not_Escaped"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
-   m_textMsgCache["#VIP_Not_Escaped"] = TextMsgCache::NeedHandle | TextMsgCache::TerroristWin;
-   m_textMsgCache["#Escaping_Terrorists_Neutralized"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
-   m_textMsgCache["#VIP_Assassinated"] = TextMsgCache::NeedHandle | TextMsgCache::TerroristWin;
-   m_textMsgCache["#VIP_Escaped"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
-   m_textMsgCache["#Terrorists_Escaped"] = TextMsgCache::NeedHandle | TextMsgCache::TerroristWin;
-   m_textMsgCache["#CTs_PreventEscape"] = TextMsgCache::NeedHandle | TextMsgCache::CounterWin;
-   m_textMsgCache["#Target_Bombed"] = TextMsgCache::NeedHandle | TextMsgCache::TerroristWin;
+   m_textMsgCache["#Round_Draw"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#All_Hostages_Rescued"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#Target_Saved"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#Hostages_Not_Rescued"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#Terrorists_Not_Escaped"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#VIP_Not_Escaped"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#Escaping_Terrorists_Neutralized"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#VIP_Assassinated"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#VIP_Escaped"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#Terrorists_Escaped"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#CTs_PreventEscape"] = TextMsgCache::NeedHandle;
+   m_textMsgCache["#Target_Bombed"] = TextMsgCache::NeedHandle;
    m_textMsgCache["#Game_Commencing"] = TextMsgCache::NeedHandle | TextMsgCache::Commencing;
    m_textMsgCache["#Game_will_restart_in"] = TextMsgCache::NeedHandle | TextMsgCache::RestartRound;
    m_textMsgCache["#Switch_To_BurstFire"] = TextMsgCache::NeedHandle | TextMsgCache::BurstOn;
@@ -492,13 +450,11 @@ MessageDispatcher::MessageDispatcher () {
    m_teamInfoCache["CT"] = Team::CT;
 }
 
-int32 MessageDispatcher::add (StringRef name, int32 id) {
-   if (!m_wanted.has (name)) {
+int32 MessageDispatcher::add (const String &name, int32 id) {
+   if (!m_wanted.exists (name)) {
       return id;
    }
-
    m_maps[m_wanted[name]] = id; // add message from engine regusermsg
-   m_reverseMap[id] = m_wanted[name]; // add message from engine regusermsg
 
    return id;
 }
@@ -506,14 +462,12 @@ int32 MessageDispatcher::add (StringRef name, int32 id) {
 void MessageDispatcher::start (edict_t *ent, int32 type) {
    reset ();
 
-   if (game.is (GameFlags::Metamod)) {
-      ensureMessages ();
-   }
-
    // search if we need to handle this message
-   if (m_reverseMap.has (type)) {
-      auto msg = m_reverseMap[type];
-      m_current = m_handlers[msg] ? msg : NetMsg::None;
+   for (const auto &msg : m_maps) {
+      if (msg.value == type && m_handlers[msg.key]) {
+         m_current = msg.key;
+         break;
+      }
    }
 
    // no messagem no processing
@@ -546,23 +500,19 @@ void MessageDispatcher::ensureMessages () {
    // this function tries to associate appropriate message ids.
 
    // check if we're have one
-   if (m_maps.has (NetMsg::Money)) {
+   if (m_maps.exists (NetMsg::Money)) {
       return;
    }
 
    // re-register our message
-   m_wanted.foreach ([&] (const String &key, const int32 &) {
-      add (key, GET_USER_MSG_ID (PLID, key.chars (), nullptr));
-   });
+   for (const auto &msg : m_wanted) {
+      add (msg.key, GET_USER_MSG_ID (PLID, msg.key.chars (), nullptr));
+   }
 }
 
 int32 MessageDispatcher::id (NetMsg msg) {
+   if (game.is (GameFlags::Metamod)) {
+      ensureMessages ();
+   }
    return m_maps[msg];
-}
-
-Bot *MessageDispatcher::pickBot (int32 index) {
-   const auto &client = util.getClient (m_args[index].long_ - 1);
-
-   // get the bot in this msg
-   return bots[client.ent];
 }

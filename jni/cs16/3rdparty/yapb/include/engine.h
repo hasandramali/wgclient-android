@@ -1,8 +1,9 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #pragma once
@@ -28,7 +29,7 @@ CR_DECLARE_SCOPED_ENUM (Var,
    ReadOnly,
    Password,
    NoServer,
-   GameRef
+   NoRegister
 )
 
 // supported cs's
@@ -54,7 +55,7 @@ CR_DECLARE_SCOPED_ENUM (MapFlags,
    Demolition = cr::bit (2),
    Escape = cr::bit (3),
    KnifeArena = cr::bit (4),
-   FightYard = cr::bit (5),
+   Fun = cr::bit (5),
    HasDoors = cr::bit (10), // additional flags
    HasButtons = cr::bit (11) // map has buttons
 )
@@ -66,16 +67,15 @@ CR_DECLARE_SCOPED_ENUM (EntitySearchResult,
 )
 
 // variable reg pair
-struct ConVarReg {
+struct VarPair {
+   Var type;
    cvar_t reg;
-   String info;
-   String init;
-   String regval;
-   class ConVar *self;
-   float initial, min, max;
    bool missing;
+   const char *regval;
+   class ConVar *self;
+   String info;
+   float initial, min, max;
    bool bounded;
-   int32 type;
 };
 
 // entity prototype
@@ -112,8 +112,8 @@ public:
    using EntitySearch = Lambda <EntitySearchResult (edict_t *)>;
 
 private:
-   int m_drawModels[DrawLine::Count] { };
-   int m_spawnCount[Team::Unassigned] { };
+   int m_drawModels[DrawLine::Count];
+   int m_spawnCount[Team::Unassigned];
 
    // bot client command
    StringArray m_botArgs;
@@ -122,17 +122,15 @@ private:
    edict_t *m_localEntity;
 
    Array <edict_t *> m_breakables;
-   SmallArray <ConVarReg> m_cvars;
+   SmallArray <VarPair> m_cvars;
    SharedLibrary m_gameLib;
    EngineWrap m_engineWrap;
 
    bool m_precached;
+   int m_gameFlags;
+   int m_mapFlags;
 
-   int m_gameFlags {};
-   int m_mapFlags {};
-
-   float m_oneSecondFrame; // per second updated
-   float m_halfSecondFrame; // per half second update
+   float m_slowFrame; // per second updated frame
 
 public:
    Game ();
@@ -151,9 +149,6 @@ public:
    // test line
    void testLine (const Vector &start, const Vector &end, int ignoreFlags, edict_t *ignoreEntity, TraceResult *ptr);
 
-   // trace line with channel, but allows us to store last traceline bot has fired, saving us some cpu cycles
-   bool testLineChannel (TraceChannel channel, const Vector &start, const Vector &end, int ignoreFlags, edict_t *ignoreEntity, TraceResult &result);
-
    // test line
    void testHull (const Vector &start, const Vector &end, int ignoreFlags, int hullNumber, edict_t *ignoreEntity, TraceResult *ptr);
 
@@ -164,13 +159,13 @@ public:
    bool isDedicated ();
 
    // get stripped down mod name
-   const char *getRunningModName ();
+   const char *getModName ();
 
    // get the valid mapname
    const char *getMapName ();
 
    // get the "any" entity origin
-   Vector getEntityOrigin (edict_t *ent);
+   Vector getEntityWorldOrigin (edict_t *ent);
 
    // registers a server command
    void registerEngineCommand (const char *command, void func ());
@@ -182,7 +177,7 @@ public:
    void prepareBotArgs (edict_t *ent, String str);
 
    // adds cvar to registration stack
-   void addNewCvar (const char *name, const char *value, const char *info, bool bounded, float min, float max, int32 varType, bool missingAction, const char *regval, class ConVar *self);
+   void addNewCvar (const char *name, const char *value, const char *info, bool bounded, float min, float max, Var varType, bool missingAction, const char *regval, class ConVar *self);
 
    // check the cvar bounds
    void checkCvarsBounds ();
@@ -206,16 +201,13 @@ public:
    void slowFrame ();
 
    // search entities by variable field
-   void searchEntities (StringRef field, StringRef value, EntitySearch functor);
+   void searchEntities (const String &field, const String &value, EntitySearch functor);
 
    // search entities in sphere
-   void searchEntities (const Vector &position, float radius, EntitySearch functor);
+   void searchEntities (const Vector &position, const float radius, EntitySearch functor);
 
    // this function is checking that pointed by ent pointer obstacle, can be destroyed
    bool isShootableBreakable (edict_t *ent);
-
-   // print the version to server console on startup
-   void printBotVersion ();
 
    // public inlines
 public:
@@ -236,7 +228,7 @@ public:
 
    // gets custom engine args for client command
    const char *botArgs () const {
-      return strings.format (String::join (m_botArgs, " ", m_botArgs[0].startsWith ("say") ? 1 : 0).chars ());
+      return strings.format (String::join (m_botArgs, " ", m_botArgs[0] == "say" || m_botArgs[0] == "say_team" ? 1 : 0).chars ());
    }
 
    // gets custom engine argv for client command
@@ -248,8 +240,8 @@ public:
    }
 
    // gets custom engine argc for client command
-   int32 botArgc () const {
-      return m_botArgs.length <int32> ();
+   int botArgc () const {
+      return m_botArgs.length ();
    }
 
    // gets edict pointer out of entity index
@@ -310,9 +302,6 @@ public:
       m_localEntity = ent;
    }
 
-   // sets player start entity draw models
-   void setPlayerStartDrawModels ();
-
    // check the engine visibility wrapper
    bool checkVisibility (edict_t *ent, uint8 *set);
 
@@ -340,7 +329,7 @@ public:
    }
 
    // get registered cvars list
-   const SmallArray <ConVarReg> &getCvars () {
+   const SmallArray <VarPair> &getCvars () {
       return m_cvars;
    }
 
@@ -354,34 +343,26 @@ public:
       return !m_breakables.empty ();
    }
 
-   // find variable value by variable name
-   StringRef findCvar (StringRef name) {
-      return engfuncs.pfnCVarGetString (name.chars ());
-   }
-
    // helper to sending the client message
-   void sendClientMessage (bool console, edict_t *ent, StringRef message);
-   
-   // helper to sending the server message
-   void sendServerMessage (StringRef message);
+   void sendClientMessage (bool console, edict_t *ent, const char *message);
 
    // send server command
-   template <typename ...Args> void serverCommand (const char *fmt, Args &&...args) {
+   template <typename ...Args> void serverCommand (const char *fmt, Args ...args) {
       engfuncs.pfnServerCommand (strings.concat (strings.format (fmt, cr::forward <Args> (args)...), "\n", StringBuffer::StaticBufferSize));
    }
 
    // send a bot command
-   template <typename ...Args> void botCommand (edict_t *ent, const char *fmt, Args &&...args) {
+   template <typename ...Args> void botCommand (edict_t *ent, const char *fmt, Args ...args) {
       prepareBotArgs (ent, strings.format (fmt, cr::forward <Args> (args)...));
    }
 
    // prints data to servers console
-   template <typename ...Args> void print (const char *fmt, Args &&...args) {
-      sendServerMessage (strings.concat (strings.format (conf.translate (fmt), cr::forward <Args> (args)...), "\n", StringBuffer::StaticBufferSize));
+   template <typename ...Args> void print (const char *fmt, Args ...args) {
+      engfuncs.pfnServerPrint (strings.concat (strings.format (conf.translate (fmt), cr::forward <Args> (args)...), "\n", StringBuffer::StaticBufferSize));
    }
 
    // prints center message to specified player
-   template <typename ...Args> void clientPrint (edict_t *ent, const char *fmt, Args &&...args) {
+   template <typename ...Args> void clientPrint (edict_t *ent, const char *fmt, Args ...args) {
       if (isNullEntity (ent)) {
          print (fmt, cr::forward <Args> (args)...);
          return;
@@ -390,7 +371,7 @@ public:
    }
 
    // prints message to client console
-   template <typename ...Args> void centerPrint (edict_t *ent, const char *fmt, Args &&...args) {
+   template <typename ...Args> void centerPrint (edict_t *ent, const char *fmt, Args ...args) {
       if (isNullEntity (ent)) {
          print (fmt, cr::forward <Args> (args)...);
          return;
@@ -409,12 +390,12 @@ public:
    ~ConVar () = default;
 
 public:
-   ConVar (const char *name, const char *initval, int32 type = Var::NoServer, bool regMissing = false, const char *regVal = nullptr) : ptr (nullptr) {
-      Game::instance ().addNewCvar (name, initval, "", false, 0.0f, 0.0f, type, regMissing, regVal, this);
+   ConVar (const char *name, const char *initval, Var type = Var::NoServer, bool regMissing = false, const char *regVal = nullptr) : ptr (nullptr) {
+      Game::get ().addNewCvar (name, initval, "", false, 0.0f, 0.0f, type, regMissing, regVal, this);
    }
 
-   ConVar (const char *name, const char *initval, const char *info, bool bounded = true, float min = 0.0f, float max = 1.0f, int32 type = Var::NoServer, bool regMissing = false, const char *regVal = nullptr) : ptr (nullptr) {
-      Game::instance ().addNewCvar (name, initval, info, bounded, min, max, type, regMissing, regVal, this);
+   ConVar (const char *name, const char *initval, const char *info, bool bounded = true, float min = 0.0f, float max = 1.0f, Var type = Var::NoServer, bool regMissing = false, const char *regVal = nullptr) : ptr (nullptr) {
+      Game::get ().addNewCvar (name, initval, info, bounded, min, max, type, regMissing, regVal, this);
    }
 
    bool bool_ () const {
@@ -442,7 +423,7 @@ public:
    }
 
    void set (const char *val) {
-      engfuncs.pfnCvar_DirectSet (ptr, val);
+      engfuncs.pfnCvar_DirectSet (ptr, const_cast <char *> (val));
    }
 };
 
@@ -516,8 +497,8 @@ public:
 
 class LightMeasure final : public Singleton <LightMeasure> {
 private:
-   lightstyle_t m_lightstyle[MAX_LIGHTSTYLES] {};
-   int m_lightstyleValue[MAX_LIGHTSTYLEVALUE] {};
+   lightstyle_t m_lightstyle[MAX_LIGHTSTYLES];
+   int m_lightstyleValue[MAX_LIGHTSTYLEVALUE];
    bool m_doAnimation = false;
 
    Color m_point;
@@ -574,7 +555,7 @@ public:
 
 public:
    template <typename T> T read () {
-      T result {};
+      T result;
       auto size = sizeof (T);
 
       if (m_cursor + size > m_buffer.length ()) {
@@ -606,23 +587,8 @@ public:
       if (m_buffer.length () < m_cursor) {
          return;
       }
-      for (; m_cursor < m_buffer.length () && m_buffer[m_cursor] != kNullChar; ++m_cursor) { }
+      for (; m_cursor < m_buffer.length () && m_buffer[m_cursor] != '\0'; ++m_cursor) { }
       ++m_cursor;
-   }
-
-
-   String readString () {
-      if (m_buffer.length () < m_cursor) {
-         return "";
-      }
-      String out;
-
-      for (; m_cursor < m_buffer.length () && m_buffer[m_cursor] != kNullChar; ++m_cursor) {
-         out += m_buffer[m_cursor];
-      }
-      ++m_cursor;
-
-      return out;
    }
 
    void shiftToEnd () {
@@ -635,91 +601,76 @@ public:
    }
 };
 
-class EntityLinkage : public Singleton <EntityLinkage> {
+// for android
+#if defined (CR_ANDROID) && defined(CR_ARCH_ARM)
+   extern "C" void player (entvars_t *pev);
+#endif
+
+class DynamicEntityLink : public Singleton <DynamicEntityLink> {
 private:
 #if defined (CR_WINDOWS)
-#  define DLSYM_FUNCTION GetProcAddress
-#  define DLCLOSE_FUNCTION FreeLibrary
-#  define DLSYM_RETURN FARPROC
-#  define DLSYM_HANDLE HMODULE
+#  define MODULE_HANDLE HMODULE
+#  define MODULE_SYMBOL GetProcAddress
 #else
-#  define DLSYM_FUNCTION dlsym
-#  define DLCLOSE_FUNCTION dlclose
-#  define DLSYM_RETURN SharedLibrary::Handle
-#  define DLSYM_HANDLE SharedLibrary::Handle
+#  define MODULE_HANDLE void *
+#  define MODULE_SYMBOL dlsym
 #endif
 
 private:
-   bool m_paused { false };
+   using Handle = void *;
+   using Name = const char *;
 
-   Detour <decltype (DLSYM_FUNCTION)> m_dlsym;
-   Detour <decltype (DLCLOSE_FUNCTION)> m_dlclose;
-   HashMap <StringRef, DLSYM_RETURN> m_exports;
+private:
+   template <typename K> struct FunctionHash {
+      uint32 operator () (Name key) const {
+         char *str = const_cast <char *> (key);
+         uint32 hash = 0;
 
+         while (*str++) {
+            hash = ((hash << 5) + hash) + *str;
+         }
+         return hash;
+      }
+   };
+
+private:
    SharedLibrary m_self;
+   SimpleHook m_dlsym;
+   Dictionary <Name, Handle, FunctionHash <Name>> m_exports;
 
 public:
-   EntityLinkage () = default;
+   DynamicEntityLink () = default;
 
-public:
-   void initialize ();
-   DLSYM_RETURN lookup (SharedLibrary::Handle module, const char *function);
-
-   int close (DLSYM_HANDLE module) {
-      if (m_self.handle () == module) {
-         disable ();
-
-         return  m_dlclose (module);
-      }
-      return m_dlclose (module);
+   ~DynamicEntityLink () {
+      m_dlsym.disable ();
    }
+public:
+   Handle search (Handle module, Name function);
 
 public:
-   void callPlayerFunction (edict_t *ent);
-
-public:
-   void enable () {
-      if (m_dlsym.detoured ()) {
+   void initialize () {
+      if (plat.arm) {
          return;
       }
-      m_dlsym.detour ();
+      m_dlsym.patch (reinterpret_cast <void *> (&MODULE_SYMBOL), reinterpret_cast <void *> (&DynamicEntityLink::replacement));
+      m_self.locate (&engfuncs);
    }
 
-   void disable () {
-      if (!m_dlsym.detoured ()) {
-         return;
-      }
-      m_dlsym.restore ();
-   }
-
-   void setPaused (bool what) {
-      m_paused = what;
-   }
-
-   bool isPaused () const {
-      return m_paused;
+   EntityFunction getPlayerFunction () {
+#if defined (CR_ANDROID) && defined(CR_ARCH_ARM)
+      return player;
+#else
+      return reinterpret_cast <EntityFunction> (search (Game::get ().lib ().handle (), "player"));
+#endif
    }
 
 public:
-   static DLSYM_RETURN CR_STDCALL lookupHandler (SharedLibrary::Handle module, const char *function) {
-      return EntityLinkage::instance ().lookup (module, function);
-   }
-
-   static int CR_STDCALL closeHandler (DLSYM_HANDLE module) {
-      return EntityLinkage::instance ().close (module);
-   }
-
-public:
-   void flush () {
-      m_exports.clear ();
-   }
-
-   bool needsBypass () const {
-      return !plat.win && !Game::instance ().isDedicated ();
+   static Handle CR_STDCALL replacement (Handle module, Name function) {
+      return DynamicEntityLink::get ().search (module, function);
    }
 };
 
 // expose globals
 CR_EXPOSE_GLOBAL_SINGLETON (Game, game);
 CR_EXPOSE_GLOBAL_SINGLETON (LightMeasure, illum);
-CR_EXPOSE_GLOBAL_SINGLETON (EntityLinkage, ents);
+CR_EXPOSE_GLOBAL_SINGLETON (DynamicEntityLink, ents);

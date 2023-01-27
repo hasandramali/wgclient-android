@@ -1,16 +1,16 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #include <yapb.h>
 
-ConVar cv_chat ("yb_chat", "1", "Enables or disables bots chat functionality.");
-ConVar cv_chat_percent ("yb_chat_percent", "30", "Bot chances to send random dead chat when killed.", true, 0.0f, 100.0f);
+ConVar yb_chat ("yb_chat", "1", "Enables or disables bots chat functionality.");
 
-void BotSupport::stripTags (String &line) {
+void BotUtils::stripTags (String &line) {
    if (line.empty ()) {
       return;
    }
@@ -30,7 +30,7 @@ void BotSupport::stripTags (String &line) {
    }
 }
 
-void BotSupport::humanizePlayerName (String &playerName) {
+void BotUtils::humanizePlayerName (String &playerName) {
    if (playerName.empty ()) {
       return;
    }
@@ -44,38 +44,38 @@ void BotSupport::humanizePlayerName (String &playerName) {
    }
 
    // sometimes switch name to lower characters, only valid for the english languge
-   if (rg.chance (8) && strcmp (cv_language.str (), "en") == 0) {
+   if (rg.chance (8) && strcmp (yb_language.str (), "en") == 0) {
       playerName.lowercase ();
    }
 }
 
-void BotSupport::addChatErrors (String &line) {
+void BotUtils::addChatErrors (String &line) {
    // sometimes switch name to lower characters, only valid for the english languge
-   if (rg.chance (8) && strcmp (cv_language.str (), "en") == 0) {
+   if (rg.chance (8) && strcmp (yb_language.str (), "en") == 0) {
       line.lowercase ();
    }
-   auto length = static_cast <int32> (line.length ());
+   auto length = line.length ();
 
    if (length > 15) {
-      auto percentile = length / 2;
+      size_t percentile = line.length () / 2;
 
       // "length / 2" percent of time drop a character
       if (rg.chance (percentile)) {
-         line.erase (rg.get (length / 8, length - length / 8), 1);
+         line.erase (rg.int_ (length / 8, length - length / 8), 1);
       }
 
       // "length" / 4 precent of time swap character
       if (rg.chance (percentile / 2)) {
-         size_t pos = rg.get (length / 8, 3 * length / 8); // choose random position in string
+         size_t pos = rg.int_ (length / 8, 3 * length / 8); // choose random position in string
          cr::swap (line[pos], line[pos + 1]);
       }
    }
 }
 
-bool BotSupport::checkKeywords (StringRef line, String &reply) {
+bool BotUtils::checkKeywords (const String &line, String &reply) {
    // this function checks is string contain keyword, and generates reply to it
 
-   if (!cv_chat.bool_ () || line.empty ()) {
+   if (!yb_chat.bool_ () || line.empty ()) {
       return false;
    }
 
@@ -84,7 +84,7 @@ bool BotSupport::checkKeywords (StringRef line, String &reply) {
 
          // check is keyword has occurred in message
          if (line.find (keyword) != String::InvalidIndex) {
-            auto &usedReplies = factory.usedReplies;
+            StringArray &usedReplies = factory.usedReplies;
 
             if (usedReplies.length () >= factory.replies.length () / 4) {
                usedReplies.clear ();
@@ -92,7 +92,7 @@ bool BotSupport::checkKeywords (StringRef line, String &reply) {
 
             if (!factory.replies.empty ()) {
                bool replyUsed = false;
-               StringRef choosenReply = factory.replies.random ();
+               const String &choosenReply = factory.replies.random ();
 
                // don't say this twice
                for (auto &used : usedReplies) {
@@ -101,7 +101,7 @@ bool BotSupport::checkKeywords (StringRef line, String &reply) {
                      break;
                   }
                }
-               
+
                // reply not used, so use it
                if (!replyUsed) {
                   reply.assign (choosenReply); // update final buffer
@@ -120,13 +120,13 @@ bool BotSupport::checkKeywords (StringRef line, String &reply) {
    return false;
 }
 
-void Bot::prepareChatMessage (StringRef message) {
+void Bot::prepareChatMessage (const String &message) {
    // this function parses messages from the botchat, replaces keywords and converts names into a more human style
 
-   if (!cv_chat.bool_ () || message.empty ()) {
+   if (!yb_chat.bool_ () || message.empty ()) {
       return;
    }
-   m_chatBuffer = message;
+   m_chatBuffer.assign (message.chars ());
 
    // must be called before return or on the end
    auto finishPreparation = [&] () {
@@ -294,10 +294,10 @@ bool Bot::isReplyingToChat () {
 
    if (m_sayTextBuffer.entityIndex != -1 && !m_sayTextBuffer.sayText.empty ()) {
       // check is time to chat is good
-      if (m_sayTextBuffer.timeNextChat < game.time () + rg.get (m_sayTextBuffer.chatDelay / 2, m_sayTextBuffer.chatDelay)) {
+      if (m_sayTextBuffer.timeNextChat < game.time () + rg.float_ (m_sayTextBuffer.chatDelay / 2, m_sayTextBuffer.chatDelay)) {
          String replyText;
 
-         if (rg.chance (m_sayTextBuffer.chatProbability + rg.get (40, 70)) && checkChatKeywords (replyText)) {
+         if (rg.chance (m_sayTextBuffer.chatProbability + rg.int_ (20, 50)) && checkChatKeywords (replyText)) {
             prepareChatMessage (replyText);
             pushMsgQueue (BotMsg::Say);
   
@@ -317,19 +317,19 @@ bool Bot::isReplyingToChat () {
 void Bot::checkForChat () {
 
    // say a text every now and then
-   if (m_notKilled || !cv_chat.bool_ ()) {
+   if (rg.chance (30) || m_notKilled || !yb_chat.bool_ ()) {
       return;
    }
 
    // bot chatting turned on?
-   if (rg.chance (cv_chat_percent.int_ ()) && m_lastChatTime + rg.get (6.0f, 10.0f) < game.time () && bots.getLastChatTimestamp () + rg.get (2.5f, 5.0f) < game.time () && !isReplyingToChat ()) {
+   if (m_lastChatTime + rg.float_ (6.0f, 10.0f) < game.time () && bots.getLastChatTimestamp () + rg.float_ (2.5f, 5.0f) < game.time () && !isReplyingToChat ()) {
       if (conf.hasChatBank (Chat::Dead)) {
-         StringRef phrase = conf.pickRandomFromChatBank (Chat::Dead);
+         const auto &phrase = conf.pickRandomFromChatBank (Chat::Dead);
          bool sayBufferExists = false;
 
          // search for last messages, sayed
          for (auto &sentence : m_sayTextBuffer.lastUsedSentences) {
-            if (phrase.startsWith (sentence)) {
+            if (strncmp (sentence.chars (), phrase.chars (), sentence.length ()) == 0) {
                sayBufferExists = true;
                break;
             }
@@ -348,17 +348,26 @@ void Bot::checkForChat () {
       }
 
       // clear the used line buffer every now and then
-      if (static_cast <int> (m_sayTextBuffer.lastUsedSentences.length ()) > rg.get (4, 6)) {
+      if (static_cast <int> (m_sayTextBuffer.lastUsedSentences.length ()) > rg.int_ (4, 6)) {
          m_sayTextBuffer.lastUsedSentences.clear ();
       }
    }
 }
 
-void Bot::sendToChat (StringRef message, bool teamOnly) {
+void Bot::say (const char *text) {
    // this function prints saytext message to all players
 
-   if (message.empty () || !cv_chat.bool_ ()) {
+   if (strings.isEmpty (text) || !yb_chat.bool_ ()) {
       return;
    }
-   issueCommand ("%s \"%s\"", teamOnly ? "say_team" : "say", message);
+   issueCommand ("say \"%s\"", text);
+}
+
+void Bot::sayTeam (const char *text) {
+   // this function prints saytext message only for teammates
+
+   if (strings.isEmpty (text) || !yb_chat.bool_ ()) {
+      return;
+   }
+   issueCommand ("say_team \"%s\"", text);
 }

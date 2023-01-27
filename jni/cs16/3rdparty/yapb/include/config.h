@@ -1,20 +1,21 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #pragma once
 
 // botname structure definition
 struct BotName {
-   String name;
+   String name = "";
    int usedBy = -1;
 
 public:
    BotName () = default;
-   BotName (StringRef name, int usedBy) : name (name), usedBy (usedBy) { }
+   BotName (String &name, int usedBy) : name (cr::move (name)), usedBy (usedBy) { }
 };
 
 // voice config structure definition
@@ -24,19 +25,27 @@ struct ChatterItem {
    float duration;
 
 public:
-   ChatterItem (StringRef name, float repeat, float duration) : name (name), repeat (repeat), duration (duration) { }
+   ChatterItem (String name, float repeat, float duration) : name (cr::move (name)), repeat (repeat), duration (duration) { }
+};
+
+// language hasher
+struct HashLangString {
+   uint32 operator () (const String &key) const {
+      auto str = reinterpret_cast <uint8 *> (const_cast <char *> (key.chars ()));
+      uint32 hash = 0;
+
+      while (*str++) {
+         if (!isalnum (*str)) {
+            continue;
+         }
+         hash = ((*str << 5) + hash) + *str;
+      }
+      return hash;
+   }
 };
 
 // mostly config stuff, and some stuff dealing with menus
 class BotConfig final : public Singleton <BotConfig> {
-public:
-   struct DifficultyData {
-      float reaction[2] {};
-      int32 headshotPct {};
-      int32 seenThruPct {};
-      int32 hearThruPct {};
-   };
-
 private:
    Array <StringArray> m_chat;
    Array <Array <ChatterItem>> m_chatter;
@@ -49,11 +58,9 @@ private:
    StringArray m_logos;
    StringArray m_avatars;
 
-   HashMap <uint32, String, Hash <int32>> m_language;
-   HashMap <int32, DifficultyData> m_difficulty;
-   HashMap <String, String> m_custom;
+   Dictionary <String, String, HashLangString> m_language;
 
-   // default tables for personality weapon preferences, overridden by weapon.cfg
+   // default tables for personality weapon preferences, overridden by general.cfg
    SmallArray <int32> m_normalWeaponPrefs = { 0, 2, 1, 4, 5, 6, 3, 12, 10, 24, 25, 13, 11, 8, 7, 22, 23, 18, 21, 17, 19, 15, 17, 9, 14, 16 };
    SmallArray <int32> m_rusherWeaponPrefs = { 0, 2, 1, 4, 5, 6, 3, 24, 19, 22, 23, 20, 21, 10, 12, 13, 7, 8, 11, 9, 18, 17, 19, 25, 15, 16 };
    SmallArray <int32> m_carefulWeaponPrefs = { 0, 2, 1, 4, 25, 6, 3, 7, 8, 12, 10, 13, 11, 9, 24, 18, 14, 17, 16, 15, 19, 20, 21, 22, 23, 5 };
@@ -70,7 +77,7 @@ public:
    void loadConfigs ();
 
    // loads main config file
-   void loadMainConfig (bool isFirstLoad = false);
+   void loadMainConfig ();
 
    // loads bot names
    void loadNamesConfig ();
@@ -93,15 +100,6 @@ public:
    // load bots avatars config
    void loadAvatarsConfig ();
 
-   // load bots difficulty config
-   void loadDifficultyConfig ();
-
-   // loads bots map-specific config
-   void loadMapSpecificConfig ();
-
-   // loads custom config
-   void loadCustomConfig ();
-
    // sets memfile to use engine functions
    void setupMemoryFiles ();
 
@@ -121,21 +119,13 @@ public:
    WeaponInfo &findWeaponById (int id);
 
    // translates bot message into needed language
-   const char *translate (StringRef input);
-
-   // display current custom values
-   void showCustomValues ();
+   const char *translate (const char *input);
 
 private:
-   bool isCommentLine (StringRef line) const {
-      if (line.empty ()) {
-         return true;
-      }
-      return line.substr (0, 1).findFirstOf ("#/;") != String::InvalidIndex;
+   bool isCommentLine (const String &line) {
+      const char ch = line.at (0);
+      return ch == '#' || ch == '/' || ch == '\r' || ch == ';' || ch == 0 || ch == ' ';
    };
-
-   // hash the lang string, only the letters
-   uint32 hashLangString (StringRef str);
 
 public:
 
@@ -150,7 +140,7 @@ public:
    }
 
    // pick random phrase from chat bank
-   StringRef pickRandomFromChatBank (int chatType) {
+   const String &pickRandomFromChatBank (int chatType) {
       return m_chat[chatType].random ();
    }
 
@@ -184,16 +174,6 @@ public:
       return m_weaponProps[id];
    }
 
-   // get's weapons type by id
-   int32 getWeaponType (int id) const {
-      for (const auto &weapon : m_weapons) {
-         if (weapon.id == id) {
-            return weapon.type;
-         }
-      }
-      return WeaponType::None;
-   }
-
    // get's weapon preferences for personality
    int32 *getWeaponPrefs (int personality) const {
       switch (personality) {
@@ -209,14 +189,6 @@ public:
       }
    }
 
-   // get's the difficulty level tweaks
-   DifficultyData *getDifficultyTweaks (int32 level) {
-      if (level < Difficulty::Noob || level > Difficulty::Expert) {
-         return &m_difficulty[Difficulty::Expert];
-      }
-      return &m_difficulty[level];
-   }
-
    // get economics value
    int32 *getEconLimit () {
       return m_botBuyEconomyTable.data ();
@@ -228,7 +200,7 @@ public:
    }
 
    // get's random avatar for player (if any)
-   StringRef getRandomAvatar () const {
+   String getRandomAvatar () const {
       if (!m_avatars.empty ()) {
          return m_avatars.random ();
       }
@@ -236,30 +208,15 @@ public:
    }
 
    // get's random logo index
-   int32 getRandomLogoIndex () const {
-      return static_cast <int32> (m_logos.index (m_logos.random ()));
+   int getRandomLogoIndex () const {
+      return m_logos.index (m_logos.random ());
    }
 
    // get random name by index
-   StringRef getRandomLogoName (int index) {
+   const String &getRandomLogoName (int index) const {
       return m_logos[index];
-   }
-
-   // get custom value
-   StringRef fetchCustom (StringRef name) {
-      if (m_custom.has (name)) {
-         return m_custom[name];
-      }
-      SimpleLogger::instance ().error ("Trying to fetch unknown custom variable: %s", name);
-
-      return "";
-   }
-
-   // simple accessor to c4 model name
-   StringRef getBombModelName () {
-      return fetchCustom ("C4ModelName");
    }
 };
 
-// expose global
+// explose global
 CR_EXPOSE_GLOBAL_SINGLETON (BotConfig, conf);

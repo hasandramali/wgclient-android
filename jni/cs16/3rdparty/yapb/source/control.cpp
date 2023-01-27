@@ -1,18 +1,22 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #include <yapb.h>
 
-ConVar cv_display_menu_text ("yb_display_menu_text", "1", "Enables or disables display menu text, when players asks for menu. Useful only for Android.");
-ConVar cv_password ("yb_password", "", "The value (password) for the setinfo key, if user sets correct password, he's gains access to bot commands and menus.", false, 0.0f, 0.0f, Var::Password);
-ConVar cv_password_key ("yb_password_key", "_ybpw", "The name of setinfo key used to store password to bot commands and menus.", false);
+ConVar yb_display_menu_text ("yb_display_menu_text", "1", "Enables or disables display menu text, when players asks for menu. Useful only for Android.");
+ConVar yb_password ("yb_password", "", "The value (password) for the setinfo key, if user set's correct password, he's gains access to bot commands and menus.", false, 0.0f, 0.0f, Var::Password);
+ConVar yb_password_key ("yb_password_key", "_ybpw", "The name of setinfo key used to store password to bot commands and menus", false);
 
 int BotControl::cmdAddBot () {
    enum args { alias = 1, difficulty, personality, team, model, name, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // this is duplicate error as in main bot creation code, but not to be silent
    if (!graph.length () || graph.hasChanged ()) {
@@ -20,35 +24,35 @@ int BotControl::cmdAddBot () {
       return BotCommandResult::Handled;
    }
 
-   // give a chance to use additional args
-   m_args.resize (max);
-
    // if team is specified, modify args to set team
-   if (strValue (alias).find ("_ct", 0) != String::InvalidIndex) {
+   if (m_args[alias].find ("_ct", 0) != String::InvalidIndex) {
       m_args.set (team, "2");
    }
-   else if (strValue (alias).find ("_t", 0) != String::InvalidIndex) {
+   else if (m_args[alias].find ("_t", 0) != String::InvalidIndex) {
       m_args.set (team, "1");
    }
 
    // if highskilled bot is requsted set personality to rusher and maxout difficulty
-   if (strValue (alias).find ("hs", 0) != String::InvalidIndex) {
+   if (m_args[alias].find ("hs", 0) != String::InvalidIndex) {
       m_args.set (difficulty, "4");
       m_args.set (personality, "1");
    }
-   bots.addbot (strValue (name), strValue (difficulty), strValue (personality), strValue (team), strValue (model), true);
+   bots.addbot (m_args[name], m_args[difficulty], m_args[personality], m_args[team], m_args[model], true);
 
    return BotCommandResult::Handled;
 }
 
 int BotControl::cmdKickBot () {
-   enum args { alias = 1, team };
+   enum args { alias = 1, team, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // if team is specified, kick from specified tram
-   if (strValue (alias).find ("_ct", 0) != String::InvalidIndex || intValue (team) == 2 || strValue (team) == "ct") {
+   if (m_args[alias].find ("_ct", 0) != String::InvalidIndex || getInt (team) == 2 || getStr (team) == "ct") {
       bots.kickFromTeam (Team::CT);
    }
-   else if (strValue (alias).find ("_t", 0) != String::InvalidIndex || intValue (team) == 1 || strValue (team) == "t") {
+   else if (m_args[alias].find ("_t", 0) != String::InvalidIndex || getInt (team) == 1 || getStr (team) == "t") {
       bots.kickFromTeam (Team::Terrorist);
    }
    else {
@@ -58,10 +62,13 @@ int BotControl::cmdKickBot () {
 }
 
 int BotControl::cmdKickBots () {
-   enum args { alias = 1, instant };
+   enum args { alias = 1, instant, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // check if we're need to remove bots instantly
-   auto kickInstant = strValue (instant) == "instant";
+   auto kickInstant = getStr (instant) == "instant";
 
    // kick the bots
    bots.kickEveryone (kickInstant);
@@ -72,11 +79,14 @@ int BotControl::cmdKickBots () {
 int BotControl::cmdKillBots () {
    enum args { alias = 1, team, max };
 
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
+
    // if team is specified, kick from specified tram
-   if (strValue (alias).find ("_ct", 0) != String::InvalidIndex || intValue (team) == 2 || strValue (team) == "ct") {
+   if (m_args[alias].find ("_ct", 0) != String::InvalidIndex || getInt (team) == 2 || getStr (team) == "ct") {
       bots.killAllBots (Team::CT);
    }
-   else if (strValue (alias).find ("_t", 0) != String::InvalidIndex || intValue (team) == 1 || strValue (team) == "t") {
+   else if (m_args[alias].find ("_t", 0) != String::InvalidIndex || getInt (team) == 1 || getStr (team) == "t") {
       bots.killAllBots (Team::Terrorist);
    }
    else {
@@ -86,23 +96,29 @@ int BotControl::cmdKillBots () {
 }
 
 int BotControl::cmdFill () {
-   enum args { alias = 1, team, count, difficulty, personality };
+   enum args { alias = 1, team, count, difficulty, personality, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    if (!hasArg (team)) {
       return BotCommandResult::BadFormat;
    }
-   bots.serverFill (intValue (team), hasArg (personality) ? intValue (personality) : -1, hasArg (difficulty) ? intValue (difficulty) : -1, hasArg (count) ? intValue (count) - 1 : -1);
+   bots.serverFill (getInt (team), hasArg (personality) ? getInt (personality) : -1, hasArg (difficulty) ? getInt (difficulty) : -1, hasArg (count) ? getInt (count) : -1);
 
    return BotCommandResult::Handled;
 }
 
 int BotControl::cmdVote () {
-   enum args { alias = 1, mapid };
+   enum args { alias = 1, mapid, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    if (!hasArg (mapid)) {
       return BotCommandResult::BadFormat;
    }
-   int mapID = intValue (mapid);
+   int mapID = getInt (mapid);
 
    // loop through all players
    for (const auto &bot : bots) {
@@ -114,25 +130,28 @@ int BotControl::cmdVote () {
 }
 
 int BotControl::cmdWeaponMode () {
-   enum args { alias = 1, type };
+   enum args { alias = 1, type, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    if (!hasArg (type)) {
       return BotCommandResult::BadFormat;
    }
-   HashMap <String, int> modes;
+   Dictionary <String, int> modes;
 
-   modes["knife"] = 1;
-   modes["pistol"] = 2;
-   modes["shotgun"] = 3;
-   modes["smg"] = 4;
-   modes["rifle"] = 5;
-   modes["sniper"] = 6;
-   modes["standard"] = 7;
+   modes.push ("kinfe", 1);
+   modes.push ("pistol", 2);
+   modes.push ("shotgun", 3);
+   modes.push ("smg", 4);
+   modes.push ("rifle", 5);
+   modes.push ("sniper", 6);
+   modes.push ("standard", 7);
 
-   auto mode = strValue (type);
+   auto mode = getStr (type);
 
    // check if selected mode exists
-   if (!modes.has (mode)) {
+   if (!modes.exists (mode)) {
       return BotCommandResult::BadFormat;
    }
    bots.setWeaponMode (modes[mode]);
@@ -141,18 +160,32 @@ int BotControl::cmdWeaponMode () {
 }
 
 int BotControl::cmdVersion () {
-   auto &build = product.build;
+   auto hash = String (PRODUCT_GIT_HASH).substr (0, 8);
+   auto author = String (PRODUCT_GIT_COMMIT_AUTHOR);
 
-   msg ("%s v%s (ID %s)", product.name, product.version, build.id);
-   msg ("   by %s (%s)", product.author, product.email);
-   msg ("   %s", product.url);
-   msg ("compiled: %s on %s with %s", product.dtime, build.machine, build.compiler);
+   // if no hash specified, set local one
+   if (hash.startsWith ("unspe")) {
+      hash = "local";
+   }
+
+   // if no commit author, set local one
+   if (author.startsWith ("unspe")) {
+      author = PRODUCT_EMAIL;
+   }
+
+   msg ("%s v%s (build %u)", PRODUCT_NAME, PRODUCT_VERSION, util.buildNumber ());
+   msg ("  compiled: %s %s by %s", __DATE__, __TIME__, author.chars ());
+
+   if (!hash.startsWith ("local")) {
+      msg ("  commit: %scommit/%s", PRODUCT_COMMENTS, hash.chars ());
+   }
+   msg ("  url: %s", PRODUCT_URL);
 
    return BotCommandResult::Handled;
 }
 
 int BotControl::cmdNodeMenu () {
-   enum args { alias = 1 };
+   enum args { alias = 1, max };
 
    // graph editor is available only with editor
    if (!graph.hasEditor ()) {
@@ -165,12 +198,15 @@ int BotControl::cmdNodeMenu () {
 }
 
 int BotControl::cmdMenu () {
-   enum args { alias = 1, cmd };
+   enum args { alias = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // reset the current menu
-   closeMenu ();
+   showMenu (Menu::None);
 
-   if (strValue (cmd) == "cmd" && util.isAlive (m_ent)) {
+   if (getStr (cmd) == "cmd" && util.isAlive (m_ent)) {
       showMenu (Menu::Commands);
    }
    else {
@@ -180,27 +216,28 @@ int BotControl::cmdMenu () {
 }
 
 int BotControl::cmdList () {
-   enum args { alias = 1 };
+   enum args { alias = 1, max };
 
    bots.listBots ();
    return BotCommandResult::Handled;
 }
 
 int BotControl::cmdCvars () {
-   enum args { alias = 1, pattern };
+   enum args { alias = 1, pattern, max };
 
-   const auto &match = strValue (pattern);
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
+
+   const auto &match = getStr (pattern);
    const bool isSave = match == "save";
 
    File cfg;
 
    // if save requested, dump cvars to yapb.cfg
    if (isSave) {
-      cfg.open (strings.format ("%s/addons/%s/conf/%s.cfg", game.getRunningModName (), product.folder, product.folder), "wt");
-      cfg.puts ("// Configuration file for %s\n\n", product.name);
-   }
-   else {
-      ctrl.setRapidOutput (true);
+      cfg.open (strings.format ("%s/addons/yapb/conf/yapb.cfg", game.getModName ()), "wt");
+
+      cfg.puts ("// Configuration file for %s\n\n", PRODUCT_SHORT_NAME);
    }
 
    for (const auto &cvar : game.getCvars ()) {
@@ -208,16 +245,16 @@ int BotControl::cmdCvars () {
          continue;
       }
 
-      if (!isSave && !match.empty () && !strstr (cvar.reg.name, match.chars ())) {
+      if (!isSave && match != "empty" && !strstr (cvar.reg.name, match.chars ())) {
          continue;
       }
 
       // float value ?
-      bool isFloat = !strings.isEmpty (cvar.self->str ()) && strchr (cvar.self->str (), '.');
+      bool isFloat = !strings.isEmpty (cvar.self->str ()) && strstr (cvar.self->str (), ".");
 
       if (isSave) {
          cfg.puts ("//\n");
-         cfg.puts ("// %s\n", String::join (cvar.info.split ("\n"), "\n//  "));
+         cfg.puts ("// %s\n", String::join (cvar.info.split ("\n"), "\n//  ").chars ());
          cfg.puts ("// ---\n");
 
          if (cvar.bounded) {
@@ -247,13 +284,12 @@ int BotControl::cmdCvars () {
          cfg.puts ("\n");
       }
       else {
-         msg ("name: %s", cvar.reg.name);
-         msg ("info: %s", conf.translate (cvar.info));
+         game.print ("cvar: %s", cvar.reg.name);
+         game.print ("info: %s", cvar.info.chars ());
 
-         msg (" ");
+         game.print (" ");
       }
    }
-   ctrl.setRapidOutput (false);
 
    if (isSave) {
       msg ("Bots cvars has been written to file.");
@@ -262,120 +298,88 @@ int BotControl::cmdCvars () {
    return BotCommandResult::Handled;
 }
 
-int BotControl::cmdShowCustom () {
-   enum args { alias = 1 };
-
-   conf.showCustomValues ();
-
-   return BotCommandResult::Handled;
-}
-
 int BotControl::cmdNode () {
-   enum args { root, alias, cmd, cmd2 };
+   enum args { root, alias, cmd, cmd2, max };
 
-   static Array <StringRef> allowedOnDedicatedServer {
-      "acquire_editor",
-      "upload",
-      "save",
-      "load",
-      "help",
-      "erase",
-      "fileinfo"
-   };
-
-   // check if cmd is allowed on dedicated server
-   auto isAllowedOnDedicatedServer = [] (StringRef str) -> bool {
-      for (const auto &test : allowedOnDedicatedServer) {
-         if (test == str) {
-            return true;
-         }
-      }
-      return false;
-   };
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // graph editor supported only with editor
-   if (game.isDedicated () && !graph.hasEditor () && !isAllowedOnDedicatedServer (strValue (cmd))) {
+   if (game.isDedicated () && !graph.hasEditor () && getStr (cmd) != "acquire_editor") {
       msg ("Unable to use graph edit commands without setting graph editor player. Please use \"graph acquire_editor\" to acquire rights for graph editing.");
       return BotCommandResult::Handled;
    }
 
    // should be moved to class?
-   static HashMap <String, BotCmd> commands;
+   static Dictionary <String, BotCmd> commands;
    static StringArray descriptions;
 
    // fill only once
    if (descriptions.empty ()) {
 
       // separate function
-      auto addGraphCmd = [&] (String cmd, String format, String help, Handler handler) -> void {
-         BotCmd botCmd { cmd, cr::move (format), cr::move (help), cr::move (handler) };
+      auto pushGraphCmd = [&] (String cmd, String format, String help, Handler handler) -> void {
+         BotCmd botCmd (cr::move (cmd), cr::move (format), cr::move (help), cr::move (handler));
 
-         commands[cmd] = cr::move (botCmd);
+         commands.push (cmd, cr::move (botCmd));
          descriptions.push (cmd);
       };
 
       // add graph commands
-      addGraphCmd ("on", "on [display|auto|noclip|models]", "Enables displaying of graph, nodes, noclip cheat", &BotControl::cmdNodeOn);
-      addGraphCmd ("off", "off [display|auto|noclip|models]", "Disables displaying of graph, auto adding nodes, noclip cheat", &BotControl::cmdNodeOff);
-      addGraphCmd ("menu", "menu [noarguments]", "Opens and displays bots graph editor.", &BotControl::cmdNodeMenu);
-      addGraphCmd ("add", "add [noarguments]", "Opens and displays graph node add menu.", &BotControl::cmdNodeAdd);
-      addGraphCmd ("addbasic", "menu [noarguments]", "Adds basic nodes such as player spawn points, goals and ladders.", &BotControl::cmdNodeAddBasic);
-      addGraphCmd ("save", "save [noarguments]", "Save graph file to disk.", &BotControl::cmdNodeSave);
-      addGraphCmd ("load", "load [noarguments]", "Load graph file from disk.", &BotControl::cmdNodeLoad);
-      addGraphCmd ("erase", "erase [iamsure]", "Erases the graph file from disk.", &BotControl::cmdNodeErase);
-      addGraphCmd ("delete", "delete [nearest|index]", "Deletes single graph node from map.", &BotControl::cmdNodeDelete);
-      addGraphCmd ("check", "check [noarguments]", "Check if graph working correctly.", &BotControl::cmdNodeCheck);
-      addGraphCmd ("cache", "cache [nearest|index]", "Caching node for future use.", &BotControl::cmdNodeCache);
-      addGraphCmd ("clean", "clean [all|nearest|index]", "Clean useless path connections from all or single node.", &BotControl::cmdNodeClean);
-      addGraphCmd ("setradius", "setradius [radius] [nearest|index]", "Sets the radius for node.", &BotControl::cmdNodeSetRadius);
-      addGraphCmd ("flags", "flags [noarguments]", "Open and displays menu for modifying flags for nearest point.", &BotControl::cmdNodeSetFlags);
-      addGraphCmd ("teleport", "teleport [index]", "Teleports player to specified node index.", &BotControl::cmdNodeTeleport);
-      addGraphCmd ("upload", "upload", "Uploads created graph to graph database.", &BotControl::cmdNodeUpload);
-      addGraphCmd ("stats", "stats [noarguments]", "Shows the stats about node types on the map.", &BotControl::cmdNodeShowStats);
-      addGraphCmd ("fileinfo", "fileinfo [noarguments]", "Shows basic information about graph file.", &BotControl::cmdNodeFileInfo);
-      addGraphCmd ("adjust_height", "adjust_height [height offset]", "Modifies all the graph nodes height (z-component) with specified offset.", &BotControl::cmdAdjustHeight);
+      pushGraphCmd ("on", "on [display|auto|noclip|models]", "Enables displaying of graph, nodes, noclip cheat", &BotControl::cmdNodeOn);
+      pushGraphCmd ("off", "off [display|auto|noclip|models]", "Disables displaying of graph, auto adding nodes, noclip cheat", &BotControl::cmdNodeOff);
+      pushGraphCmd ("menu", "menu [noarguments]", "Opens and displays bots graph edtior.", &BotControl::cmdNodeMenu);
+      pushGraphCmd ("add", "add [noarguments]", "Opens and displays graph node add menu.", &BotControl::cmdNodeAdd);
+      pushGraphCmd ("addbasic", "menu [noarguments]", "Adds basic nodes such as player spawn points, goals and ladders.", &BotControl::cmdNodeAddBasic);
+      pushGraphCmd ("save", "save [noarguments]", "Save graph file to disk.", &BotControl::cmdNodeSave);
+      pushGraphCmd ("load", "load [noarguments]", "Load graph file from disk.", &BotControl::cmdNodeLoad);
+      pushGraphCmd ("erase", "erase [iamsure]", "Erases the graph file from disk.", &BotControl::cmdNodeErase);
+      pushGraphCmd ("delete", "delete [nearest|index]", "Deletes single graph node from map.", &BotControl::cmdNodeDelete);
+      pushGraphCmd ("check", "check [noarguments]", "Check if graph working correctly.", &BotControl::cmdNodeCheck);
+      pushGraphCmd ("cache", "cache [nearest|index]", "Caching node for future use.", &BotControl::cmdNodeCache);
+      pushGraphCmd ("clean", "clean [all|nearest|index]", "Clean useless path connections from all or single node.", &BotControl::cmdNodeClean);
+      pushGraphCmd ("setradius", "setradius [radius] [nearest|index]", "Sets the radius for node.", &BotControl::cmdNodeSetRadius);
+      pushGraphCmd ("flags", "flags [noarguments]", "Open and displays menu for modifying flags for nearest point.", &BotControl::cmdNodeSetFlags);
+      pushGraphCmd ("teleport", "teleport [index]", "Teleports player to specified node index.", &BotControl::cmdNodeTeleport);
+      pushGraphCmd ("upload", "upload [id]", "Uploads created graph to graph database.", &BotControl::cmdNodeUpload);
 
       // add path commands
-      addGraphCmd ("path_create", "path_create [noarguments]", "Opens and displays path creation menu.", &BotControl::cmdNodePathCreate);
-      addGraphCmd ("path_create_in", "path_create_in [noarguments]", "Creates incoming path connection from faced to nearest node.", &BotControl::cmdNodePathCreate);
-      addGraphCmd ("path_create_out", "path_create_out [noarguments]", "Creates outgoing path connection from nearest to faced node.", &BotControl::cmdNodePathCreate);
-      addGraphCmd ("path_create_both", "path_create_both [noarguments]", "Creates both-ways path connection between faced and nearest node.", &BotControl::cmdNodePathCreate);
-      addGraphCmd ("path_delete", "path_delete [noarguments]", "Deletes path from nearest to faced node.", &BotControl::cmdNodePathDelete);
-      addGraphCmd ("path_set_autopath", "path_set_autopath [max_distance]", "Opens menu for setting autopath maximum distance.", &BotControl::cmdNodePathSetAutoDistance);
+      pushGraphCmd ("path_create", "path_create [noarguments]", "Opens and displays path creation menu.", &BotControl::cmdNodePathCreate);
+      pushGraphCmd ("path_create_in", "path_create_in [noarguments]", "Opens and displays path creation menu.", &BotControl::cmdNodePathCreate);
+      pushGraphCmd ("path_create_out", "path_create_out [noarguments]", "Opens and displays path creation menu.", &BotControl::cmdNodePathCreate);
+      pushGraphCmd ("path_create_both", "path_create_both [noarguments]", "Opens and displays path creation menu.", &BotControl::cmdNodePathCreate);
+      pushGraphCmd ("path_delete", "path_create_both [noarguments]", "Opens and displays path creation menu.", &BotControl::cmdNodePathDelete);
+      pushGraphCmd ("path_set_autopath", "path_set_autoath [max_distance]", "Opens and displays path creation menu.", &BotControl::cmdNodePathSetAutoDistance);
 
       // camp points iterator
-      addGraphCmd ("iterate_camp", "iterate_camp [begin|end|next]", "Allows to go through all camp points on map.", &BotControl::cmdNodeIterateCamp);
+      pushGraphCmd ("iterate_camp", "iterate_camp [begin|end|next]", "Allows to go through all camp points on map.", &BotControl::cmdNodeIterateCamp);
 
       // remote graph editing stuff
       if (game.isDedicated ()) {
-         addGraphCmd ("acquire_editor", "acquire_editor [noarguments]", "Acquires rights to edit graph on dedicated server.", &BotControl::cmdNodeAcquireEditor);
-         addGraphCmd ("release_editor", "release_editor [noarguments]", "Releases graph editing rights.", &BotControl::cmdNodeReleaseEditor);
+         pushGraphCmd ("acquire_editor", "acquire_editor [max_distance]", "Acquires rights to edit graph on dedicated server.", &BotControl::cmdNodeAcquireEditor);
+         pushGraphCmd ("release_editor", "acquire_editor [max_distance]", "Releases graph editing rights.", &BotControl::cmdNodeAcquireEditor);
       }
    }
-   if (commands.has (strValue (cmd))) {
-      const auto &item = commands[strValue (cmd)];
+   if (commands.exists (getStr (cmd))) {
+      auto item = commands[getStr (cmd)];
 
       // graph have only bad format return status
       int status = (this->*item.handler) ();
 
       if (status == BotCommandResult::BadFormat) {
-         msg ("Incorrect usage of \"%s %s %s\" command. Correct usage is:", m_args[root], m_args[alias], item.name);
-         msg ("\n\t%s\n", item.format);
-         msg ("Please use correct format.");
+         msg ("Incorrect usage of \"%s %s %s\" command. Correct usage is:\n\n\t%s\n\nPlease use correct format.", m_args[root].chars (), m_args[alias].chars (), item.name.chars (), item.format.chars ());
       }
    }
    else {
-      if (strValue (cmd) == "help" && hasArg (cmd2) && commands.has (strValue (cmd2))) {
-         auto &item = commands[strValue (cmd2)];
+      if (getStr (cmd) == "help" && hasArg (cmd2) && commands.exists (getStr (cmd2))) {
+         auto &item = commands[getStr (cmd2)];
 
-         msg ("Command: \"%s %s %s\"", m_args[root], m_args[alias], item.name);
-         msg ("Format: %s", item.format);
-         msg ("Help: %s", conf.translate (item.help));
+         msg ("Command: \"%s %s %s\"\nFormat: %s\nHelp: %s", m_args[root].chars (), m_args[alias].chars (), item.name.chars (), item.format.chars (), item.help.chars ());
       }
       else {
          for (auto &desc : descriptions) {
             auto &item = commands[desc];
-            msg ("   %s - %s", item.name, conf.translate (item.help));
+            msg ("   %s - %s", item.name.chars (), item.help.chars ());
          }
          msg ("Currently Graph Status %s", graph.hasEditFlag (GraphEdit::On) ? "Enabled" : "Disabled");
       }
@@ -384,16 +388,19 @@ int BotControl::cmdNode () {
 }
 
 int BotControl::cmdNodeOn () {
-   enum args { alias = 1, cmd, option };
+   enum args { alias = 1, cmd, option, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // enable various features of editor
-   if (strValue (option).empty () || strValue (option) == "display" || strValue (option) == "models") {
+   if (getStr (option) == "empty" || getStr (option) == "display" || getStr (option) == "models") {
       graph.setEditFlag (GraphEdit::On);
       enableDrawModels (true);
 
       msg ("Graph editor has been enabled.");
    }
-   else if (strValue (option) == "noclip") {
+   else if (getStr (option) == "noclip") {
       m_ent->v.movetype = MOVETYPE_NOCLIP;
 
       graph.setEditFlag (GraphEdit::On | GraphEdit::Noclip);
@@ -401,7 +408,7 @@ int BotControl::cmdNodeOn () {
 
       msg ("Graph editor has been enabled with noclip mode.");
    }
-   else if (strValue (option) == "auto") {
+   else if (getStr (option) == "auto") {
       graph.setEditFlag (GraphEdit::On | GraphEdit::Auto);
       enableDrawModels (true);
 
@@ -409,6 +416,8 @@ int BotControl::cmdNodeOn () {
    }
 
    if (graph.hasEditFlag (GraphEdit::On)) {
+      extern ConVar mp_roundtime, mp_freezetime, mp_timelimit;
+
       mp_roundtime.set (9);
       mp_freezetime.set (0);
       mp_timelimit.set (0);
@@ -417,27 +426,30 @@ int BotControl::cmdNodeOn () {
 }
 
 int BotControl::cmdNodeOff () {
-   enum args { graph_cmd = 1, cmd, option };
+   enum args { graph_cmd = 1, cmd, option, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // enable various features of editor
-   if (strValue (option).empty () || strValue (option) == "display") {
+   if (getStr (option) == "empty" || getStr (option) == "display") {
       graph.clearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
       enableDrawModels (false);
 
       msg ("Graph editor has been disabled.");
    }
-   else if (strValue (option) == "models") {
+   else if (getStr (option) == "models") {
       enableDrawModels (false);
 
       msg ("Graph editor has disabled spawn points highlighting.");
    }
-   else if (strValue (option) == "noclip") {
+   else if (getStr (option) == "noclip") {
       m_ent->v.movetype = MOVETYPE_WALK;
       graph.clearEditFlag (GraphEdit::Noclip);
 
       msg ("Graph editor has disabled noclip mode.");
    }
-   else if (strValue (option) == "auto") {
+   else if (getStr (option) == "auto") {
       graph.clearEditFlag (GraphEdit::Auto);
       msg ("Graph editor has disabled auto add node mode.");
    }
@@ -445,7 +457,10 @@ int BotControl::cmdNodeOff () {
 }
 
 int BotControl::cmdNodeAdd () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
@@ -456,7 +471,11 @@ int BotControl::cmdNodeAdd () {
 }
 
 int BotControl::cmdNodeAddBasic () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
+
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
 
@@ -467,20 +486,18 @@ int BotControl::cmdNodeAddBasic () {
 }
 
 int BotControl::cmdNodeSave () {
-   enum args { graph_cmd = 1, cmd, option };
+   enum args { graph_cmd = 1, cmd, option, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // if no check is set save anyway
-   if (strValue (option) == "nocheck") {
+   if (getStr (option) == "nocheck") {
       graph.saveGraphData ();
 
       msg ("All nodes has been saved and written to disk (IGNORING QUALITY CONTROL).");
    }
-   else if (strValue (option) == "old") {
-      if (graph.length () >= 1024) {
-         msg ("Unable to save POD-Bot Format waypoint file. Number of nodes exceeds 1024.");
-
-         return BotCommandResult::Handled;
-      }
+   else if (getStr (option) == "old") {
       graph.saveOldFormat ();
 
       msg ("All nodes has been saved and written to disk (POD-Bot Format (.pwf)).");
@@ -498,7 +515,10 @@ int BotControl::cmdNodeSave () {
 }
 
 int BotControl::cmdNodeLoad () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // just save graph on request
    if (graph.loadGraphData ()) {
@@ -511,10 +531,13 @@ int BotControl::cmdNodeLoad () {
 }
 
 int BotControl::cmdNodeErase () {
-   enum args { graph_cmd = 1, cmd, iamsure };
+   enum args { graph_cmd = 1, cmd, iamsure, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // prevent accidents when graph are deleted unintentionally
-   if (strValue (iamsure) == "iamsure") {
+   if (getStr (iamsure) == "iamsure") {
       graph.eraseFromDisk ();
    }
    else {
@@ -524,22 +547,25 @@ int BotControl::cmdNodeErase () {
 }
 
 int BotControl::cmdNodeDelete () {
-   enum args { graph_cmd = 1, cmd, nearest };
+   enum args { graph_cmd = 1, cmd, nearest, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
 
-   // if "nearest" or nothing passed delete nearest, else delete by index
-   if (strValue (nearest).empty () || strValue (nearest) == "nearest") {
+   // if "neareset" or nothing passed delete neareset, else delete by index
+   if (getStr (nearest) == "empty" || getStr (nearest) == "nearest") {
       graph.erase (kInvalidNodeIndex);
    }
    else {
-      int index = intValue (nearest);
+      int index = getInt (nearest);
 
       // check for existence
       if (graph.exists (index)) {
          graph.erase (index);
-         msg ("Node %d has been deleted.", index);
+         msg ("Node %d has beed deleted.", index);
       }
       else {
          msg ("Could not delete node %d.", index);
@@ -549,7 +575,10 @@ int BotControl::cmdNodeDelete () {
 }
 
 int BotControl::cmdNodeCheck () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // check if nodes are ok
    if (graph.checkNodes (true)) {
@@ -559,34 +588,46 @@ int BotControl::cmdNodeCheck () {
 }
 
 int BotControl::cmdNodeCache () {
-   enum args { graph_cmd = 1, cmd, nearest };
+   enum args { graph_cmd = 1, cmd, nearest, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
 
-   // if "nearest" or nothing passed delete nearest, else delete by index
-   if (strValue (nearest).empty () || strValue (nearest) == "nearest") {
+   // if "neareset" or nothing passed delete neareset, else delete by index
+   if (getStr (nearest) == "empty" || getStr (nearest) == "nearest") {
       graph.cachePoint (kInvalidNodeIndex);
+
+      msg ("Nearest node has been put into the memory.");
    }
    else {
-      int index = intValue (nearest);
+      int index = getInt (nearest);
 
       // check for existence
       if (graph.exists (index)) {
          graph.cachePoint (index);
+         msg ("Node %d has been put into the memory.", index);
+      }
+      else {
+         msg ("Could not put node %d into the memory.", index);
       }
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::cmdNodeClean () {
-   enum args { graph_cmd = 1, cmd, option };
+   enum args { graph_cmd = 1, cmd, option, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
 
    // if "all" passed clean up all the paths
-   if (strValue (option) == "all") {
+   if (getStr (option) == "all") {
       int removed = 0;
 
       for (int i = 0; i < graph.length (); ++i) {
@@ -594,13 +635,13 @@ int BotControl::cmdNodeClean () {
       }
       msg ("Done. Processed %d nodes. %d useless paths was cleared.", graph.length (), removed);
    }
-   else if (strValue (option).empty () || strValue (option) == "nearest") {
-      int removed = graph.clearConnections (graph.getEditorNearest ());
+   else if (getStr (option) == "empty" || getStr (option) == "nearest") {
+      int removed = graph.clearConnections (graph.getEditorNeareset ());
 
-      msg ("Done. Processed node %d. %d useless paths was cleared.", graph.getEditorNearest (), removed);
+      msg ("Done. Processed node %d. %d useless paths was cleared.", graph.getEditorNeareset (), removed);
    }
    else {
-      int index = intValue (option);
+      int index = getInt (option);
 
       // check for existence
       if (graph.exists (index)) {
@@ -616,7 +657,10 @@ int BotControl::cmdNodeClean () {
 }
 
 int BotControl::cmdNodeSetRadius () {
-   enum args { graph_cmd = 1, cmd, radius, index };
+   enum args { graph_cmd = 1, cmd, radius, index, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // radius is a must
    if (!hasArg (radius)) {
@@ -624,19 +668,25 @@ int BotControl::cmdNodeSetRadius () {
    }
    int radiusIndex = kInvalidNodeIndex;
 
-   if (strValue (index).empty () || strValue (index) == "nearest") {
-      radiusIndex = graph.getEditorNearest ();
+   if (getStr (index) == "empty" || getStr (index) == "nearest") {
+      radiusIndex = graph.getEditorNeareset ();
    }
    else {
-      radiusIndex = intValue (index);
+      radiusIndex = getInt (index);
    }
-   graph.setRadius (radiusIndex, strValue (radius).float_ ());
+   float value = getStr (radius).float_ ();
+
+   graph.setRadius (radiusIndex, value);
+   msg ("Node %d has been set to radius %.2f.", radiusIndex, value);
 
    return BotCommandResult::Handled;
 }
 
 int BotControl::cmdNodeSetFlags () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
@@ -647,12 +697,15 @@ int BotControl::cmdNodeSetFlags () {
 }
 
 int BotControl::cmdNodeTeleport () {
-   enum args { graph_cmd = 1, cmd, teleport_index };
+   enum args { graph_cmd = 1, cmd, teleport_index, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    if (!hasArg (teleport_index)) {
       return BotCommandResult::BadFormat;
    }
-   int index = intValue (teleport_index);
+   int index = getInt (teleport_index);
 
    // check for existence
    if (graph.exists (index)) {
@@ -670,19 +723,22 @@ int BotControl::cmdNodeTeleport () {
 }
 
 int BotControl::cmdNodePathCreate () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
 
    // choose the direction for path creation
-   if (strValue (cmd).find ("_both", 0) != String::InvalidIndex) {
+   if (m_args[cmd].find ("_both", 0) != String::InvalidIndex) {
       graph.pathCreate (PathConnection::Bidirectional);
    }
-   else if (strValue (cmd).find ("_in", 0) != String::InvalidIndex) {
+   else if (m_args[cmd].find ("_in", 0) != String::InvalidIndex) {
       graph.pathCreate (PathConnection::Incoming);
    }
-   else if (strValue (cmd).find ("_out", 0) != String::InvalidIndex) {
+   else if (m_args[cmd].find ("_out", 0) != String::InvalidIndex) {
       graph.pathCreate (PathConnection::Outgoing);
    }
    else {
@@ -692,19 +748,25 @@ int BotControl::cmdNodePathCreate () {
 }
 
 int BotControl::cmdNodePathDelete () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
 
-   // delete the path
+   // delete the patch
    graph.erasePath ();
 
    return BotCommandResult::Handled;
 }
 
 int BotControl::cmdNodePathSetAutoDistance () {
-   enum args { graph_cmd = 1, cmd };
+   enum args { graph_cmd = 1, cmd, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
@@ -714,7 +776,10 @@ int BotControl::cmdNodePathSetAutoDistance () {
 }
 
 int BotControl::cmdNodeAcquireEditor () {
-   enum args { graph_cmd = 1 };
+   enum args { graph_cmd = 1, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    if (game.isNullEntity (m_ent)) {
       msg ("This command should not be executed from HLDS console.");
@@ -732,7 +797,10 @@ int BotControl::cmdNodeAcquireEditor () {
 }
 
 int BotControl::cmdNodeReleaseEditor () {
-   enum args { graph_cmd = 1 };
+   enum args { graph_cmd = 1, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    if (!graph.hasEditor ()) {
       msg ("No one is currently has rights to edit. Nothing to release.");
@@ -759,13 +827,13 @@ int BotControl::cmdNodeUpload () {
    msg ("you may notice the game freezes a bit during upload and issue request creation. Please, be patient.");
    msg ("\n");
 
-   // upload everytime in lowercase
-   String mapName = game.getMapName ();
+   // six seconds is enough?
+   http.setTimeout (6);
 
    // try to upload the file
-   if (http.uploadFile ("http://yapb.jeefo.net/upload", strings.format ("%sgraph/%s.graph", graph.getDataDirectory (false), mapName.lowercase ()))) {
-      msg ("Graph file was successfully validated and uploaded to the YaPB Graph DB (%s).", product.download);
-      msg ("It will be available for download for all YaPB users in a few minutes.");
+   if (http.uploadFile ("http://upload.ubot.su/", strings.format ("%sgraph/%s.graph", graph.getDataDirectory (false), game.getMapName ()))) {
+      msg ("Graph file was successfully validated and uploaded to the Ubot S3 storage (https://dl.ubot.su/).");
+      msg ("It will be available for download for all Ubot and YaPB users in a few minutes");
       msg ("\n");
       msg ("Thank you.");
       msg ("\n");
@@ -783,7 +851,7 @@ int BotControl::cmdNodeUpload () {
       else {
          status.assignf ("%d", code);
       }
-      msg ("Something went wrong with uploading. Come back later. (%s)", status);
+      msg ("Something went wrong with uploading. Come back later. (%s)", status.chars ());
       msg ("\n");
 
       if (code == HttpClientResult::Forbidden) {
@@ -800,13 +868,16 @@ int BotControl::cmdNodeUpload () {
 }
 
 int BotControl::cmdNodeIterateCamp () {
-   enum args { graph_cmd = 1, cmd, option };
+   enum args { graph_cmd = 1, cmd, option, max };
+
+   // adding more args to args array, if not enough passed
+   fixMissingArgs (max);
 
    // turn graph on
    graph.setEditFlag (GraphEdit::On);
 
    // get the option descriping operation
-   auto op = strValue (option);
+   auto op = getStr (option);
 
    if (op != "begin" && op != "end" && op != "next") {
       return BotCommandResult::BadFormat;
@@ -820,7 +891,7 @@ int BotControl::cmdNodeIterateCamp () {
       msg ("Before calling for 'begin' camp point, you should hit 'end'.");
       return BotCommandResult::Handled;
    }
-
+   
    if (op == "end") {
       m_campIterator.clear ();
    }
@@ -847,44 +918,13 @@ int BotControl::cmdNodeIterateCamp () {
             m_campIterator.push (i);
          }
       }
-      if (!m_campIterator.empty ()) {
-         msg ("Ready for iteration. Type 'next' to go to first camp node.");
-         return BotCommandResult::Handled;
-      }
-      msg ("Unable to begin iteration, camp points is not set.");
-   }
-   return BotCommandResult::Handled;
-}
-
-int BotControl::cmdNodeShowStats () {
-   graph.showStats ();
-
-   return BotCommandResult::Handled;
-}
-
-int BotControl::cmdNodeFileInfo () {
-   graph.showFileInfo ();
-
-   return BotCommandResult::Handled;
-}
-
-int BotControl::cmdAdjustHeight() {
-   enum args { graph_cmd = 1, cmd, offset };
-
-   if (!hasArg (offset)) {
-      return BotCommandResult::BadFormat;
-   }
-   auto heightOffset = floatValue (offset);
-
-   // adjust the height for all the nodes (negative values possible)
-   for (int i = 0; i < graph.length (); ++i) {
-      graph[i].origin.z += heightOffset;
+      msg ("Ready for iteration. Type 'next' to go to first camp node.");
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuMain (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -906,7 +946,7 @@ int BotControl::menuMain (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
 
    default:
@@ -917,14 +957,7 @@ int BotControl::menuMain (int item) {
 }
 
 int BotControl::menuFeatures (int item) {
-   closeMenu (); // reset menu display
-
-   auto autoAcquireEditorRights = [&] () {
-      if (!graph.hasEditor ()) {
-         graph.setEditor (m_ent);
-      }
-      return graph.hasEditor () && graph.getEditor () == m_ent ? Menu::NodeMainPage1 : Menu::Features;
-   };
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -932,7 +965,7 @@ int BotControl::menuFeatures (int item) {
       break;
 
    case 2:
-      showMenu (autoAcquireEditorRights ());
+      showMenu (graph.hasEditor () ? Menu::NodeMainPage1 : Menu::Features);
       break;
 
    case 3:
@@ -940,7 +973,8 @@ int BotControl::menuFeatures (int item) {
       break;
 
    case 4:
-      cv_debug.set (cv_debug.int_ () ^ 1);
+      extern ConVar yb_debug;
+      yb_debug.set (yb_debug.int_ () ^ 1);
 
       showMenu (Menu::Features);
       break;
@@ -950,20 +984,20 @@ int BotControl::menuFeatures (int item) {
          showMenu (Menu::Commands);
       }
       else {
-         closeMenu (); // reset menu display
+         showMenu (Menu::None); // reset menu display
          msg ("You're dead, and have no access to this menu");
       }
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuControl (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -989,14 +1023,14 @@ int BotControl::menuControl (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuWeaponMode (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1011,7 +1045,7 @@ int BotControl::menuWeaponMode (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
@@ -1019,7 +1053,7 @@ int BotControl::menuWeaponMode (int item) {
 
 int BotControl::menuPersonality (int item) {
    if (m_isMenuFillCommand) {
-      closeMenu (); // reset menu display
+      showMenu (Menu::None); // reset menu display
 
       switch (item) {
       case 1:
@@ -1027,16 +1061,16 @@ int BotControl::menuPersonality (int item) {
       case 3:
       case 4:
          bots.serverFill (m_menuServerFillTeam, item - 2, m_interMenuData[0]);
-         closeMenu ();
+         showMenu (Menu::None);
          break;
 
       case 10:
-         closeMenu ();
+         showMenu (Menu::None);
          break;
       }
       return BotCommandResult::Handled;
    }
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1048,14 +1082,14 @@ int BotControl::menuPersonality (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuDifficulty (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1079,7 +1113,7 @@ int BotControl::menuDifficulty (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    showMenu (Menu::Personality);
@@ -1089,9 +1123,11 @@ int BotControl::menuDifficulty (int item) {
 
 int BotControl::menuTeamSelect (int item) {
    if (m_isMenuFillCommand) {
-      closeMenu (); // reset menu display
+      showMenu (Menu::None); // reset menu display
 
       if (item < 3) {
+         extern ConVar mp_limitteams, mp_autoteambalance;
+
          // turn off cvars if specified team
          mp_limitteams.set (0);
          mp_autoteambalance.set (0);
@@ -1106,12 +1142,12 @@ int BotControl::menuTeamSelect (int item) {
          break;
 
       case 10:
-         closeMenu ();
+         showMenu (Menu::None);
          break;
       }
       return BotCommandResult::Handled;
    }
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1129,14 +1165,14 @@ int BotControl::menuTeamSelect (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuClassSelect (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1149,14 +1185,14 @@ int BotControl::menuClassSelect (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuCommands (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
    Bot *nearest = nullptr;
 
    switch (item) {
@@ -1185,14 +1221,14 @@ int BotControl::menuCommands (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuGraphPage1 (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1226,7 +1262,7 @@ int BotControl::menuGraphPage1 (int item) {
    case 4:
       graph.setEditFlag (GraphEdit::On);
       graph.erasePath ();
-
+      
       showMenu (Menu::NodeMainPage1);
       break;
 
@@ -1257,19 +1293,64 @@ int BotControl::menuGraphPage1 (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuGraphPage2 (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
-   case 1:
-      showMenu (Menu::NodeDebug);
-      break;
+   case 1: {
+      int terrPoints = 0;
+      int ctPoints = 0;
+      int goalPoints = 0;
+      int rescuePoints = 0;
+      int campPoints = 0;
+      int sniperPoints = 0;
+      int noHostagePoints = 0;
+
+      for (int i = 0; i < graph.length (); ++i) {
+         const Path &path = graph[i];
+
+         if (path.flags & NodeFlag::TerroristOnly) {
+            ++terrPoints;
+         }
+
+         if (path.flags & NodeFlag::CTOnly) {
+            ++ctPoints;
+         }
+
+         if (path.flags & NodeFlag::Goal) {
+            ++goalPoints;
+         }
+
+         if (path.flags & NodeFlag::Rescue) {
+            ++rescuePoints;
+         }
+
+         if (path.flags & NodeFlag::Camp) {
+            ++campPoints;
+         }
+
+         if (path.flags & NodeFlag::Sniper) {
+            ++sniperPoints;
+         }
+
+         if (path.flags & NodeFlag::NoHostage) {
+            ++noHostagePoints;
+         }
+      }
+      msg ("Nodes: %d - T Points: %d\n"
+         "CT Points: %d - Goal Points: %d\n"
+         "Rescue Points: %d - Camp Points: %d\n"
+         "Block Hostage Points: %d - Sniper Points: %d\n",
+         graph.length (), terrPoints, ctPoints, goalPoints, rescuePoints, campPoints, noHostagePoints, sniperPoints);
+
+      showMenu (Menu::NodeMainPage2);
+   } break;
 
    case 2:
       graph.setEditFlag (GraphEdit::On);
@@ -1280,13 +1361,8 @@ int BotControl::menuGraphPage2 (int item) {
       else {
          graph.setEditFlag (GraphEdit::Auto);
       }
+      msg ("Auto-Add-Nodes %s", graph.hasEditFlag (GraphEdit::Auto) ? "Enabled" : "Disabled");
 
-      if (graph.hasEditFlag (GraphEdit::Auto)) {
-         msg ("Enabled auto nodes placement.");
-      }
-      else {
-         msg ("Disabled auto nodes placement.");
-      }
       showMenu (Menu::NodeMainPage2);
       break;
 
@@ -1326,19 +1402,8 @@ int BotControl::menuGraphPage2 (int item) {
       break;
 
    case 8:
-      graph.setEditFlag (GraphEdit::On);
-
-      if (graph.hasEditFlag (GraphEdit::Noclip)) {
-         graph.clearEditFlag (GraphEdit::Noclip);
-      }
-      else {
-         graph.setEditFlag (GraphEdit::Noclip);
-      }
+      graph.setEditFlag (GraphEdit::On | GraphEdit::Noclip);
       showMenu (Menu::NodeMainPage2);
-
-      // update editor movetype based on flag
-      m_ent->v.movetype = graph.hasEditFlag (GraphEdit::Noclip) ? MOVETYPE_NOCLIP : MOVETYPE_WALK;
-
       break;
 
    case 9:
@@ -1349,7 +1414,7 @@ int BotControl::menuGraphPage2 (int item) {
 }
 
 int BotControl::menuGraphRadius (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
    graph.setEditFlag (GraphEdit::On); // turn graph on in case
 
    constexpr float radius[] = { 0.0f, 8.0f, 16.0f, 32.0f, 48.0f, 64.0f, 80.0f, 96.0f, 128.0f };
@@ -1362,7 +1427,7 @@ int BotControl::menuGraphRadius (int item) {
 }
 
 int BotControl::menuGraphType (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1377,7 +1442,7 @@ int BotControl::menuGraphType (int item) {
       break;
 
    case 8:
-      graph.add (NodeAddFlag::Goal);
+      graph.add (100);
       showMenu (Menu::NodeType);
       break;
 
@@ -1387,58 +1452,14 @@ int BotControl::menuGraphType (int item) {
       break;
 
    case 10:
-      closeMenu ();
-      break;
-   }
-   return BotCommandResult::Handled;
-}
-
-int BotControl::menuGraphDebug (int item) {
-   closeMenu (); // reset menu display
-
-   switch (item) {
-   case 1:
-      graph.setEditFlag (GraphEdit::On);
-
-      cv_debug_goal.set (graph.getEditorNearest ());
-      if (cv_debug_goal.int_ () != kInvalidNodeIndex) {
-         msg ("Debug goal is set to node %d.", cv_debug_goal.int_ ());
-      }
-      else {
-         msg ("Cannot find the node. Debug goal is disabled.");
-      }
-      showMenu (Menu::NodeDebug);
-      break;
-
-   case 2:
-      graph.setEditFlag (GraphEdit::On);
-
-      cv_debug_goal.set (graph.getFacingIndex ());
-      if (cv_debug_goal.int_ () != kInvalidNodeIndex) {
-         msg ("Debug goal is set to node %d.", cv_debug_goal.int_ ());
-      }
-      else {
-         msg ("Cannot find the node. Debug goal is disabled.");
-      }
-      showMenu (Menu::NodeDebug);
-      break;
-
-   case 3:
-      cv_debug_goal.set (kInvalidNodeIndex);
-      msg ("Debug goal is disabled.");
-      showMenu (Menu::NodeDebug);
-      break;
-
-   case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuGraphFlag (int item) {
-   closeMenu (); // reset menu display
-   int nearest = graph.getEditorNearest ();
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1447,24 +1468,12 @@ int BotControl::menuGraphFlag (int item) {
       break;
 
    case 2:
-      if (graph[nearest].flags == NodeFlag::CTOnly) {
-         graph.toggleFlags (NodeFlag::CTOnly);
-         graph.toggleFlags (NodeFlag::TerroristOnly);
-      }
-      else {
-         graph.toggleFlags (NodeFlag::TerroristOnly);
-      }
+      graph.toggleFlags (NodeFlag::TerroristOnly);
       showMenu (Menu::NodeFlag);
       break;
 
    case 3:
-      if (graph[nearest].flags == NodeFlag::TerroristOnly) {
-         graph.toggleFlags (NodeFlag::TerroristOnly);
-         graph.toggleFlags (NodeFlag::CTOnly);
-      }
-      else {
-         graph.toggleFlags (NodeFlag::CTOnly);
-      }
+      graph.toggleFlags (NodeFlag::CTOnly);
       showMenu (Menu::NodeFlag);
       break;
 
@@ -1477,87 +1486,34 @@ int BotControl::menuGraphFlag (int item) {
       graph.toggleFlags (NodeFlag::Sniper);
       showMenu (Menu::NodeFlag);
       break;
-   
-   case 6:
-      graph.toggleFlags (NodeFlag::Goal);
-      showMenu (Menu::NodeFlag);
-      break;
-   
-   case 7:
-      graph.toggleFlags (NodeFlag::Rescue);
-      showMenu (Menu::NodeFlag);
-      break;
-
-   case 8:
-      if (graph[nearest].flags != NodeFlag::Crouch) {
-         graph.toggleFlags (NodeFlag::Crouch);
-         graph[nearest].origin.z += -18.0f;
-      }
-      else {
-         graph.toggleFlags (NodeFlag::Crouch);
-         graph[nearest].origin.z += 18.0f;
-      }
-      
-      showMenu (Menu::NodeFlag);
-      break;
-   
-   case 9:
-      // if the node doesn't have a camp flag, set it and open the camp directions selection menu
-      if (graph[nearest].flags != NodeFlag::Camp) {
-         graph.toggleFlags (NodeFlag::Camp);
-         showMenu (Menu::CampDirections);
-         break;
-      }
-      // otherwise remove the flag, and don't show the camp directions selection menu
-      else {
-         graph.toggleFlags (NodeFlag::Camp);
-         showMenu (Menu::NodeFlag);
-         break;
-      }
-   }
-   return BotCommandResult::Handled;
-}
-
-int BotControl::menuCampDirections (int item) {
-   closeMenu (); // reset menu display
-
-   switch (item) {
-   case 1:
-      graph.add (NodeAddFlag::Camp);
-      showMenu (Menu::CampDirections);
-      break;
-
-   case 2:
-      graph.add (NodeAddFlag::CampEnd);
-      showMenu (Menu::CampDirections);
-      break;
    }
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuAutoPathDistance (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    constexpr float distances[] = { 0.0f, 100.0f, 130.0f, 160.0f, 190.0f, 220.0f, 250.0f };
+   float result = 0.0f;
 
    if (item >= 1 && item <= 7) {
-      graph.setAutoPathDistance (distances[item - 1]);
+      result = distances[item - 1];
+      graph.setAutoPathDistance (result);
    }
 
-   switch (item) {
-   default:
-      showMenu (Menu::NodeAutoPath);
-      break;
-
-   case 10:
-      closeMenu ();
-      break;
+   if (cr::fzero (result)) {
+      msg ("Autopathing is now disabled.");
    }
+   else {
+      msg ("Autopath distance is set to %.2f.", result);
+   }
+   showMenu (Menu::NodeAutoPath);
+
    return BotCommandResult::Handled;
 }
 
 int BotControl::menuKickPage1 (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1584,7 +1540,7 @@ int BotControl::menuKickPage1 (int item) {
 }
 
 int BotControl::menuKickPage2 (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1611,7 +1567,7 @@ int BotControl::menuKickPage2 (int item) {
 }
 
 int BotControl::menuKickPage3 (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1638,7 +1594,7 @@ int BotControl::menuKickPage3 (int item) {
 }
 
 int BotControl::menuKickPage4 (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1661,7 +1617,7 @@ int BotControl::menuKickPage4 (int item) {
 }
 
 int BotControl::menuGraphPath (int item) {
-   closeMenu (); // reset menu display
+   showMenu (Menu::None); // reset menu display
 
    switch (item) {
    case 1:
@@ -1680,7 +1636,7 @@ int BotControl::menuGraphPath (int item) {
       break;
 
    case 10:
-      closeMenu ();
+      showMenu (Menu::None);
       break;
    }
    return BotCommandResult::Handled;
@@ -1690,21 +1646,16 @@ bool BotControl::executeCommands () {
    if (m_args.empty ()) {
       return false;
    }
-   const auto &prefix = m_args[0];
 
-   // no handling if not for us
-   if (prefix != product.cmdPri && prefix != product.cmdSec) {
+   // handle only "yb" and "yapb" commands
+   if (m_args[0] != "yb" && m_args[0] != "yapb") {
       return false;
    }
-   auto &client = util.getClient (game.indexOfPlayer (m_ent));
+   Client &client = util.getClient (game.indexOfPlayer (m_ent));
 
    // do not allow to execute stuff for non admins
    if (m_ent != game.getLocalEntity () && !(client.flags & ClientFlags::Admin)) {
-      msg ("Access to %s commands is restricted.", product.name);
-
-      // reset issuer, but returns "true" to suppress "unknown command" message
-      setIssuer (nullptr);
-
+      msg ("Access to %s commands is restricted.", PRODUCT_SHORT_NAME);
       return true;
    }
 
@@ -1720,39 +1671,28 @@ bool BotControl::executeCommands () {
    String cmd;
 
    // give some help
-   if (hasArg (1) && strValue (1) == "help") {
-      const auto hasSecondArg = hasArg (2);
-
+   if (m_args.length () > 0 && m_args[1] == "help") {
       for (auto &item : m_cmds) {
-         if (!hasSecondArg) {
-            cmd = item.name.split ("/")[0];
-         }
+         if (aliasMatch (item.name, m_args[2], cmd)) {
+            msg ("Command: \"%s %s\"\nFormat: %s\nHelp: %s", m_args[0].chars (), cmd.chars (), item.format.chars (), item.help.chars ());
 
-         if (!hasSecondArg || aliasMatch (item.name, strValue (2), cmd)) {
-            msg ("Command: \"%s %s\"", prefix, cmd);
-            msg ("Format: %s", item.format);
-            msg ("Help: %s", conf.translate (item.help));
+            String aliases;
 
-            auto aliases = item.name.split ("/");
-
-            if (aliases.length () > 1) {
-               msg ("Aliases: %s", String::join (aliases, ", "));
+            for (auto &alias : item.name.split ("/")) {
+               aliases.appendf ("%s, ", alias.chars ());
             }
+            aliases.rtrim (", ");
+            msg ("Aliases: %s", aliases.chars ());
 
-            if (hasSecondArg) {
-               return true;
-            }
-            else {
-               msg ("\n");
-            }
+            return true;
          }
       }
 
-      if (!hasSecondArg) {
+      if (m_args[2].empty ()) {
          return true;
       }
       else {
-         msg ("No help found for \"%s\"", strValue (2));
+         msg ("No help found for \"%s\"", m_args[2].chars ());
       }
       return true;
    }
@@ -1760,31 +1700,33 @@ bool BotControl::executeCommands () {
 
    // if no args passed just print all the commands
    if (m_args.length () == 1) {
-      msg ("usage %s <command> [arguments]", prefix);
+      msg ("usage %s <command> [arguments]", m_args[0].chars ());
       msg ("valid commands are: ");
 
       for (auto &item : m_cmds) {
-         msg ("   %s - %s", item.name.split ("/")[0], conf.translate (item.help));
+         msg ("   %s - %s", item.name.split ("/")[0].chars (), item.help.chars ());
       }
       return true;
    }
 
    // first search for a actual cmd
    for (auto &item : m_cmds) {
+      auto root = m_args[0].chars ();
+
       if (aliasMatch (item.name, m_args[1], cmd)) {
+         auto alias = cmd.chars ();
+
          switch ((this->*item.handler) ()) {
          case BotCommandResult::Handled:
          default:
             break;
 
          case BotCommandResult::ListenServer:
-            msg ("Command \"%s %s\" is only available from the listenserver console.", prefix, cmd);
+            msg ("Command \"%s %s\" is only available from the listenserver console.", root, alias);
             break;
 
          case BotCommandResult::BadFormat:
-            msg ("Incorrect usage of \"%s %s\" command. Correct usage is:", prefix, cmd);
-            msg ("\n\t%s\n", item.format);
-            msg ("Please type \"%s help %s\" to get more information.", prefix, cmd);
+            msg ("Incorrect usage of \"%s %s\" command. Correct usage is:\n\n\t%s\n\nPlease type \"%s help %s\" to get more information.", root, alias, item.format.chars (), root, alias);
             break;
          }
 
@@ -1792,11 +1734,7 @@ bool BotControl::executeCommands () {
          return true;
       }
    }
-   msg ("Unknown command: %s", m_args[1]);
-
-   // clear all the arguments upon finish
-   m_args.clear ();
-
+   msg ("Unrecognized command: %s", m_args[1].chars ());
    return true;
 }
 
@@ -1807,99 +1745,84 @@ bool BotControl::executeMenus () {
    auto &issuer = util.getClient (game.indexOfPlayer (m_ent));
 
    // check if it's menu select, and some key pressed
-   if (strValue (0) != "menuselect" || strValue (1).empty () || issuer.menu == Menu::None) {
+   if (getStr (0) != "menuselect" || getStr (1).empty () || issuer.menu == Menu::None) {
       return false;
    }
 
    // let's get handle
    for (auto &menu : m_menus) {
       if (menu.ident == issuer.menu) {
-         return (this->*menu.handler) (strValue (1).int_ ()) == BotCommandResult::Handled;
+         return (this->*menu.handler) (getStr (1).int_ ());
       }
    }
    return false;
 }
 
 void BotControl::showMenu (int id) {
-   static bool menusParsed = false;
+   static bool s_menusParsed = false;
 
    // make menus looks like we need only once
-   if (!menusParsed) {
-      m_ignoreTranslate = false; // always translate menus
-
+   if (!s_menusParsed) {
       for (auto &parsed : m_menus) {
-         StringRef translated = conf.translate (parsed.text);
+         const String &translated = conf.translate (parsed.text.chars ());
 
          // translate all the things
          parsed.text = translated;
 
-         // make menu looks best
+          // make menu looks best
          if (!(game.is (GameFlags::Legacy))) {
             for (int j = 0; j < 10; ++j) {
                parsed.text.replace (strings.format ("%d.", j), strings.format ("\\r%d.\\w", j));
             }
          }
       }
-      menusParsed = true;
+      s_menusParsed = true;
    }
 
    if (!util.isPlayer (m_ent)) {
       return;
    }
-   auto &client = util.getClient (game.indexOfPlayer (m_ent));
+   Client &client = util.getClient (game.indexOfPlayer (m_ent));
 
-   auto sendMenu = [&](int32 slots, bool last, StringRef text) {
-      MessageWriter (MSG_ONE, msgs.id (NetMsg::ShowMenu), nullptr, m_ent)
-         .writeShort (slots)
-         .writeChar (-1)
-         .writeByte (last ? HLFalse : HLTrue)
-         .writeString (text.chars ());
-   };
-   constexpr size_t maxMenuSentLength = 140;
+   if (id == Menu::None) {
+      MessageWriter (MSG_ONE_UNRELIABLE, msgs.id (NetMsg::ShowMenu), nullptr, m_ent)
+         .writeShort (0)
+         .writeChar (0)
+         .writeByte (0)
+         .writeString ("");
 
-   for (const auto &display : m_menus) {
+      client.menu = id;
+      return;
+   }
+
+   for (auto &display : m_menus) {
       if (display.ident == id) {
-         String text = (game.is (GameFlags::Xash3D | GameFlags::Mobility) && !cv_display_menu_text.bool_ ()) ? " " : display.text.chars ();
+         auto text = (game.is (GameFlags::Xash3D | GameFlags::Mobility) && !yb_display_menu_text.bool_ ()) ? " " : display.text.chars ();
+         MessageWriter msg;
 
-         // split if needed
-         if (text.length () > maxMenuSentLength) {
-            auto chunks = text.split (maxMenuSentLength);
+         while (strlen (text) >= 64) {
+            msg.start (MSG_ONE_UNRELIABLE, msgs.id (NetMsg::ShowMenu), nullptr, m_ent)
+               .writeShort (display.slots)
+               .writeChar (-1)
+               .writeByte (1);
 
-            // send in chunks
-            for (size_t i = 0; i < chunks.length (); ++i) {
-               sendMenu (display.slots, i == chunks.length () - 1, chunks[i]);
+            for (int i = 0; i < 64; ++i) {
+               msg.writeChar (text[i]);
             }
+            msg.end ();
+            text += 64;
          }
-         else {
-            sendMenu (display.slots, true, text);
-         }
+
+         MessageWriter (MSG_ONE_UNRELIABLE, msgs.id (NetMsg::ShowMenu), nullptr, m_ent)
+            .writeShort (display.slots)
+            .writeChar (-1)
+            .writeByte (0)
+            .writeString (text);
 
          client.menu = id;
-         engfuncs.pfnClientCommand (m_ent, "speak \"player/geiger1\"\n"); // stops others from hearing menu sounds..
-
-         break;
+         engfuncs.pfnClientCommand (m_ent, "speak \"player/geiger1\"\n"); // Stops others from hearing menu sounds..
       }
    }
-}
-
-void BotControl::closeMenu () {
-   if (!util.isPlayer (m_ent)) {
-      return;
-   }
-   auto &client = util.getClient (game.indexOfPlayer (m_ent));
-
-   // do not reset menu if already none
-   if (client.menu == Menu::None) {
-      return;
-   }
-
-   MessageWriter (MSG_ONE, msgs.id (NetMsg::ShowMenu), nullptr, m_ent)
-      .writeShort (0)
-      .writeChar (0)
-      .writeByte (0)
-      .writeString ("");
-
-   client.menu = Menu::None;
 }
 
 void BotControl::kickBotByMenu (int page) {
@@ -1907,13 +1830,8 @@ void BotControl::kickBotByMenu (int page) {
       return;
    }
 
-   static StringRef headerTitle = conf.translate ("Bots Remove Menu");
-   static StringRef notABot = conf.translate ("Not a Bot");
-   static StringRef backKey = conf.translate ("Back");
-   static StringRef moreKey = conf.translate ("More");
-
    String menus;
-   menus.assignf ("\\y%s (%d/4):\\w\n\n", headerTitle, page);
+   menus.assignf ("\\yBots Remove Menu (%d/4):\\w\n\n", page);
 
    int menuKeys = (page == 4) ? cr::bit (9) : (cr::bit (8) | cr::bit (9));
    int menuKey = (page - 1) * 8;
@@ -1927,13 +1845,13 @@ void BotControl::kickBotByMenu (int page) {
          menus.appendf ("%1.1d. %s%s\n", i - menuKey + 1, bot->pev->netname.chars (), bot->m_team == Team::CT ? " \\y(CT)\\w" : " \\r(T)\\w");
       }
       else {
-         menus.appendf ("\\d %1.1d. %s\\w\n", i - menuKey + 1, notABot);
+         menus.appendf ("\\d %1.1d. Not a Bot\\w\n", i - menuKey + 1);
       }
    }
-   menus.appendf ("\n%s 0. %s", (page == 4) ? "" : strings.format (" 9. %s...\n", moreKey), backKey);
+   menus.appendf ("\n%s 0. Back", (page == 4) ? "" : " 9. More...\n");
 
    // force to clear current menu
-   closeMenu ();
+   showMenu (Menu::None);
 
    auto id = Menu::KickPage1 - 1 + page;
 
@@ -1952,8 +1870,8 @@ void BotControl::assignAdminRights (edict_t *ent, char *infobuffer) {
    if (!game.isDedicated () || util.isFakeClient (ent)) {
       return;
    }
-   StringRef key = cv_password_key.str ();
-   StringRef password = cv_password.str ();
+   const String &key = yb_password_key.str ();
+   const String &password = yb_password.str ();
 
    if (!key.empty () && !password.empty ()) {
       auto &client = util.getClient (game.indexOfPlayer (ent));
@@ -1972,74 +1890,54 @@ void BotControl::maintainAdminRights () {
       return;
    }
 
-   StringRef key = cv_password_key.str ();
-   StringRef password = cv_password.str ();
+   for (int i = 0; i < game.maxClients (); ++i) {
+      edict_t *player = game.playerOfIndex (i);
 
-   for (auto &client : util.getClients ()) {
-      if (!(client.flags & ClientFlags::Used) || util.isFakeClient (client.ent)) {
-         continue;
-      }
-      auto ent = client.ent;
+      // code below is executed only on dedicated server
+      if (util.isPlayer (player) && !util.isFakeClient (player)) {
+         Client &client = util.getClient (i);
 
-      if (client.flags & ClientFlags::Admin) {
-         if (key.empty () || password.empty ()) {
-            client.flags &= ~ClientFlags::Admin;
+         if (client.flags & ClientFlags::Admin) {
+            if (strings.isEmpty (yb_password_key.str ()) && strings.isEmpty (yb_password.str ())) {
+               client.flags &= ~ClientFlags::Admin;
+            }
+            else if (!!strcmp (yb_password.str (), engfuncs.pfnInfoKeyValue (engfuncs.pfnGetInfoKeyBuffer (client.ent), const_cast <char *> (yb_password_key.str ())))) {
+               client.flags &= ~ClientFlags::Admin;
+               game.print ("Player %s had lost remote access to %s.", player->v.netname.chars (), PRODUCT_SHORT_NAME);
+            }
          }
-         else if (password != engfuncs.pfnInfoKeyValue (engfuncs.pfnGetInfoKeyBuffer (ent), key.chars ())) {
-            client.flags &= ~ClientFlags::Admin;
-            ctrl.msg ("Player %s had lost remote access to %s.", ent->v.netname.chars (), product.name);
-         }
-      }
-      else if (!(client.flags & ClientFlags::Admin) && !key.empty () && !password.empty ()) {
-         if (password == engfuncs.pfnInfoKeyValue (engfuncs.pfnGetInfoKeyBuffer (ent), key.chars ())) {
-            client.flags |= ClientFlags::Admin;
-            ctrl.msg ("Player %s had gained full remote access to %s.", ent->v.netname.chars (), product.name);
+         else if (!(client.flags & ClientFlags::Admin) && !strings.isEmpty (yb_password_key.str ()) && !strings.isEmpty (yb_password.str ())) {
+            if (strcmp (yb_password.str (), engfuncs.pfnInfoKeyValue (engfuncs.pfnGetInfoKeyBuffer (client.ent), const_cast <char *> (yb_password_key.str ()))) == 0) {
+               client.flags |= ClientFlags::Admin;
+               game.print ("Player %s had gained full remote access to %s.", player->v.netname.chars (), PRODUCT_SHORT_NAME);
+            }
          }
       }
    }
-}
-
-void BotControl::flushPrintQueue () {
-   if (m_printQueueFlushTimestamp > game.time () || m_printQueue.empty ()) {
-      return;
-   }
-   auto printable = m_printQueue.popFront ();
-
-   // send to needed destination
-   if (printable.destination == PrintQueueDestination::ServerConsole) {
-      game.print (printable.text.chars ());
-   }
-   else if (!game.isNullEntity (m_ent)) {
-      game.clientPrint (m_ent, printable.text.chars ());
-   }
-   m_printQueueFlushTimestamp = game.time () + 0.05f;
 }
 
 BotControl::BotControl () {
    m_ent = nullptr;
    m_djump = nullptr;
 
-   m_ignoreTranslate = false;
    m_isFromConsole = false;
    m_isMenuFillCommand = false;
    m_rapidOutput = false;
    m_menuServerFillTeam = 5;
-   m_printQueueFlushTimestamp = 0.0f;
 
-   m_cmds.emplace ("add/addbot/add_ct/addbot_ct/add_t/addbot_t/addhs/addhs_t/addhs_ct", "add [difficulty] [personality] [team] [model] [name]", "Adding specific bot into the game.", &BotControl::cmdAddBot);
+   m_cmds.emplace ("add/addbot/add_ct/addbot_ct/add_t/addbot_t/addhs/addhs_t/addhs_ct", "add [difficulty[personality[team[model[name]]]]]", "Adding specific bot into the game.", &BotControl::cmdAddBot);
    m_cmds.emplace ("kick/kickone/kick_ct/kick_t/kickbot_ct/kickbot_t", "kick [team]", "Kicks off the random bot from the game.", &BotControl::cmdKickBot);
    m_cmds.emplace ("removebots/kickbots/kickall", "removebots [instant]", "Kicks all the bots from the game.", &BotControl::cmdKickBots);
    m_cmds.emplace ("kill/killbots/killall/kill_ct/kill_t", "kill [team]", "Kills the specified team / all the bots.", &BotControl::cmdKillBots);
-   m_cmds.emplace ("fill/fillserver", "fill [team] [count] [difficulty] [personality]", "Fill the server (add bots) with specified parameters.", &BotControl::cmdFill);
+   m_cmds.emplace ("fill/fillserver", "fill [team[count[difficulty[pesonality]]]]", "Fill the server (add bots) with specified parameters.", &BotControl::cmdFill);
    m_cmds.emplace ("vote/votemap", "vote [map_id]", "Forces all the bot to vote to specified map.", &BotControl::cmdVote);
    m_cmds.emplace ("weapons/weaponmode", "weapons [knife|pistol|shotgun|smg|rifle|sniper|standard]", "Sets the bots weapon mode to use", &BotControl::cmdWeaponMode);
    m_cmds.emplace ("menu/botmenu", "menu [cmd]", "Opens the main bot menu, or command menu if specified.", &BotControl::cmdMenu);
    m_cmds.emplace ("version/ver/about", "version [no arguments]", "Displays version information about bot build.", &BotControl::cmdVersion);
-   m_cmds.emplace ("graphmenu/wpmenu/wptmenu", "graphmenu [noarguments]", "Opens and displays bots graph editor.", &BotControl::cmdNodeMenu);
+   m_cmds.emplace ("graphmenu/wpmenu/wptmenu", "graphmenu [noarguments]", "Opens and displays bots graph edtior.", &BotControl::cmdNodeMenu);
    m_cmds.emplace ("list/listbots", "list [noarguments]", "Lists the bots currently playing on server.", &BotControl::cmdList);
    m_cmds.emplace ("graph/g/wp/wpt/waypoint", "graph [help]", "Handles graph operations.", &BotControl::cmdNode);
    m_cmds.emplace ("cvars", "cvars [save|cvar]", "Display all the cvars with their descriptions.", &BotControl::cmdCvars);
-   m_cmds.emplace ("show_custom", "show_custom [noarguments]", "Shows the current values from custom.cfg.", &BotControl::cmdShowCustom);
 
    // declare the menus
    createMenus ();
@@ -2053,25 +1951,20 @@ void BotControl::handleEngineCommands () {
    executeCommands ();
 }
 
-bool BotControl::handleClientSideCommandsWrapper (edict_t *ent, bool isMenus) {
+bool BotControl::handleClientCommands (edict_t *ent) {
    collectArgs ();
    setIssuer (ent);
 
-   setFromConsole (!isMenus);
-   auto result = isMenus ? executeMenus () : executeCommands ();
-
-   if (!result) {
-      setIssuer (nullptr);
-   }
-   return result;
-}
-
-bool BotControl::handleClientCommands (edict_t *ent) {
-   return handleClientSideCommandsWrapper (ent, false);
+   setFromConsole (true);
+   return executeCommands ();
 }
 
 bool BotControl::handleMenuCommands (edict_t *ent) {
-   return handleClientSideCommandsWrapper (ent, true);
+   collectArgs ();
+   setIssuer (ent);
+
+   setFromConsole (false);
+   return ctrl.executeMenus ();
 }
 
 void BotControl::enableDrawModels (bool enable) {
@@ -2080,10 +1973,6 @@ void BotControl::enableDrawModels (bool enable) {
    entities.push ("info_player_start");
    entities.push ("info_player_deathmatch");
    entities.push ("info_vip_start");
-
-   if (enable) {
-      game.setPlayerStartDrawModels ();
-   }
 
    for (auto &entity : entities) {
       game.searchEntities ("classname", entity, [&enable] (edict_t *ent) {
@@ -2094,7 +1983,7 @@ void BotControl::enableDrawModels (bool enable) {
             ent->v.effects |= EF_NODRAW;
          }
          return EntitySearchResult::Continue;
-         });
+      });
    }
 }
 
@@ -2248,7 +2137,7 @@ void BotControl::createMenus () {
    m_menus.emplace (
       Menu::NodeMainPage2, keys (9),
       "\\yWaypoint Operations (Page 2)\\w\n\n"
-      "1. Debug goal\n"
+      "1. Waypoint stats\n"
       "2. Autowaypoint on/off\n"
       "3. Set flags\n"
       "4. Save waypoints\n"
@@ -2291,41 +2180,18 @@ void BotControl::createMenus () {
       "\\w9. Jump\n\n"
       "0. Exit",
       &BotControl::menuGraphType);
-   
-   // debug goal menu
-   m_menus.emplace (
-      Menu::NodeDebug, keys (3),
-      "\\yDebug goal\\w\n\n"
-      "1. Debug nearest node\n"
-      "2. Debug facing node\n"
-      "3. Stop debugging\n\n"
-      "0. Exit",
-      &BotControl::menuGraphDebug);
 
    // set waypoint flag menu
    m_menus.emplace (
-      Menu::NodeFlag, keys (9),
+      Menu::NodeFlag, keys (5),
       "\\yToggle Waypoint Flags\\w\n\n"
       "1. Block with Hostage\n"
       "2. Terrorists Specific\n"
       "3. CTs Specific\n"
       "4. Use Elevator\n"
-      "5. Sniper Point (\\yFor Camp Points Only!\\w)\n"
-      "6. Map Goal\n"
-      "7. Rescue Zone\n"
-      "8. Crouch Down\n"
-      "9. Camp Point\n\n"
+      "5. Sniper Point (\\yFor Camp Points Only!\\w)\n\n"
       "0. Exit",
       &BotControl::menuGraphFlag);
-   
-   // set camp directions menu
-   m_menus.emplace (
-      Menu::CampDirections, keys (2),
-      "\\ySet Camp Point directions\\w\n\n"
-      "1. Camp Start\n"
-      "2. Camp End\n\n"
-      "0. Exit",
-      &BotControl::menuCampDirections);
 
    // auto-path max distance
    m_menus.emplace (

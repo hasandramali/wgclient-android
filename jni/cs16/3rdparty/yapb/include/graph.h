@@ -1,8 +1,9 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #pragma once
@@ -43,6 +44,11 @@ CR_DECLARE_SCOPED_ENUM (PathConnection,
    Bidirectional
 )
 
+// defines node add commands
+CR_DECLARE_SCOPED_ENUM (GraphAdd,
+   Normal = 0,
+)
+
 // a* route state
 CR_DECLARE_SCOPED_ENUM (RouteState,
    Open = 0,
@@ -70,7 +76,7 @@ CR_DECLARE_SCOPED_ENUM (StorageOption,
 
 // storage header versions
 CR_DECLARE_SCOPED_ENUM (StorageVersion,
-   Graph = 2,
+   Graph = 1,
    Practice = 1,
    Vistable = 1,
    Matrix = 1,
@@ -87,20 +93,6 @@ CR_DECLARE_SCOPED_ENUM (LiftState,
    LookingButtonInside,
    TravelingBy,
    Leaving
-)
-
-// node add flags
-CR_DECLARE_SCOPED_ENUM (NodeAddFlag,
-   Normal = 0,
-   TOnly = 1,
-   CTOnly = 2,
-   NoHostage = 3,
-   Rescue = 4,
-   Camp = 5,
-   CampEnd = 6,
-   JumpStart = 9,
-   JumpEnd = 10,
-   Goal = 100
 )
 
 // a* route
@@ -122,9 +114,8 @@ struct StorageHeader {
 
 // extension header for graph information
 struct ExtenHeader {
-   char author[32]; // original author of graph
-   int32 mapSize; // bsp size for checksumming map consistency
-   char modified[32]; // by whom modified
+   char author[32];
+   int32 mapSize;
 };
 
 // general waypoint header information structure
@@ -187,9 +178,7 @@ struct PODPath {
 class PathWalk final : public DenyCopying {
 private:
    size_t m_cursor = 0;
-   size_t m_length = 0;
-
-   UniquePtr <int32[]> m_path;
+   Array <int, ReservePolicy::Single, kMaxRouteLength> m_storage;
 
 public:
    explicit PathWalk () = default;
@@ -205,11 +194,11 @@ public:
    }
 
    int32 &last () {
-      return at (length () - 1);
+      return m_storage.last ();
    }
 
    int32 &at (size_t index) {
-      return m_path[m_cursor + index];
+      return m_storage.at (m_cursor + index);
    }
 
    void shift () {
@@ -217,39 +206,31 @@ public:
    }
 
    void reverse () {
-      for (size_t i = 0; i < m_length / 2; ++i) {
-         cr::swap (m_path[i], m_path[m_length - 1 - i]);
-      }
+      m_storage.reverse ();
    }
 
    size_t length () const {
-      if (m_cursor >= m_length) {
+      if (m_cursor > m_storage.length ()) {
          return 0;
       }
-      return m_length - m_cursor;
+      return m_storage.length () - m_cursor;
    }
 
    bool hasNext () const {
-      return length () > m_cursor;
+      return m_cursor < m_storage.length ();
    }
 
    bool empty () const {
       return !length ();
    }
 
-   void add (int32 node) {
-      m_path[m_length++] = node;
+   void push (int node) {
+      m_storage.push (node);
    }
 
    void clear () {
       m_cursor = 0;
-      m_length = 0;
-
-      m_path[0] = 0;
-   }
-
-   void init (size_t length) {
-      m_path = cr::makeUnique <int32 []> (length);
+      m_storage.clear ();
    }
 };
 
@@ -269,8 +250,7 @@ private:
    int m_lastJumpNode;
    int m_findWPIndex;
    int m_facingAtIndex;
-   int m_highestDamage[kGameTeamNum] {};
-   int m_autoSaveCount;
+   int m_highestDamage[kGameTeamNum];
 
    float m_timeJumpStarted;
    float m_autoPathDistance;
@@ -303,12 +283,7 @@ private:
    SmallArray <Path> m_paths;
    SmallArray <uint8> m_vistable;
 
-   String m_graphAuthor;
-   String m_graphModified;
-
-   ExtenHeader m_extenHeader {};
-   StorageHeader m_graphHeader {};
-
+   String m_tempStrings;
    edict_t *m_editor;
 
 public:
@@ -321,13 +296,12 @@ public:
    int getFarest (const Vector &origin, float maxDistance = 32.0);
    int getNearest (const Vector &origin, float minDistance = kInfiniteDistance, int flags = -1);
    int getNearestNoBuckets (const Vector &origin, float minDistance = kInfiniteDistance, int flags = -1);
-   int getEditorNearest ();
+   int getEditorNeareset ();
    int getDangerIndex (int team, int start, int goal);
    int getDangerValue (int team, int start, int goal);
    int getDangerDamage (int team, int start, int goal);
    int getPathDist (int srcIndex, int destIndex);
    int clearConnections (int index);
-   int getBspSize ();
 
    float calculateTravelTime (float maxSpeed, const Vector &src, const Vector &origin);
 
@@ -344,14 +318,12 @@ public:
 
    bool saveGraphData ();
    bool loadGraphData ();
-   bool canDownload ();
 
-   template <typename U> bool saveStorage (StringRef ext, StringRef name, StorageOption options, StorageVersion version, const SmallArray <U> &data, ExtenHeader *exten);
-   template <typename U> bool loadStorage (StringRef ext, StringRef name, StorageOption options, StorageVersion version, SmallArray <U> &data, ExtenHeader *exten, int32 *outOptions);
-   template <typename ...Args> bool raiseLoadingError (bool isGraph, MemFile &file, const char *fmt, Args &&...args);
+   template <typename U> bool saveStorage (const String &ext, const String &name, StorageOption options, StorageVersion version, const SmallArray <U> &data, ExtenHeader *exten);
+   template <typename U> bool loadStorage (const String &ext, const String &name, StorageOption options, StorageVersion version, SmallArray <U> &data, ExtenHeader *exten, int32 *outOptions);
 
    void saveOldFormat ();
-   void reset ();
+   void initGraph ();
    void frame ();
    void loadPractice ();
    void loadVisibility ();
@@ -388,9 +360,6 @@ public:
    void convertFromPOD (Path &path, const PODPath &pod);
    void convertToPOD (const Path &path, PODPath &pod);
    void convertCampDirection (Path &path);
-   void setAutoPathDistance (const float distance);
-   void showStats ();
-   void showFileInfo ();
 
    const char *getDataDirectory (bool isMemoryFile = false);
    const char *getOldFormatGraphName (bool isMemoryFile = false);
@@ -400,10 +369,6 @@ public:
    const SmallArray <int32> &getNodesInBucket (const Vector &pos);
 
 public:
-   size_t getMaxRouteLength () const {
-      return m_paths.length () / 2;
-   }
-
    int getHighestDamageForTeam (int team) const {
       return m_highestDamage[team];
    }
@@ -412,12 +377,8 @@ public:
       m_highestDamage[team] = value;
    }
 
-   StringRef getAuthor () const {
-      return m_graphAuthor;
-   }
-
-   StringRef getModifiedBy () const {
-      return m_graphModified;
+   const char *getAuthor () const {
+      return m_tempStrings.chars ();
    }
 
    bool hasChanged () const {
@@ -436,6 +397,10 @@ public:
       m_editFlags &= ~flag;
    }
 
+   void setAutoPathDistance (const float distance) {
+      m_autoPathDistance = distance;
+   }
+
    const Vector &getBombOrigin () const {
       return m_bombOrigin;
    }
@@ -451,8 +416,8 @@ public:
    }
 
    // get real nodes num
-   int32 length () const {
-      return m_paths.length <int32> ();
+   int length () const {
+      return m_paths.length ();
    }
 
    // check if has editor
@@ -470,26 +435,6 @@ public:
       return m_editor;
    }
 };
-
-// we're need `bots`
-#include <manager.h>
-
-// helper for reporting load errors
-template <typename ...Args> bool BotGraph::raiseLoadingError (bool isGraph, MemFile &file, const char *fmt, Args &&...args) {
-   auto result = strings.format (fmt, cr::forward <Args> (args)...);
-   logger.error (result);
-
-   // if graph reset paths
-   if (isGraph) {
-      bots.kickEveryone (true);
-
-      m_graphAuthor = result;
-      m_paths.clear ();
-   }
-   file.close ();
-
-   return false;
-}
 
 // explose global
 CR_EXPOSE_GLOBAL_SINGLETON (BotGraph, graph);

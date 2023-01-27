@@ -1,8 +1,9 @@
 //
-// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
-// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
+// Yet Another POD-Bot, based on PODBot by Markus Klinge ("CountFloyd").
+// Copyright (c) Yet Another POD-Bot Contributors <yapb@entix.io>.
 //
-// SPDX-License-Identifier: MIT
+// This software is licensed under the MIT license.
+// Additional exceptions apply. For full license details, see LICENSE.txt
 //
 
 #pragma once
@@ -13,12 +14,6 @@ CR_DECLARE_SCOPED_ENUM (BotCommandResult,
    ListenServer, // command is only avaialble on listen server
    BadFormat // wrong params
 )
-
-// print queue destination
-CR_DECLARE_SCOPED_ENUM (PrintQueueDestination,
-   ServerConsole, // use server console
-   ClientConsole // use client console
-);
 
 // bot command manager
 class BotControl final : public Singleton <BotControl> {
@@ -33,10 +28,8 @@ public:
       Handler handler = nullptr;
 
    public:
-      explicit BotCmd () = default;
-
-      BotCmd (StringRef name, StringRef format, StringRef help, Handler handler) : name (name), format (format), help (help), handler (cr::move (handler)) 
-      { }
+      BotCmd () = default;
+      BotCmd (String name, String format, String help, Handler handler) : name (cr::move (name)), format (cr::move (format)), help (cr::move (help)), handler (cr::move (handler)) { }
    };
 
    // single bot menu
@@ -46,27 +39,13 @@ public:
       MenuHandler handler;
 
    public:
-      explicit BotMenu (int ident, int slots, StringRef text, MenuHandler handler) : ident (ident), slots (slots), text (text), handler (cr::move (handler))
-      { }
-   };
-
-   // queued text message to prevent overflow with rapid output
-   struct PrintQueue {
-      int32 destination {};
-      String text;
-
-   public:
-     explicit PrintQueue () = default;
-
-      PrintQueue (int32 destination, StringRef text) : destination (destination), text (text) 
-      { }
+      BotMenu (int ident, int slots, String text, MenuHandler handler) : ident (ident), slots (slots), text (cr::move (text)), handler (cr::move (handler)) { }
    };
 
 private:
    StringArray m_args;
    Array <BotCmd> m_cmds;
    Array <BotMenu> m_menus;
-   Deque <PrintQueue> m_printQueue;
    IntArray m_campIterator;
 
    edict_t *m_ent;
@@ -75,12 +54,9 @@ private:
    bool m_isFromConsole;
    bool m_rapidOutput;
    bool m_isMenuFillCommand;
-   bool m_ignoreTranslate;
 
    int m_menuServerFillTeam;
    int m_interMenuData[4] = { 0, };
-
-   float m_printQueueFlushTimestamp {};
 
 public:
    BotControl ();
@@ -99,7 +75,6 @@ private:
    int cmdMenu ();
    int cmdList ();
    int cmdCvars ();
-   int cmdShowCustom ();
    int cmdNode ();
    int cmdNodeOn ();
    int cmdNodeOff ();
@@ -122,9 +97,6 @@ private:
    int cmdNodeReleaseEditor ();
    int cmdNodeUpload ();
    int cmdNodeIterateCamp ();
-   int cmdNodeShowStats ();
-   int cmdNodeFileInfo ();
-   int cmdAdjustHeight ();
 
 private:
    int menuMain (int item);
@@ -140,10 +112,8 @@ private:
    int menuGraphPage2 (int item);
    int menuGraphRadius (int item);
    int menuGraphType (int item);
-   int menuGraphDebug (int item);
    int menuGraphFlag (int item);
    int menuGraphPath (int item);
-   int menuCampDirections (int item);
    int menuAutoPathDistance (int item);
    int menuKickPage1 (int item);
    int menuKickPage2 (int item);
@@ -159,12 +129,9 @@ public:
    bool executeMenus ();
 
    void showMenu (int id);
-   void closeMenu ();
-
    void kickBotByMenu (int page);
    void assignAdminRights (edict_t *ent, char *infobuffer);
    void maintainAdminRights ();
-   void flushPrintQueue ();
 
 public:
    void setFromConsole (bool console) {
@@ -179,37 +146,31 @@ public:
       m_ent = ent;
    }
 
-   void resetFlushTimestamp () {
-      m_printQueueFlushTimestamp = 0.0f;
+   void fixMissingArgs (size_t num) {
+      if (num < m_args.length ()) {
+         return;
+      }
+      m_args.resize (num);
    }
 
-   int intValue (size_t arg) const {
+   int getInt (size_t arg) const {
       if (!hasArg (arg)) {
          return 0;
       }
       return m_args[arg].int_ ();
    }
 
-   float floatValue (size_t arg) const {
-      if (!hasArg (arg)) {
-         return 0.0f;
-      }
-      return m_args[arg].float_ ();
-   }
+   const String &getStr (size_t arg) {
+      static String empty ("empty");
 
-   StringRef strValue (size_t arg) {
-      if (!hasArg (arg)) {
-         return "";
+      if (!hasArg (arg) || m_args[arg].empty ()) {
+         return empty;
       }
       return m_args[arg];
    }
 
    bool hasArg (size_t arg) const {
       return arg < m_args.length ();
-   }
-
-   bool ignoreTranslate () const {
-      return m_ignoreTranslate;
    }
 
    void collectArgs () {
@@ -221,15 +182,12 @@ public:
    }
 
    // global heloer for sending message to correct channel
-   template <typename ...Args> void msg (const char *fmt, Args &&...args);
+   template <typename ...Args> void msg (const char *fmt, Args ...args);
 
 public:
 
    // for the server commands
    void handleEngineCommands ();
-
-   // wrapper for menus and commands
-   bool handleClientSideCommandsWrapper (edict_t *ent, bool isMenus);
 
    // for the client commands
    bool handleClientCommands (edict_t *ent);
@@ -239,30 +197,17 @@ public:
 };
 
 // global heloer for sending message to correct channel
-template <typename ...Args> inline void BotControl::msg (const char *fmt, Args &&...args) {
-   m_ignoreTranslate = game.isDedicated () && game.isNullEntity (m_ent);
-
-   auto result = strings.format (conf.translate (fmt), cr::forward <Args> (args)...);
+template <typename ...Args> inline void BotControl::msg (const char *fmt, Args ...args) {
+   auto result = strings.format (fmt, cr::forward <Args> (args)...);
 
    // if no receiver or many message have to appear, just print to server console
-   if (game.isNullEntity (m_ent)) {
-
-      if (m_rapidOutput) {
-         m_printQueue.emplaceLast (PrintQueueDestination::ServerConsole, result);
-      }
-      else {
-         game.print (result); // print the info
-      }
+   if (game.isNullEntity (m_ent) || m_rapidOutput) {
+      game.print (result);
       return;
    }
 
-   if (m_isFromConsole || strnlen (result, StringBuffer::StaticBufferSize) > 96 || m_rapidOutput) {
-      if (m_rapidOutput) {
-         m_printQueue.emplaceLast (PrintQueueDestination::ClientConsole, result);
-      }
-      else {
-         game.clientPrint (m_ent, result);
-      }
+   if (m_isFromConsole || strlen (result) > 56) {
+      game.clientPrint (m_ent, result);
    }
    else {
       game.centerPrint (m_ent, result);
