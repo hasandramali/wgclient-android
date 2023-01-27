@@ -27,7 +27,7 @@ jobs:
       ndk-version: r10e
       add-to-path: false
    - run: |
-           sudo apt install openjdk-17 ant android-sdk build-essential gcc-multilib g++-multilib gcc g++ -y
+           sudo apt install openjdk-8-jdk openjdk-8-jre ant-contrib python3-requests python3-pip build-essential gcc-multilib g++-multilib gcc g++ -y
            ./build-apk.sh debug noomp
      env:
       ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
