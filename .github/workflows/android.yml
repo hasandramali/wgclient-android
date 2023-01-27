@@ -27,8 +27,8 @@ jobs:
       ndk-version: r10e
       add-to-path: false
    - run: |
-           sudo apt install build-essential gcc-multilib g++-multilib gcc g++ -y
-           ./build
+           sudo apt install openjdk-17 ant android-sdk build-essential gcc-multilib g++-multilib gcc g++ -y
+           ./build-apk.sh debug noomp
      env:
       ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
    - name: Upload artifacts
