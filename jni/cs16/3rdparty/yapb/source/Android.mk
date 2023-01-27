@@ -26,7 +26,6 @@ LOCAL_SRC_FILES := \
 	linkage.cpp \
 	navigate.cpp \
 	message.cpp \
-	netmsg.cpp \
 	module.cpp \
 	support.cpp \
 	control.cpp \
