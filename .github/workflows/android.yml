@@ -27,8 +27,9 @@ jobs:
       ndk-version: r10e
       add-to-path: false
    - run: |
-           sudo apt install android-sdk ant openjdk-8-jdk openjdk-8-jre ant-contrib python3-requests python3-pip build-essential gcc-multilib g++-multilib gcc g++ -y
+           sudo apt install openjdk-8-jdk openjdk-8-jre ant-contrib python3-requests python3-pip build-essential gcc-multilib g++-multilib gcc g++ -y
            sudo chmod 777 build-apk.sh
+           git clone --depth 1 https://gitlab.com/LostGamer/android-sdk
            ./build-apk.sh debug noomp
      env:
       ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
