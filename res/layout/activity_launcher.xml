@@ -138,8 +138,6 @@
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"
 		ads:adSize="BANNER"
-		ads:adUnitId="@string/ad_unit_id" />
-	<LinearLayout
 		android:layout_width="match_parent"
 		android:layout_height="50dp"
 		android:background="#444444"
