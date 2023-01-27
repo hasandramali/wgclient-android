@@ -1,1354 +1,2359 @@
 //
-// Copyright (c) 2003-2009, by Yet Another POD-Bot Development Team.
+// YaPB - Counter-Strike Bot based on PODBot by Markus Klinge.
+// Copyright © 2004-2023 YaPB Project <yapb@jeefo.net>.
 //
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the "Software"),
-// to deal in the Software without restriction, including without limitation
-// the rights to use, copy, modify, merge, publish, distribute, sublicense,
-// and/or sell copies of the Software, and to permit persons to whom the
-// Software is furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
-// $Id:$
+// SPDX-License-Identifier: MIT
 //
 
-#include <core.h>
+#include <yapb.h>
 
-ConVar ebot_quota("ebot_quota", "10");
-ConVar ebot_forceteam("ebot_force_team", "any");
-ConVar ebot_auto_players("ebot_auto_players", "-1"); // i don't even know what is this...
-ConVar ebot_quota_save("ebot_quota_save", "-1");
+ConVar cv_display_menu_text ("yb_display_menu_text", "1", "Enables or disables display menu text, when players asks for menu. Useful only for Android.");
+ConVar cv_password ("yb_password", "", "The value (password) for the setinfo key, if user sets correct password, he's gains access to bot commands and menus.", false, 0.0f, 0.0f, Var::Password);
+ConVar cv_password_key ("yb_password_key", "_ybpw", "The name of setinfo key used to store password to bot commands and menus.", false);
 
-ConVar ebot_difficulty("ebot_difficulty", "4");
-ConVar ebot_minskill("ebot_min_skill", "1");
-ConVar ebot_maxskill("ebot_max_skill", "100");
+int BotControl::cmdAddBot () {
+   enum args { alias = 1, difficulty, personality, team, model, name, max };
 
-ConVar ebot_nametag("ebot_name_tag", "2");
-ConVar ebot_ping("ebot_fake_ping", "1");
-ConVar ebot_display_avatar("ebot_display_avatar", "1");
+   // this is duplicate error as in main bot creation code, but not to be silent
+   if (!graph.length () || graph.hasChanged ()) {
+      ctrl.msg ("There is no graph found or graph is changed. Cannot create bot.");
+      return BotCommandResult::Handled;
+   }
 
-ConVar ebot_autovacate("ebot_auto_vacate", "1");
-ConVar ebot_save_bot_names("ebot_save_bot_names", "1");
+   // give a chance to use additional args
+   m_args.resize (max);
 
-ConVar ebot_random_join_quit("ebot_random_join_quit", "0");
-ConVar ebot_stay_min("ebot_stay_min", "120"); // 2 minutes
-ConVar ebot_stay_max("ebot_stay_max", "3600"); // 1 hours
+   // if team is specified, modify args to set team
+   if (strValue (alias).find ("_ct", 0) != String::InvalidIndex) {
+      m_args.set (team, "2");
+   }
+   else if (strValue (alias).find ("_t", 0) != String::InvalidIndex) {
+      m_args.set (team, "1");
+   }
 
-// this is a bot manager class constructor
-BotControl::BotControl(void)
-{
-	m_lastWinner = -1;
+   // if highskilled bot is requsted set personality to rusher and maxout difficulty
+   if (strValue (alias).find ("hs", 0) != String::InvalidIndex) {
+      m_args.set (difficulty, "4");
+      m_args.set (personality, "1");
+   }
+   bots.addbot (strValue (name), strValue (difficulty), strValue (personality), strValue (team), strValue (model), true);
 
-	m_economicsGood[TEAM_TERRORIST] = true;
-	m_economicsGood[TEAM_COUNTER] = true;
-
-	memset(m_bots, 0, sizeof(m_bots));
-	InitQuota();
+   return BotCommandResult::Handled;
 }
 
-// this is a bot manager class destructor, do not use engine->GetMaxClients () here !!
-BotControl::~BotControl(void)
-{
-	for (int i = 0; i < 32; i++)
-	{
-		if (m_bots[i])
-		{
-			delete m_bots[i];
-			m_bots[i] = nullptr;
-		}
-	}
+int BotControl::cmdKickBot () {
+   enum args { alias = 1, team };
+
+   // if team is specified, kick from specified tram
+   if (strValue (alias).find ("_ct", 0) != String::InvalidIndex || intValue (team) == 2 || strValue (team) == "ct") {
+      bots.kickFromTeam (Team::CT);
+   }
+   else if (strValue (alias).find ("_t", 0) != String::InvalidIndex || intValue (team) == 1 || strValue (team) == "t") {
+      bots.kickFromTeam (Team::Terrorist);
+   }
+   else {
+      bots.kickRandom ();
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function calls gamedll player() function, in case to create player entity in game
-void BotControl::CallGameEntity(entvars_t* vars)
-{
-	if (g_isMetamod)
-	{
-		CALL_GAME_ENTITY(PLID, "player", vars);
-		return;
-	}
+int BotControl::cmdKickBots () {
+   enum args { alias = 1, instant };
 
-	static EntityPtr_t playerFunction = nullptr;
+   // check if we're need to remove bots instantly
+   auto kickInstant = strValue (instant) == "instant";
 
-	if (playerFunction == nullptr)
-		playerFunction = (EntityPtr_t)g_gameLib->GetFunctionAddr("player");
+   // kick the bots
+   bots.kickEveryone (kickInstant);
 
-	if (playerFunction != nullptr)
-		(*playerFunction) (vars);
+   return BotCommandResult::Handled;
 }
 
-// this function completely prepares bot entity (edict) for creation, creates team, skill, sets name etc, and
-// then sends result to bot constructor
-int BotControl::CreateBot(String name, int skill, int personality, int team, int member)
-{
-	edict_t* bot = nullptr;
-	if (g_numWaypoints < 1) // don't allow creating bots with no waypoints loaded
-	{
-		ServerPrint("No any waypoints for this map, Cannot Add E-BOT");
-		ServerPrint("You can input 'ebot wp menu' to make waypoint");
-		CenterPrint("No any waypoints for this map, Cannot Add E-BOT");
-		CenterPrint("You can input 'ebot wp menu' to make waypoint");
+int BotControl::cmdKillBots () {
+   enum args { alias = 1, team, max };
 
-		extern ConVar ebot_lockzbot;
-		if (ebot_lockzbot.GetBool())
-		{
-			ebot_lockzbot.SetInt(0);
-			ServerPrint("Z-BOT is locked, use ebot_lockzbot command for enable them.");
-		}
-
-		return -1;
-	}
-	else if (g_waypointsChanged) // don't allow creating bots with changed waypoints (distance tables are messed up)
-	{
-		CenterPrint("Waypoints has been changed. Load waypoints again...");
-		return -1;
-	}
-
-	if (skill <= 0 || skill > 100)
-	{
-		if (ebot_difficulty.GetInt() >= 4)
-			skill = 100;
-		else if (ebot_difficulty.GetInt() == 3)
-			skill = engine->RandomInt(79, 99);
-		else if (ebot_difficulty.GetInt() == 2)
-			skill = engine->RandomInt(50, 79);
-		else if (ebot_difficulty.GetInt() == 1)
-			skill = engine->RandomInt(30, 50);
-		else if (ebot_difficulty.GetInt() == 0)
-			skill = engine->RandomInt(1, 30);
-		else
-		{
-			int maxSkill = ebot_maxskill.GetInt();
-			int minSkill = (ebot_minskill.GetInt() == 0) ? 1 : ebot_minskill.GetInt();
-
-			if (maxSkill <= 100 && minSkill > 0)
-				skill = engine->RandomInt(minSkill, maxSkill);
-			else
-				skill = engine->RandomInt(0, 100);
-		}
-	}
-
-	if (personality < 0 || personality > 2)
-	{
-		int randomPrecent = engine->RandomInt(1, 3);
-
-		if (randomPrecent == 1)
-			personality = PERSONALITY_NORMAL;
-		else if (randomPrecent == 2)
-			personality = PERSONALITY_RUSHER;
-		else
-			personality = PERSONALITY_CAREFUL;
-	}
-
-	char outputName[33];
-
-	// restore the bot name
-	if (ebot_save_bot_names.GetBool() && !m_savedBotNames.IsEmpty())
-		sprintf(outputName, "%s", (char*)m_savedBotNames.Pop());
-	else if (name.GetLength() <= 0)
-	{
-		bool getName = false;
-		if (!g_botNames.IsEmpty())
-		{
-			ITERATE_ARRAY(g_botNames, j)
-			{
-				if (!g_botNames[j].isUsed)
-				{
-					getName = true;
-					break;
-				}
-			}
-		}
-
-		if (getName)
-		{
-			bool nameUse = true;
-
-			while (nameUse)
-			{
-				NameItem& botName = g_botNames.GetRandomElement();
-				if (!botName.isUsed)
-				{
-					nameUse = false;
-					botName.isUsed = true;
-					sprintf(outputName, "%s", (char*)botName.name);
-				}
-			}
-		}
-		else
-			sprintf(outputName, "e-bot %i", engine->RandomInt(1, 9999)); // just pick ugly random name
-	}
-	else
-		sprintf(outputName, "%s", (char*)name);
-
-	char botName[64];
-	if (ebot_nametag.GetInt() == 2)
-		snprintf(botName, sizeof(botName), "[E-BOT] %s (%d)", outputName, skill);
-	else if (ebot_nametag.GetInt() == 1)
-		snprintf(botName, sizeof(botName), "[E-BOT] %s", outputName);
-	else
-		strncpy(botName, outputName, sizeof(botName));
-
-	if (FNullEnt((bot = (*g_engfuncs.pfnCreateFakeClient) (botName))))
-	{
-		CenterPrint(" Unable to create E-Bot, Maximum players reached (%d/%d)", engine->GetMaxClients(), engine->GetMaxClients());
-		return -2;
-	}
-
-	int index = ENTINDEX(bot) - 1;
-
-	InternalAssert(index >= 0 && index <= 32); // check index
-	InternalAssert(m_bots[index] == nullptr); // check bot slot
-
-	m_bots[index] = new Bot(bot, skill, personality, team, member);
-
-	if (m_bots == nullptr)
-		return -1;
-
-	ServerPrint("Connecting E-Bot - %s | Skill %d", GetEntityName(bot), skill);
-
-	return index;
+   // if team is specified, kick from specified tram
+   if (strValue (alias).find ("_ct", 0) != String::InvalidIndex || intValue (team) == 2 || strValue (team) == "ct") {
+      bots.killAllBots (Team::CT);
+   }
+   else if (strValue (alias).find ("_t", 0) != String::InvalidIndex || intValue (team) == 1 || strValue (team) == "t") {
+      bots.killAllBots (Team::Terrorist);
+   }
+   else {
+      bots.killAllBots ();
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function returns index of bot (using own bot array)
-int BotControl::GetIndex(edict_t* ent)
-{
-	if (FNullEnt(ent))
-		return -1;
+int BotControl::cmdFill () {
+   enum args { alias = 1, team, count, difficulty, personality };
 
-	int index = ENTINDEX(ent) - 1;
-	if (index < 0 || index >= 32)
-		return -1;
+   if (!hasArg (team)) {
+      return BotCommandResult::BadFormat;
+   }
+   bots.serverFill (intValue (team), hasArg (personality) ? intValue (personality) : -1, hasArg (difficulty) ? intValue (difficulty) : -1, hasArg (count) ? intValue (count) - 1 : -1);
 
-	if (m_bots[index] != nullptr)
-		return index;
-
-	return -1; // if no edict, return -1;
+   return BotCommandResult::Handled;
 }
 
-// this function finds a bot specified by index, and then returns pointer to it (using own bot array)
-Bot* BotControl::GetBot(int index)
-{
-	if (index < 0 || index >= 32)
-		return nullptr;
+int BotControl::cmdVote () {
+   enum args { alias = 1, mapid };
 
-	if (m_bots[index] != nullptr)
-		return m_bots[index];
+   if (!hasArg (mapid)) {
+      return BotCommandResult::BadFormat;
+   }
+   int mapID = intValue (mapid);
 
-	return nullptr; // no bot
+   // loop through all players
+   for (const auto &bot : bots) {
+      bot->m_voteMap = mapID;
+   }
+   msg ("All dead bots will vote for map #%d.", mapID);
+
+   return BotCommandResult::Handled;
 }
 
-// same as above, but using bot entity
-Bot* BotControl::GetBot(edict_t* ent)
-{
-	return GetBot(GetIndex(ent));
+int BotControl::cmdWeaponMode () {
+   enum args { alias = 1, type };
+
+   if (!hasArg (type)) {
+      return BotCommandResult::BadFormat;
+   }
+   HashMap <String, int> modes;
+
+   modes["knife"] = 1;
+   modes["pistol"] = 2;
+   modes["shotgun"] = 3;
+   modes["smg"] = 4;
+   modes["rifle"] = 5;
+   modes["sniper"] = 6;
+   modes["standard"] = 7;
+
+   auto mode = strValue (type);
+
+   // check if selected mode exists
+   if (!modes.has (mode)) {
+      return BotCommandResult::BadFormat;
+   }
+   bots.setWeaponMode (modes[mode]);
+
+   return BotCommandResult::Handled;
 }
 
-// this function finds one bot, alive bot :)
-Bot* BotControl::FindOneValidAliveBot(void)
-{
-	Array <int> foundBots;
+int BotControl::cmdVersion () {
+   auto &build = product.build;
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		if (m_bots[i] != nullptr && IsAlive(m_bots[i]->GetEntity()))
-			foundBots.Push(i);
-	}
+   msg ("%s v%s (ID %s)", product.name, product.version, build.id);
+   msg ("   by %s (%s)", product.author, product.email);
+   msg ("   %s", product.url);
+   msg ("compiled: %s on %s with %s", product.dtime, build.machine, build.compiler);
 
-	if (!foundBots.IsEmpty())
-		return m_bots[foundBots.GetRandomElement()];
-
-	return nullptr;
+   return BotCommandResult::Handled;
 }
 
-void BotControl::DoJoinQuitStuff(void)
-{
-	if (!ebot_random_join_quit.GetBool())
-		return;
+int BotControl::cmdNodeMenu () {
+   enum args { alias = 1 };
 
-	// we have reconnecting bots...
-	if (!m_savedBotNames.IsEmpty())
-		AddBot((char*)m_savedBotNames.Pop(), -1, -1, -1, -1);
+   // graph editor is available only with editor
+   if (!graph.hasEditor ()) {
+      msg ("Unable to open graph editor without setting the editor player.");
+      return BotCommandResult::Handled;
+   }
+   showMenu (Menu::NodeMainPage1);
 
-	if (m_randomJoinTime > engine->GetTime())
-		return;
-
-	// add one more
-	if (engine->RandomInt(1, GetHumansNum()) <= 2);
-		g_botManager->AddRandom();
-
-	g_botManager->AddRandom();
-
-	if (ebot_stay_min.GetFloat() > ebot_stay_max.GetFloat())
-		ebot_stay_min.SetFloat(ebot_stay_max.GetFloat());
-
-	float min = ebot_stay_min.GetFloat() * 2;
-	float max = ebot_stay_max.GetFloat() / 2;
-
-	if (min > max)
-		max = min * 1.5f;
-
-	m_randomJoinTime = AddTime(RANDOM_FLOAT(min, max));
+   return BotCommandResult::Handled;
 }
 
-void ThreadedThink(int i)
-{
-	g_botManager->GetBot(i)->Think();
+int BotControl::cmdMenu () {
+   enum args { alias = 1, cmd };
+
+   // reset the current menu
+   closeMenu ();
+
+   if (strValue (cmd) == "cmd" && util.isAlive (m_ent)) {
+      showMenu (Menu::Commands);
+   }
+   else {
+      showMenu (Menu::Main);
+   }
+   return BotCommandResult::Handled;
 }
 
-void ThreadedFacePosition(int i)
-{
-	g_botManager->GetBot(i)->FacePosition();
+int BotControl::cmdList () {
+   enum args { alias = 1 };
+
+   bots.listBots ();
+   return BotCommandResult::Handled;
 }
 
-void ThreadedJoinQuit(void)
-{
-	g_botManager->DoJoinQuitStuff();
+int BotControl::cmdCvars () {
+   enum args { alias = 1, pattern };
+
+   const auto &match = strValue (pattern);
+   const bool isSave = match == "save";
+
+   File cfg;
+
+   // if save requested, dump cvars to yapb.cfg
+   if (isSave) {
+      cfg.open (strings.format ("%s/addons/%s/conf/%s.cfg", game.getRunningModName (), product.folder, product.folder), "wt");
+      cfg.puts ("// Configuration file for %s\n\n", product.name);
+   }
+   else {
+      ctrl.setRapidOutput (true);
+   }
+
+   for (const auto &cvar : game.getCvars ()) {
+      if (cvar.info.empty ()) {
+         continue;
+      }
+
+      if (!isSave && !match.empty () && !strstr (cvar.reg.name, match.chars ())) {
+         continue;
+      }
+
+      // float value ?
+      bool isFloat = !strings.isEmpty (cvar.self->str ()) && strchr (cvar.self->str (), '.');
+
+      if (isSave) {
+         cfg.puts ("//\n");
+         cfg.puts ("// %s\n", String::join (cvar.info.split ("\n"), "\n//  "));
+         cfg.puts ("// ---\n");
+
+         if (cvar.bounded) {
+            if (isFloat) {
+               cfg.puts ("// Default: \"%.1f\", Min: \"%.1f\", Max: \"%.1f\"\n", cvar.initial, cvar.min, cvar.max);
+            }
+            else {
+               cfg.puts ("// Default: \"%i\", Min: \"%i\", Max: \"%i\"\n", static_cast <int> (cvar.initial), static_cast <int> (cvar.min), static_cast <int> (cvar.max));
+            }
+         }
+         else {
+            cfg.puts ("// Default: \"%s\"\n", cvar.self->str ());
+         }
+         cfg.puts ("// \n");
+
+         if (cvar.bounded) {
+            if (isFloat) {
+               cfg.puts ("%s \"%.1f\"\n", cvar.reg.name, cvar.self->float_ ());
+            }
+            else {
+               cfg.puts ("%s \"%i\"\n", cvar.reg.name, cvar.self->int_ ());
+            }
+         }
+         else {
+            cfg.puts ("%s \"%s\"\n", cvar.reg.name, cvar.self->str ());
+         }
+         cfg.puts ("\n");
+      }
+      else {
+         msg ("name: %s", cvar.reg.name);
+         msg ("info: %s", conf.translate (cvar.info));
+
+         msg (" ");
+      }
+   }
+   ctrl.setRapidOutput (false);
+
+   if (isSave) {
+      msg ("Bots cvars has been written to file.");
+      cfg.close ();
+   }
+   return BotCommandResult::Handled;
 }
 
-void BotControl::Think(void)
-{
-	async(launch::async, ThreadedJoinQuit);
+int BotControl::cmdShowCustom () {
+   enum args { alias = 1 };
 
-	extern ConVar ebot_stopbots;
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		if (m_bots[i] == nullptr)
-			continue;
+   conf.showCustomValues ();
 
-		bool runThink = false;
-
-		if (m_bots[i]->m_thinkTimer <= engine->GetTime())
-		{
-			if (m_bots[i]->m_lastThinkTime <= engine->GetTime())
-				runThink = true;
-		}
-
-		if (runThink)
-		{
-			m_bots[i]->m_thinkTimer = AddTime(engine->RandomFloat(0.9f, 1.1f) / 20.0f);
-			async(launch::async, ThreadedThink, i);
-		}
-		else if (!ebot_stopbots.GetBool() && m_bots[i]->m_notKilled)
-			async(launch::async, ThreadedFacePosition, i);
-
-		m_bots[i]->m_moveAnglesForRunMove = m_bots[i]->m_moveAngles;
-		m_bots[i]->m_moveSpeedForRunMove = m_bots[i]->m_moveSpeed;
-		m_bots[i]->m_strafeSpeedForRunMove = m_bots[i]->m_strafeSpeed;
-
-		m_bots[i]->RunPlayerMovement(); // run the player movement 
-	}
+   return BotCommandResult::Handled;
 }
 
-// this function putting bot creation process to queue to prevent engine crashes
-void BotControl::AddBot(const String& name, int skill, int personality, int team, int member)
-{
-	CreateItem queueID;
+int BotControl::cmdNode () {
+   enum args { root, alias, cmd, cmd2 };
 
-	// fill the holder
-	queueID.name = name;
-	queueID.skill = skill;
-	queueID.personality = personality;
-	queueID.team = team;
-	queueID.member = member;
+   static Array <StringRef> allowedOnDedicatedServer {
+      "acquire_editor",
+      "upload",
+      "save",
+      "load",
+      "help",
+      "erase",
+      "fileinfo"
+   };
 
-	// put to queue
-	m_creationTab.Push(queueID);
+   // check if cmd is allowed on dedicated server
+   auto isAllowedOnDedicatedServer = [] (StringRef str) -> bool {
+      for (const auto &test : allowedOnDedicatedServer) {
+         if (test == str) {
+            return true;
+         }
+      }
+      return false;
+   };
 
-	// keep quota number up to date
-	if (GetBotsNum() + 1 > ebot_quota.GetInt())
-		ebot_quota.SetInt(GetBotsNum() + 1);
+   // graph editor supported only with editor
+   if (game.isDedicated () && !graph.hasEditor () && !isAllowedOnDedicatedServer (strValue (cmd))) {
+      msg ("Unable to use graph edit commands without setting graph editor player. Please use \"graph acquire_editor\" to acquire rights for graph editing.");
+      return BotCommandResult::Handled;
+   }
+
+   // should be moved to class?
+   static HashMap <String, BotCmd> commands;
+   static StringArray descriptions;
+
+   // fill only once
+   if (descriptions.empty ()) {
+
+      // separate function
+      auto addGraphCmd = [&] (String cmd, String format, String help, Handler handler) -> void {
+         BotCmd botCmd { cmd, cr::move (format), cr::move (help), cr::move (handler) };
+
+         commands[cmd] = cr::move (botCmd);
+         descriptions.push (cmd);
+      };
+
+      // add graph commands
+      addGraphCmd ("on", "on [display|auto|noclip|models]", "Enables displaying of graph, nodes, noclip cheat", &BotControl::cmdNodeOn);
+      addGraphCmd ("off", "off [display|auto|noclip|models]", "Disables displaying of graph, auto adding nodes, noclip cheat", &BotControl::cmdNodeOff);
+      addGraphCmd ("menu", "menu [noarguments]", "Opens and displays bots graph editor.", &BotControl::cmdNodeMenu);
+      addGraphCmd ("add", "add [noarguments]", "Opens and displays graph node add menu.", &BotControl::cmdNodeAdd);
+      addGraphCmd ("addbasic", "menu [noarguments]", "Adds basic nodes such as player spawn points, goals and ladders.", &BotControl::cmdNodeAddBasic);
+      addGraphCmd ("save", "save [noarguments]", "Save graph file to disk.", &BotControl::cmdNodeSave);
+      addGraphCmd ("load", "load [noarguments]", "Load graph file from disk.", &BotControl::cmdNodeLoad);
+      addGraphCmd ("erase", "erase [iamsure]", "Erases the graph file from disk.", &BotControl::cmdNodeErase);
+      addGraphCmd ("delete", "delete [nearest|index]", "Deletes single graph node from map.", &BotControl::cmdNodeDelete);
+      addGraphCmd ("check", "check [noarguments]", "Check if graph working correctly.", &BotControl::cmdNodeCheck);
+      addGraphCmd ("cache", "cache [nearest|index]", "Caching node for future use.", &BotControl::cmdNodeCache);
+      addGraphCmd ("clean", "clean [all|nearest|index]", "Clean useless path connections from all or single node.", &BotControl::cmdNodeClean);
+      addGraphCmd ("setradius", "setradius [radius] [nearest|index]", "Sets the radius for node.", &BotControl::cmdNodeSetRadius);
+      addGraphCmd ("flags", "flags [noarguments]", "Open and displays menu for modifying flags for nearest point.", &BotControl::cmdNodeSetFlags);
+      addGraphCmd ("teleport", "teleport [index]", "Teleports player to specified node index.", &BotControl::cmdNodeTeleport);
+      addGraphCmd ("upload", "upload", "Uploads created graph to graph database.", &BotControl::cmdNodeUpload);
+      addGraphCmd ("stats", "stats [noarguments]", "Shows the stats about node types on the map.", &BotControl::cmdNodeShowStats);
+      addGraphCmd ("fileinfo", "fileinfo [noarguments]", "Shows basic information about graph file.", &BotControl::cmdNodeFileInfo);
+      addGraphCmd ("adjust_height", "adjust_height [height offset]", "Modifies all the graph nodes height (z-component) with specified offset.", &BotControl::cmdAdjustHeight);
+
+      // add path commands
+      addGraphCmd ("path_create", "path_create [noarguments]", "Opens and displays path creation menu.", &BotControl::cmdNodePathCreate);
+      addGraphCmd ("path_create_in", "path_create_in [noarguments]", "Creates incoming path connection from faced to nearest node.", &BotControl::cmdNodePathCreate);
+      addGraphCmd ("path_create_out", "path_create_out [noarguments]", "Creates outgoing path connection from nearest to faced node.", &BotControl::cmdNodePathCreate);
+      addGraphCmd ("path_create_both", "path_create_both [noarguments]", "Creates both-ways path connection between faced and nearest node.", &BotControl::cmdNodePathCreate);
+      addGraphCmd ("path_delete", "path_delete [noarguments]", "Deletes path from nearest to faced node.", &BotControl::cmdNodePathDelete);
+      addGraphCmd ("path_set_autopath", "path_set_autopath [max_distance]", "Opens menu for setting autopath maximum distance.", &BotControl::cmdNodePathSetAutoDistance);
+
+      // camp points iterator
+      addGraphCmd ("iterate_camp", "iterate_camp [begin|end|next]", "Allows to go through all camp points on map.", &BotControl::cmdNodeIterateCamp);
+
+      // remote graph editing stuff
+      if (game.isDedicated ()) {
+         addGraphCmd ("acquire_editor", "acquire_editor [noarguments]", "Acquires rights to edit graph on dedicated server.", &BotControl::cmdNodeAcquireEditor);
+         addGraphCmd ("release_editor", "release_editor [noarguments]", "Releases graph editing rights.", &BotControl::cmdNodeReleaseEditor);
+      }
+   }
+   if (commands.has (strValue (cmd))) {
+      const auto &item = commands[strValue (cmd)];
+
+      // graph have only bad format return status
+      int status = (this->*item.handler) ();
+
+      if (status == BotCommandResult::BadFormat) {
+         msg ("Incorrect usage of \"%s %s %s\" command. Correct usage is:", m_args[root], m_args[alias], item.name);
+         msg ("\n\t%s\n", item.format);
+         msg ("Please use correct format.");
+      }
+   }
+   else {
+      if (strValue (cmd) == "help" && hasArg (cmd2) && commands.has (strValue (cmd2))) {
+         auto &item = commands[strValue (cmd2)];
+
+         msg ("Command: \"%s %s %s\"", m_args[root], m_args[alias], item.name);
+         msg ("Format: %s", item.format);
+         msg ("Help: %s", conf.translate (item.help));
+      }
+      else {
+         for (auto &desc : descriptions) {
+            auto &item = commands[desc];
+            msg ("   %s - %s", item.name, conf.translate (item.help));
+         }
+         msg ("Currently Graph Status %s", graph.hasEditFlag (GraphEdit::On) ? "Enabled" : "Disabled");
+      }
+   }
+   return BotCommandResult::Handled;
 }
 
-void BotControl::CheckBotNum(void)
-{
-	if (ebot_auto_players.GetInt() == -1 && ebot_quota_save.GetInt() == -1)
-		return;
+int BotControl::cmdNodeOn () {
+   enum args { alias = 1, cmd, option };
 
-	int needBotNumber = 0;
-	if (ebot_quota_save.GetInt() != -1)
-	{
-		if (ebot_quota_save.GetInt() > 32)
-			ebot_quota_save.SetInt(32);
+   // enable various features of editor
+   if (strValue (option).empty () || strValue (option) == "display" || strValue (option) == "models") {
+      graph.setEditFlag (GraphEdit::On);
+      enableDrawModels (true);
 
-		needBotNumber = ebot_quota_save.GetInt();
+      msg ("Graph editor has been enabled.");
+   }
+   else if (strValue (option) == "noclip") {
+      m_ent->v.movetype = MOVETYPE_NOCLIP;
 
-		File fp(FormatBuffer("%s/addons/ebot/ebot.cfg", GetModName()), "rt+");
-		if (fp.IsValid())
-		{
-			const char quotaCvar[11] = { 's', 'y', 'p', 'b', '_', 'q', 'u', 'o', 't', 'a', ' ' };
+      graph.setEditFlag (GraphEdit::On | GraphEdit::Noclip);
+      enableDrawModels (true);
 
-			char line[256];
-			bool changeed = false;
-			while (fp.GetBuffer(line, 255))
-			{
-				bool trueCvar = true;
-				for (int j = 0; (j < 11 && trueCvar); j++)
-				{
-					if (quotaCvar[j] != line[j])
-						trueCvar = false;
-				}
+      msg ("Graph editor has been enabled with noclip mode.");
+   }
+   else if (strValue (option) == "auto") {
+      graph.setEditFlag (GraphEdit::On | GraphEdit::Auto);
+      enableDrawModels (true);
 
-				if (!trueCvar)
-					continue;
+      msg ("Graph editor has been enabled with auto add node mode.");
+   }
 
-				changeed = true;
-
-				int i = 0;
-				for (i = 0; i <= 255; i++)
-				{
-					if (line[i] == 0)
-						break;
-				}
-				i++;
-				fp.Seek(-i, SEEK_CUR);
-
-				if (line[11] == 0 || line[12] == 0 || line[13] == '"' ||
-					line[11] == '\n' || line[12] == '\n')
-				{
-					changeed = false;
-					fp.Print("//////////");
-					break;
-				}
-
-				if (line[11] == '"')
-				{
-					fp.PutString(FormatBuffer("ebot_quota \"%s%d\"",
-						needBotNumber > 10 ? "" : "0", needBotNumber));
-				}
-				else
-					fp.PutString(FormatBuffer("ebot_quota %s%d",
-						needBotNumber > 10 ? "" : "0", needBotNumber));
-
-				ServerPrint("ebot_quota save to '%d' - C", needBotNumber);
-
-				break;
-			}
-
-			if (!changeed)
-			{
-				fp.Seek(0, SEEK_END);
-				fp.Print(FormatBuffer("\nebot_quota \"%s%d\"\n",
-					needBotNumber > 10 ? "" : "0", needBotNumber));
-				ServerPrint("ebot_quota save to '%d' - A", needBotNumber);
-			}
-
-			fp.Close();
-		}
-		else
-		{
-			File fp2(FormatBuffer("%s/addons/ebot/ebot.cfg", GetModName()), "at");
-			if (fp2.IsValid())
-			{
-				fp2.Print(FormatBuffer("\nebot_quota \"%s%d\"\n",
-					needBotNumber > 10 ? "" : "0", needBotNumber));
-				ServerPrint("ebot_quota save to '%d' - A", needBotNumber);
-				fp2.Close();
-			}
-			else
-				ServerPrint("Unknow Problem - Cannot save ebot quota");
-		}
-
-		ebot_quota_save.SetInt(-1);
-	}
-
-	if (ebot_auto_players.GetInt() != -1)
-	{
-		if (ebot_auto_players.GetInt() > engine->GetMaxClients())
-		{
-			ServerPrint("Server Max Clients is %d, You cannot set this value", engine->GetMaxClients());
-			ebot_auto_players.SetInt(engine->GetMaxClients());
-		}
-
-		needBotNumber = ebot_auto_players.GetInt() - GetHumansNum();
-		if (needBotNumber <= 0)
-			needBotNumber = 0;
-	}
-
-	ebot_quota.SetInt(needBotNumber);
+   if (graph.hasEditFlag (GraphEdit::On)) {
+      mp_roundtime.set (9);
+      mp_freezetime.set (0);
+      mp_timelimit.set (0);
+   }
+   return BotCommandResult::Handled;
 }
 
-int BotControl::AddBotAPI(const String& name, int skill, int team)
-{
-	if (g_botManager->GetBotsNum() + 1 > ebot_quota.GetInt())
-		ebot_quota.SetInt(g_botManager->GetBotsNum() + 1);
+int BotControl::cmdNodeOff () {
+   enum args { graph_cmd = 1, cmd, option };
 
-	int resultOfCall = CreateBot(name, skill, -1, team, -1);
+   // enable various features of editor
+   if (strValue (option).empty () || strValue (option) == "display") {
+      graph.clearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
+      enableDrawModels (false);
 
-	// check the result of creation
-	if (resultOfCall == -1)
-	{
-		m_creationTab.RemoveAll(); // something wrong with waypoints, reset tab of creation
-		ebot_quota.SetInt(0); // reset quota
-		ChartPrint("[E-BOT] You can input [ebot sgdwp on] make the new waypoints!!");
-	}
-	else if (resultOfCall == -2)
-	{
-		m_creationTab.RemoveAll(); // maximum players reached, so set quota to maximum players
-		ebot_quota.SetInt(GetBotsNum());
-	}
+      msg ("Graph editor has been disabled.");
+   }
+   else if (strValue (option) == "models") {
+      enableDrawModels (false);
 
-	m_maintainTime = AddTime(0.2f);
+      msg ("Graph editor has disabled spawn points highlighting.");
+   }
+   else if (strValue (option) == "noclip") {
+      m_ent->v.movetype = MOVETYPE_WALK;
+      graph.clearEditFlag (GraphEdit::Noclip);
 
-	return resultOfCall;
+      msg ("Graph editor has disabled noclip mode.");
+   }
+   else if (strValue (option) == "auto") {
+      graph.clearEditFlag (GraphEdit::Auto);
+      msg ("Graph editor has disabled auto add node mode.");
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function keeps number of bots up to date, and don't allow to maintain bot creation
-// while creation process in process.
-void BotControl::MaintainBotQuota(void)
-{
-	if (!m_creationTab.IsEmpty() && m_maintainTime < engine->GetTime())
-	{
-		CreateItem last = m_creationTab.Pop();
+int BotControl::cmdNodeAdd () {
+   enum args { graph_cmd = 1, cmd };
 
-		int resultOfCall = CreateBot(last.name, last.skill, last.personality, last.team, last.member);
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
 
-		// check the result of creation
-		if (resultOfCall == -1)
-		{
-			m_creationTab.RemoveAll(); // something wrong with waypoints, reset tab of creation
-			ebot_quota.SetInt(0); // reset quota
-			
-			ChartPrint("[E-BOT] You can input [ebot sgdwp on] make the new waypoints.");
-		}
-		else if (resultOfCall == -2)
-		{
-			m_creationTab.RemoveAll(); // maximum players reached, so set quota to maximum players
-			ebot_quota.SetInt(GetBotsNum());
-		}
-
-		m_maintainTime = AddTime(0.15f);
-	}
-
-	if (ebot_random_join_quit.GetBool())
-		return;
-
-	g_botManager->CheckBotNum();
-	if (m_maintainTime < engine->GetTime())
-	{
-		int botNumber = GetBotsNum();
-		int maxClients = engine->GetMaxClients();
-		int desiredBotCount = ebot_quota.GetInt();
-		
-		if (ebot_autovacate.GetBool())
-			desiredBotCount = __min(desiredBotCount, maxClients - (GetHumansNum() + 1));
-		
-		if (botNumber > desiredBotCount)
-			RemoveRandom();
-		else if (botNumber < desiredBotCount && botNumber < maxClients)
-			AddRandom();
-		else if (ebot_save_bot_names.GetBool() && !m_savedBotNames.IsEmpty()) // clear the saved names when quota balancing ended
-			m_savedBotNames.Destory();
-
-		if (ebot_quota.GetInt() > maxClients)
-			ebot_quota.SetInt(maxClients);
-		else if (ebot_quota.GetInt() < 0)
-			ebot_quota.SetInt(0);
-
-		m_maintainTime = AddTime(0.5f);
-	}
+   // show the menu
+   showMenu (Menu::NodeType);
+   return BotCommandResult::Handled;
 }
 
-void BotControl::InitQuota(void)
-{
-	m_maintainTime = AddTime(2.0f);
-	m_creationTab.RemoveAll();
-	for (int i = 0; i < entityNum; i++)
-		SetEntityActionData(i);
+int BotControl::cmdNodeAddBasic () {
+   enum args { graph_cmd = 1, cmd };
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
+
+   graph.addBasic ();
+   msg ("Basic graph nodes was added.");
+
+   return BotCommandResult::Handled;
 }
 
-// this function fill server with bots, with specified team & personality
-void BotControl::FillServer(int selection, int personality, int skill, int numToAdd)
-{
-	// always keep one slot
-	int maxClients = ebot_autovacate.GetBool() ? engine->GetMaxClients() - 1 - (IsDedicatedServer() ? 0 : GetHumansNum()) : engine->GetMaxClients();
+int BotControl::cmdNodeSave () {
+   enum args { graph_cmd = 1, cmd, option };
 
-	if (GetBotsNum() >= maxClients - GetHumansNum())
-		return;
+   // if no check is set save anyway
+   if (strValue (option) == "nocheck") {
+      graph.saveGraphData ();
 
-	if (selection == 1 || selection == 2)
-	{
-		CVAR_SET_STRING("mp_limitteams", "0");
-		CVAR_SET_STRING("mp_autoteambalance", "0");
-	}
-	else
-		selection = 5;
+      msg ("All nodes has been saved and written to disk (IGNORING QUALITY CONTROL).");
+   }
+   else if (strValue (option) == "old") {
+      if (graph.length () >= 1024) {
+         msg ("Unable to save POD-Bot Format waypoint file. Number of nodes exceeds 1024.");
 
-	char teamDescs[6][12] =
-	{
-	   "",
-	   {"Terrorists"},
-	   {"CTs"},
-	   "",
-	   "",
-	   {"Random"},
-	};
+         return BotCommandResult::Handled;
+      }
+      graph.saveOldFormat ();
 
-	int toAdd = numToAdd == -1 ? maxClients - (GetHumansNum() + GetBotsNum()) : numToAdd;
-
-	for (int i = 0; i <= toAdd; i++)
-	{
-		// since we got constant skill from menu (since creation process call automatic), we need to manually
-		// randomize skill here, on given skill there.
-		int randomizedSkill = 0;
-
-		if (skill >= 0 && skill <= 20)
-			randomizedSkill = engine->RandomInt(0, 20);
-		else if (skill >= 20 && skill <= 40)
-			randomizedSkill = engine->RandomInt(20, 40);
-		else if (skill >= 40 && skill <= 60)
-			randomizedSkill = engine->RandomInt(40, 60);
-		else if (skill >= 60 && skill <= 80)
-			randomizedSkill = engine->RandomInt(60, 80);
-		else if (skill >= 80 && skill <= 99)
-			randomizedSkill = engine->RandomInt(80, 99);
-		else if (skill == 100)
-			randomizedSkill = skill;
-
-		AddBot("", randomizedSkill, personality, selection, -1);
-	}
-
-	ebot_quota.SetInt(toAdd);
-	CenterPrint("Filling the server with %s e-bots", &teamDescs[selection][0]);
+      msg ("All nodes has been saved and written to disk (POD-Bot Format (.pwf)).");
+   }
+   else {
+      if (graph.checkNodes (false)) {
+         graph.saveGraphData ();
+         msg ("All nodes has been saved and written to disk.");
+      }
+      else {
+         msg ("Could not save save nodes to disk. Graph check has failed.");
+      }
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function drops all bot clients from server (this function removes only ebots)
-void BotControl::RemoveAll(void)
-{
-	CenterPrint("E-Bots are removed from server");
+int BotControl::cmdNodeLoad () {
+   enum args { graph_cmd = 1, cmd };
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		Bot* bot = g_botManager->GetBot(i);
-		if (bot != nullptr) // is this slot used?
-			bot->Kick();
-	}
-
-	m_creationTab.RemoveAll();
-
-	// if everyone is kicked, clear the saved bot names
-	if (ebot_save_bot_names.GetBool() && !m_savedBotNames.IsEmpty())
-		m_savedBotNames.Destory();
-
-	// reset cvars
-	ebot_quota.SetInt(0);
-	ebot_auto_players.SetInt(-1);
+   // just save graph on request
+   if (graph.loadGraphData ()) {
+      msg ("Graph successfully loaded.");
+   }
+   else {
+      msg ("Could not load Graph. See console...");
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function remove random bot from specified team (if removeAll value = 1 then removes all players from team)
-void BotControl::RemoveFromTeam(Team team, bool removeAll)
-{
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		Bot* bot = g_botManager->GetBot(i);
+int BotControl::cmdNodeErase () {
+   enum args { graph_cmd = 1, cmd, iamsure };
 
-		if (bot != nullptr && team == bot->m_team)
-		{
-			bot->Kick();
-
-			if (!removeAll)
-				break;
-		}
-	}
+   // prevent accidents when graph are deleted unintentionally
+   if (strValue (iamsure) == "iamsure") {
+      graph.eraseFromDisk ();
+   }
+   else {
+      msg ("Please, append \"iamsure\" as parameter to get graph erased from the disk.");
+   }
+   return BotCommandResult::Handled;
 }
 
-void BotControl::RemoveMenu(edict_t* ent, int selection)
-{
-	if ((selection > 4) || (selection < 1))
-		return;
+int BotControl::cmdNodeDelete () {
+   enum args { graph_cmd = 1, cmd, nearest };
 
-	char tempBuffer[1024], buffer[1024];
-	memset(tempBuffer, 0, sizeof(tempBuffer));
-	memset(buffer, 0, sizeof(buffer));
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
 
-	int validSlots = (selection == 4) ? (1 << 9) : ((1 << 8) | (1 << 9));
-	for (int i = ((selection - 1) * 8); i < selection * 8; ++i)
-	{
-		if ((m_bots[i] != nullptr) && !FNullEnt(m_bots[i]->GetEntity()))
-		{
-			validSlots |= 1 << (i - ((selection - 1) * 8));
-			sprintf(buffer, "%s %1.1d. %s%s\n", buffer, i - ((selection - 1) * 8) + 1, GetEntityName(m_bots[i]->GetEntity()), GetTeam(m_bots[i]->GetEntity()) == TEAM_COUNTER ? " \\y(CT)\\w" : " \\r(T)\\w");
-		}
-		else if (!FNullEnt(g_clients[i].ent))
-			sprintf(buffer, "%s %1.1d.\\d %s (Not E-BOT) \\w\n", buffer, i - ((selection - 1) * 8) + 1, GetEntityName(g_clients[i].ent));
-		else
-			sprintf(buffer, "%s %1.1d.\\d Null \\w\n", buffer, i - ((selection - 1) * 8) + 1);
-	}
+   // if "nearest" or nothing passed delete nearest, else delete by index
+   if (strValue (nearest).empty () || strValue (nearest) == "nearest") {
+      graph.erase (kInvalidNodeIndex);
+   }
+   else {
+      int index = intValue (nearest);
 
-	sprintf(tempBuffer, "\\yE-BOT Remove Menu (%d/4):\\w\n\n%s\n%s 0. Back", selection, buffer, (selection == 4) ? "" : " 9. More...\n");
-
-	switch (selection)
-	{
-	case 1:
-		g_menus[14].validSlots = validSlots & static_cast <unsigned int> (-1);
-		g_menus[14].menuText = tempBuffer;
-
-		DisplayMenuToClient(ent, &g_menus[14]);
-		break;
-
-	case 2:
-		g_menus[15].validSlots = validSlots & static_cast <unsigned int> (-1);
-		g_menus[15].menuText = tempBuffer;
-
-		DisplayMenuToClient(ent, &g_menus[15]);
-		break;
-
-	case 3:
-		g_menus[16].validSlots = validSlots & static_cast <unsigned int> (-1);
-		g_menus[16].menuText = tempBuffer;
-
-		DisplayMenuToClient(ent, &g_menus[16]);
-		break;
-
-	case 4:
-		g_menus[17].validSlots = validSlots & static_cast <unsigned int> (-1);
-		g_menus[17].menuText = tempBuffer;
-
-		DisplayMenuToClient(ent, &g_menus[17]);
-		break;
-	}
+      // check for existence
+      if (graph.exists (index)) {
+         graph.erase (index);
+         msg ("Node %d has been deleted.", index);
+      }
+      else {
+         msg ("Could not delete node %d.", index);
+      }
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function kills all bots on server (only this dll controlled bots)
-void BotControl::KillAll(int team)
-{
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		Bot* bot = g_botManager->GetBot(i);
-		if (bot != nullptr)
-		{
-			if (team != -1 && team != bot->m_team)
-				continue;
+int BotControl::cmdNodeCheck () {
+   enum args { graph_cmd = 1, cmd };
 
-			bot->Kill();
-		}
-	}
-
-	CenterPrint("All bots are killed.");
+   // check if nodes are ok
+   if (graph.checkNodes (true)) {
+      msg ("Graph seems to be OK.");
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function removes random bot from server (only ebots)
-void BotControl::RemoveRandom(void)
-{
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		Bot* bot = g_botManager->GetBot(i);
-		if (bot != nullptr)  // is this slot used?
-		{
-			bot->Kick();
-			break;
-		}
-	}
+int BotControl::cmdNodeCache () {
+   enum args { graph_cmd = 1, cmd, nearest };
+
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
+
+   // if "nearest" or nothing passed delete nearest, else delete by index
+   if (strValue (nearest).empty () || strValue (nearest) == "nearest") {
+      graph.cachePoint (kInvalidNodeIndex);
+   }
+   else {
+      int index = intValue (nearest);
+
+      // check for existence
+      if (graph.exists (index)) {
+         graph.cachePoint (index);
+      }
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function sets bots weapon mode
-void BotControl::SetWeaponMode(int selection)
-{
-	int tabMapStandart[7][Const_NumWeapons] =
-	{
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Knife only
-	   {-1,-1,-1, 2, 2, 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Pistols only
-	   {-1,-1,-1,-1,-1,-1,-1, 2, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Shotgun only
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1, 2, 1, 2, 0, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 2,-1}, // Machine Guns only
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0, 1, 0, 1, 1,-1,-1,-1,-1,-1,-1}, // Rifles only
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 2, 2, 0, 1,-1,-1}, // Snipers only
-	   {-1,-1,-1, 2, 2, 0, 1, 2, 2, 2, 1, 2, 0, 2, 0, 0, 1, 0, 1, 1, 2, 2, 0, 1, 2, 1}  // Standard
-	};
+int BotControl::cmdNodeClean () {
+   enum args { graph_cmd = 1, cmd, option };
 
-	int tabMapAS[7][Const_NumWeapons] =
-	{
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Knife only
-	   {-1,-1,-1, 2, 2, 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Pistols only
-	   {-1,-1,-1,-1,-1,-1,-1, 1, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Shotgun only
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1, 1, 1, 1, 0, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 1,-1}, // Machine Guns only
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0,-1, 1, 0, 1, 1,-1,-1,-1,-1,-1,-1}, // Rifles only
-	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0,-1, 1,-1,-1}, // Snipers only
-	   {-1,-1,-1, 2, 2, 0, 1, 1, 1, 1, 1, 1, 0, 2, 0,-1, 1, 0, 1, 1, 0, 0,-1, 1, 1, 1}  // Standard
-	};
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
 
-	char modeName[7][12] =
-	{
-	   {"Knife"},
-	   {"Pistol"},
-	   {"Shotgun"},
-	   {"Machine Gun"},
-	   {"Rifle"},
-	   {"Sniper"},
-	   {"Standard"}
-	};
-	selection--;
+   // if "all" passed clean up all the paths
+   if (strValue (option) == "all") {
+      int removed = 0;
 
-	for (int i = 0; i < Const_NumWeapons; i++)
-	{
-		g_weaponSelect[i].teamStandard = tabMapStandart[selection][i];
-		g_weaponSelect[i].teamAS = tabMapAS[selection][i];
-	}
+      for (int i = 0; i < graph.length (); ++i) {
+         removed += graph.clearConnections (i);
+      }
+      msg ("Done. Processed %d nodes. %d useless paths was cleared.", graph.length (), removed);
+   }
+   else if (strValue (option).empty () || strValue (option) == "nearest") {
+      int removed = graph.clearConnections (graph.getEditorNearest ());
 
-	if (selection == 0)
-		ebot_knifemode.SetInt(1);
-	else
-		ebot_knifemode.SetInt(0);
+      msg ("Done. Processed node %d. %d useless paths was cleared.", graph.getEditorNearest (), removed);
+   }
+   else {
+      int index = intValue (option);
 
-	CenterPrint("%s weapon mode selected", &modeName[selection][0]);
+      // check for existence
+      if (graph.exists (index)) {
+         int removed = graph.clearConnections (index);
+
+         msg ("Done. Processed node %d. %d useless paths was cleared.", index, removed);
+      }
+      else {
+         msg ("Could not process node %d clearance.", index);
+      }
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function lists bots currently playing on the server
-void BotControl::ListBots(void)
-{
-	ServerPrintNoTag("%-3.5s %-9.13s %-17.18s %-3.4s %-3.4s %-3.4s", "index", "name", "personality", "team", "skill", "frags");
+int BotControl::cmdNodeSetRadius () {
+   enum args { graph_cmd = 1, cmd, radius, index };
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		edict_t* player = INDEXENT(i);
+   // radius is a must
+   if (!hasArg (radius)) {
+      return BotCommandResult::BadFormat;
+   }
+   int radiusIndex = kInvalidNodeIndex;
 
-		// is this player slot valid
-		if (IsValidBot(player) && GetBot(player))
-			ServerPrintNoTag("[%-3.1d] %-9.13s %-17.18s %-3.4s %-3.1d %-3.1d", i, GetEntityName(player), GetBot(player)->m_personality == PERSONALITY_RUSHER ? "rusher" : GetBot(player)->m_personality == PERSONALITY_NORMAL ? "normal" : "careful", GetTeam(player) != 0 ? "CT" : "T", GetBot(player)->m_skill, static_cast <int> (player->v.frags));
-	}
+   if (strValue (index).empty () || strValue (index) == "nearest") {
+      radiusIndex = graph.getEditorNearest ();
+   }
+   else {
+      radiusIndex = intValue (index);
+   }
+   graph.setRadius (radiusIndex, strValue (radius).float_ ());
+
+   return BotCommandResult::Handled;
 }
 
-// this function returns number of ebot's playing on the server
-int BotControl::GetBotsNum(void)
-{
-	int count = 0;
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		if (m_bots[i] != nullptr)
-			count++;
-	}
+int BotControl::cmdNodeSetFlags () {
+   enum args { graph_cmd = 1, cmd };
 
-	return count;
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
+
+   //show the flag menu
+   showMenu (Menu::NodeFlag);
+   return BotCommandResult::Handled;
 }
 
-// this function returns number of humans playing on the server
-int BotControl::GetHumansNum()
-{
-	int count = 0;
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		if ((g_clients[i].flags & CFLAG_USED) && m_bots[i] == nullptr)
-			count++;
-	}
+int BotControl::cmdNodeTeleport () {
+   enum args { graph_cmd = 1, cmd, teleport_index };
 
-	return count;
+   if (!hasArg (teleport_index)) {
+      return BotCommandResult::BadFormat;
+   }
+   int index = intValue (teleport_index);
+
+   // check for existence
+   if (graph.exists (index)) {
+      engfuncs.pfnSetOrigin (graph.getEditor (), graph[index].origin);
+
+      msg ("You have been teleported to node %d.", index);
+
+      // turn graph on
+      graph.setEditFlag (GraphEdit::On | GraphEdit::Noclip);
+   }
+   else {
+      msg ("Could not teleport to node %d.", index);
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function returns bot with highest frag
-Bot* BotControl::GetHighestSkillBot(int team)
-{
-	Bot* highFragBot = nullptr;
+int BotControl::cmdNodePathCreate () {
+   enum args { graph_cmd = 1, cmd };
 
-	int bestIndex = 0;
-	int bestSkill = -1;
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
 
-	// search bots in this team
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		highFragBot = g_botManager->GetBot(i);
-
-		if (highFragBot != nullptr && GetTeam(highFragBot->GetEntity()) == team)
-		{
-			if (highFragBot->m_skill > bestSkill)
-			{
-				bestIndex = i;
-				bestSkill = highFragBot->m_skill;
-			}
-		}
-	}
-
-	return GetBot(bestIndex);
+   // choose the direction for path creation
+   if (strValue (cmd).find ("_both", 0) != String::InvalidIndex) {
+      graph.pathCreate (PathConnection::Bidirectional);
+   }
+   else if (strValue (cmd).find ("_in", 0) != String::InvalidIndex) {
+      graph.pathCreate (PathConnection::Incoming);
+   }
+   else if (strValue (cmd).find ("_out", 0) != String::InvalidIndex) {
+      graph.pathCreate (PathConnection::Outgoing);
+   }
+   else {
+      showMenu (Menu::NodePath);
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function decides is players on specified team is able to buy primary weapons by calculating players
-// that have not enough money to buy primary (with economics), and if this result higher 80%, player is can't
-// buy primary weapons.
-void BotControl::CheckTeamEconomics(int team)
-{
-	if (GetGameMode() != MODE_BASE)
-	{
-		m_economicsGood[team] = true;
-		return;
-	}
+int BotControl::cmdNodePathDelete () {
+   enum args { graph_cmd = 1, cmd };
 
-	int numPoorPlayers = 0;
-	int numTeamPlayers = 0;
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
 
-	// start calculating
-	for (int i = 0; i < engine->GetMaxClients(); i++)
-	{
-		if (m_bots[i] != nullptr && GetTeam(m_bots[i]->GetEntity()) == team)
-		{
-			if (m_bots[i]->m_moneyAmount <= 1500)
-				numPoorPlayers++;
+   // delete the path
+   graph.erasePath ();
 
-			numTeamPlayers++; // update count of team
-		}
-	}
-
-	m_economicsGood[team] = true;
-
-	if (numTeamPlayers <= 1)
-		return;
-
-	// if 80 percent of team have no enough money to purchase primary weapon
-	if ((numTeamPlayers * 80) / 100 <= numPoorPlayers)
-		m_economicsGood[team] = false;
-
-	// winner must buy something!
-	if (m_lastWinner == team)
-		m_economicsGood[team] = true;
+   return BotCommandResult::Handled;
 }
 
-// this function free all bots slots (used on server shutdown)
-void BotControl::Free(void)
-{
-	for (int i = 0; i < 32; i++)
-	{
-		if (m_bots[i] != nullptr)
-		{
-			if (ebot_save_bot_names.GetBool())
-				m_savedBotNames.Push(STRING(m_bots[i]->GetEntity()->v.netname));
+int BotControl::cmdNodePathSetAutoDistance () {
+   enum args { graph_cmd = 1, cmd };
 
-			m_bots[i]->m_stayTime = 0.0f;
-			delete m_bots[i];
-			m_bots[i] = nullptr;
-		}
-	}
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
+   showMenu (Menu::NodeAutoPath);
+
+   return BotCommandResult::Handled;
 }
 
-// this function frees one bot selected by index (used on bot disconnect)
-void BotControl::Free(int index)
-{
-	if (ebot_save_bot_names.GetBool())
-		m_savedBotNames.Push(STRING(m_bots[index]->GetEntity()->v.netname));
+int BotControl::cmdNodeAcquireEditor () {
+   enum args { graph_cmd = 1 };
 
-	m_bots[index]->m_stayTime = 0.0f;
-	delete m_bots[index];
-	m_bots[index] = nullptr;
+   if (game.isNullEntity (m_ent)) {
+      msg ("This command should not be executed from HLDS console.");
+      return BotCommandResult::Handled;
+   }
+
+   if (graph.hasEditor ()) {
+      msg ("Sorry, players \"%s\" already acquired rights to edit graph on this server.", graph.getEditor ()->v.netname.chars ());
+      return BotCommandResult::Handled;
+   }
+   graph.setEditor (m_ent);
+   msg ("You're acquired rights to edit graph on this server. You're now able to use graph commands.");
+
+   return BotCommandResult::Handled;
 }
 
-// this function controls the bot entity
-Bot::Bot(edict_t* bot, int skill, int personality, int team, int member)
-{
-	char rejectReason[128];
-	int clientIndex = ENTINDEX(bot);
+int BotControl::cmdNodeReleaseEditor () {
+   enum args { graph_cmd = 1 };
 
-	memset(reinterpret_cast <void*> (this), 0, sizeof(*this));
+   if (!graph.hasEditor ()) {
+      msg ("No one is currently has rights to edit. Nothing to release.");
+      return BotCommandResult::Handled;
+   }
+   graph.setEditor (nullptr);
+   msg ("Graph editor rights freed. You're now not able to use graph commands.");
 
-	pev = &bot->v;
-
-	if (bot->pvPrivateData != nullptr)
-		FREE_PRIVATE(bot);
-
-	bot->pvPrivateData = nullptr;
-	bot->v.frags = 0;
-
-	// create the player entity by calling MOD's player function
-	BotControl::CallGameEntity(&bot->v);
-
-	// set all info buffer keys for this bot
-	char* buffer = GET_INFOKEYBUFFER(bot);
-	SET_CLIENT_KEYVALUE(clientIndex, buffer, "_vgui_menus", "0");
-
-	if (g_gameVersion != CSVER_VERYOLD && !ebot_ping.GetBool())
-		SET_CLIENT_KEYVALUE(clientIndex, buffer, "*bot", "1");
-
-	rejectReason[0] = 0; // reset the reject reason template string
-	MDLL_ClientConnect(bot, "E-BOT", FormatBuffer("%d.%d.%d.%d", engine->RandomInt(1, 255), engine->RandomInt(1, 255), engine->RandomInt(1, 255), engine->RandomInt(1, 255)), rejectReason);
-
-	// should be set after client connect
-	if (ebot_display_avatar.GetBool() && !g_botManager->m_avatars.IsEmpty())
-		SET_CLIENT_KEYVALUE(clientIndex, buffer, "*sid", g_botManager->m_avatars.GetRandomElement());
-
-	if (!IsNullString(rejectReason))
-	{
-		AddLogEntry(LOG_WARNING, "Server refused '%s' connection (%s)", GetEntityName(bot), rejectReason);
-		ServerCommand("kick \"%s\"", GetEntityName(bot)); // kick the bot player if the server refused it
-		bot->v.flags |= FL_KILLME;
-	}
-
-	MDLL_ClientPutInServer(bot);
-	bot->v.flags |= FL_FAKECLIENT; // set this player as fakeclient
-
-	// initialize all the variables for this bot...
-	m_notStarted = true;  // hasn't joined game yet
-	m_difficulty = ebot_difficulty.GetInt(); // set difficulty
-	m_basePingLevel = engine->RandomInt(11, 111);
-
-	m_startAction = CMENU_IDLE;
-	m_moneyAmount = 0;
-	m_logotypeIndex = engine->RandomInt(0, 5);
-
-	// initialize msec value
-	m_msecNum = m_msecDel = 0.0f;
-	m_msecInterval = engine->GetTime();
-	m_msecVal = static_cast <uint8_t> (g_pGlobals->frametime * 1000.0f);
-	m_msecBuiltin = engine->RandomInt(1, 4);
-
-	// assign how talkative this bot will be
-	m_sayTextBuffer.chatDelay = engine->RandomFloat(3.8f, 10.0f);
-	m_sayTextBuffer.chatProbability = engine->RandomInt(1, 100);
-
-	m_notKilled = false;
-	m_skill = skill;
-	m_weaponBurstMode = BURST_DISABLED;
-
-	m_lastThinkTime = engine->GetTime();
-	m_frameInterval = engine->GetTime();
-
-	switch (personality)
-	{
-	case 1:
-		m_personality = PERSONALITY_RUSHER;
-		m_baseAgressionLevel = engine->RandomFloat(0.8f, 1.2f);
-		m_baseFearLevel = engine->RandomFloat(0.0f, 0.5f);
-		break;
-
-	case 2:
-		m_personality = PERSONALITY_CAREFUL;
-		m_baseAgressionLevel = engine->RandomFloat(0.0f, 0.3f);
-		m_baseFearLevel = engine->RandomFloat(0.75f, 1.0f);
-		break;
-
-	default:
-		m_personality = PERSONALITY_NORMAL;
-		m_baseAgressionLevel = engine->RandomFloat(0.4f, 0.8f);
-		m_baseFearLevel = engine->RandomFloat(0.4f, 0.8f);
-		break;
-	}
-
-	memset(&m_ammoInClip, 0, sizeof(m_ammoInClip));
-	memset(&m_ammo, 0, sizeof(m_ammo));
-
-	m_currentWeapon = 0; // current weapon is not assigned at start
-	m_voicePitch = engine->RandomInt(80, 120); // assign voice pitch
-
-	m_agressionLevel = m_baseAgressionLevel;
-	m_fearLevel = m_baseFearLevel;
-	m_nextEmotionUpdate = engine->GetTime() + 0.5f;
-
-	// just to be sure
-	m_actMessageIndex = 0;
-	m_pushMessageIndex = 0;
-
-	// assign team and class
-	m_wantedTeam = team;
-	m_wantedClass = member;
-
-	NewRound();
+   return BotCommandResult::Handled;
 }
 
-Bot::~Bot(void)
-{
-	// SwitchChatterIcon (false); // crash on CTRL+C'ing win32 console hlds
-	DeleteSearchNodes();
-	ResetTasks();
+int BotControl::cmdNodeUpload () {
+   enum args { graph_cmd = 1, cmd };
 
-	char botName[64];
-	ITERATE_ARRAY(g_botNames, j)
-	{
-		sprintf(botName, "[E-BOT] %s", (char*)g_botNames[j].name);
+   // do not allow to upload bad graph
+   if (!graph.checkNodes (false)) {
+      msg ("Sorry, unable to upload graph file that contains errors. Please type \"wp check\" to verify graph consistency.");
+      return BotCommandResult::BadFormat;
+   }
 
-		if (strcmp(g_botNames[j].name, GetEntityName(GetEntity())) == 0 || strcmp(botName, GetEntityName(GetEntity())) == 0)
-		{
-			g_botNames[j].isUsed = false;
-			break;
-		}
-	}
+   msg ("\n");
+   msg ("WARNING!");
+   msg ("Graph uploaded to graph database in synchronous mode. That means if graph is big enough");
+   msg ("you may notice the game freezes a bit during upload and issue request creation. Please, be patient.");
+   msg ("\n");
+
+   // upload everytime in lowercase
+   String mapName = game.getMapName ();
+
+   // try to upload the file
+   if (http.uploadFile ("http://yapb.jeefo.net/upload", strings.format ("%sgraph/%s.graph", graph.getDataDirectory (false), mapName.lowercase ()))) {
+      msg ("Graph file was successfully validated and uploaded to the YaPB Graph DB (%s).", product.download);
+      msg ("It will be available for download for all YaPB users in a few minutes.");
+      msg ("\n");
+      msg ("Thank you.");
+      msg ("\n");
+   }
+   else {
+      String status;
+      auto code = http.getLastStatusCode ();
+
+      if (code == HttpClientResult::Forbidden) {
+         status = "AlreadyExists";
+      }
+      else if (code == HttpClientResult::NotFound) {
+         status = "AccessDenied";
+      }
+      else {
+         status.assignf ("%d", code);
+      }
+      msg ("Something went wrong with uploading. Come back later. (%s)", status);
+      msg ("\n");
+
+      if (code == HttpClientResult::Forbidden) {
+         msg ("You should create issue-request manually for this graph");
+         msg ("as it's already exists in database, can't overwrite. Sorry...");
+      }
+      else {
+         msg ("There is an internal error, or something is totally wrong with");
+         msg ("your files, and they are not passed sanity checks. Sorry...");
+      }
+      msg ("\n");
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function initializes a bot after creation & at the start of each round
-void Bot::NewRound(void)
-{
-	if (ebot_random_join_quit.GetBool() && m_stayTime > 0.0f && m_stayTime < engine->GetTime())
-		Kick();
+int BotControl::cmdNodeIterateCamp () {
+   enum args { graph_cmd = 1, cmd, option };
 
-	int i = 0;
+   // turn graph on
+   graph.setEditFlag (GraphEdit::On);
 
-	// delete all allocated path nodes
-	DeleteSearchNodes();
+   // get the option descriping operation
+   auto op = strValue (option);
 
-	m_itaimstart = engine->GetTime();
-	m_aimStopTime = engine->GetTime();
-	m_currentWaypointIndex = -1;
-	m_currentTravelFlags = 0;
-	m_desiredVelocity = nullvec;
-	m_prevGoalIndex = -1;
-	m_chosenGoalIndex = -1;
-	m_myMeshWaypoint = -1;
-	m_loosedBombWptIndex = -1;
+   if (op != "begin" && op != "end" && op != "next") {
+      return BotCommandResult::BadFormat;
+   }
 
-	m_duckDefuse = false;
-	m_duckDefuseCheckTime = 0.0f;
+   if ((op == "next" || op == "end") && m_campIterator.empty ()) {
+      msg ("Before calling for 'next' / 'end' camp point, you should hit 'begin'.");
+      return BotCommandResult::Handled;
+   }
+   else if (op == "begin" && !m_campIterator.empty ()) {
+      msg ("Before calling for 'begin' camp point, you should hit 'end'.");
+      return BotCommandResult::Handled;
+   }
 
-	m_prevWptIndex = -1;
+   if (op == "end") {
+      m_campIterator.clear ();
+   }
+   else if (op == "next") {
+      if (!m_campIterator.empty ()) {
+         Vector origin = graph[m_campIterator.first ()].origin;
 
-	m_navTimeset = engine->GetTime();
+         if (graph[m_campIterator.first ()].flags & NodeFlag::Crouch) {
+            origin.z += 23.0f;
+         }
+         engfuncs.pfnSetOrigin (m_ent, origin);
 
-	// clear all states & tasks
-	m_states = 0;
-	ResetTasks();
+         // go to next
+         m_campIterator.shift ();
 
-	m_isVIP = false;
-	m_isLeader = false;
-	m_hasProgressBar = false;
-	m_canChooseAimDirection = true;
-
-	m_timeTeamOrder = 0.0f;
-	m_askCheckTime = 0.0f;
-	m_minSpeed = 260.0f;
-	m_prevSpeed = 0.0f;
-	m_prevOrigin = Vector(9999.0, 9999.0, 9999.0f);
-	m_prevTime = engine->GetTime();
-	m_blindRecognizeTime = engine->GetTime();
-
-	m_viewDistance = 4096.0f;
-	m_maxViewDistance = 4096.0f;
-
-	m_pickupItem = nullptr;
-	m_itemIgnore = nullptr;
-	m_itemCheckTime = 0.0f;
-
-	m_breakableEntity = nullptr;
-	m_breakable = nullvec;
-	m_timeDoorOpen = 0.0f;
-
-	ResetCollideState();
-	ResetDoubleJumpState();
-
-	m_checkFallPoint[0] = nullvec;
-	m_checkFallPoint[1] = nullvec;
-	m_checkFall = false;
-
-	SetEnemy(nullptr);
-	SetLastEnemy(nullptr);
-	SetMoveTarget(nullptr);
-	m_trackingEdict = nullptr;
-	m_timeNextTracking = 0.0f;
-
-	m_buttonPushTime = 0.0f;
-	m_enemyUpdateTime = 0.0f;
-	m_seeEnemyTime = 0.0f;
-	m_oldCombatDesire = 0.0f;
-
-	m_backCheckEnemyTime = 0.0f;
-
-	m_avoidEntity = nullptr;
-	m_needAvoidEntity = 0;
-
-	m_lastDamageType = -1;
-	m_voteMap = 0;
-	m_doorOpenAttempt = 0;
-	m_aimFlags = 0;
-
-	m_position = nullvec;
-	m_campposition = nullvec;
-
-	m_idealReactionTime = g_skillTab[m_skill / 20].minSurpriseTime;
-	m_actualReactionTime = g_skillTab[m_skill / 20].minSurpriseTime;
-
-	m_targetEntity = nullptr;
-	m_followWaitTime = 0.0f;
-
-	for (i = 0; i < Const_MaxHostages; i++)
-		m_hostages[i] = nullptr;
-
-	m_isReloading = false;
-	m_reloadState = RSTATE_NONE;
-
-	m_reloadCheckTime = 0.0f;
-	m_shootTime = engine->GetTime();
-	m_playerTargetTime = engine->GetTime();
-	m_firePause = 0.0f;
-	m_timeLastFired = 0.0f;
-
-	m_grenadeCheckTime = 0.0f;
-	m_isUsingGrenade = false;
-
-	m_blindButton = 0;
-	m_blindTime = 0.0f;
-	m_jumpTime = 0.0f;
-	m_isStuck = false;
-	m_jumpFinished = false;
-
-	m_sayTextBuffer.timeNextChat = engine->GetTime();
-	m_sayTextBuffer.entityIndex = -1;
-	m_sayTextBuffer.sayText[0] = 0x0;
-
-	m_buyState = 0;
-
-	m_damageTime = 0.0f;
-	m_zhCampPointIndex = -1;
-	m_checkCampPointTime = 0.0f;
-
-	if (!m_notKilled) // if bot died, clear all weapon stuff and force buying again
-	{
-		memset(&m_ammoInClip, 0, sizeof(m_ammoInClip));
-		memset(&m_ammo, 0, sizeof(m_ammo));
-		m_currentWeapon = 0;
-	}
-
-	m_nextBuyTime = AddTime(engine->RandomFloat(0.6f, 1.2f));
-
-	m_buyPending = false;
-	m_inBombZone = false;
-
-	m_shieldCheckTime = 0.0f;
-	m_zoomCheckTime = 0.0f;
-	m_strafeSetTime = 0.0f;
-	m_combatStrafeDir = 0;
-	m_fightStyle = 0;
-	m_lastFightStyleCheck = 0.0f;
-
-	m_checkWeaponSwitch = true;
-	m_checkKnifeSwitch = true;
-	m_buyingFinished = false;
-
-	m_radioEntity = nullptr;
-	m_radioOrder = 0;
-	m_defendedBomb = false;
-
-	m_timeLogoSpray = AddTime(engine->RandomFloat(0.5f, 2.0f));
-	m_spawnTime = engine->GetTime();
-	m_lastChatTime = engine->GetTime();
-	pev->button = 0;
-
-	m_timeCamping = 0;
-	m_campDirection = 0;
-	m_nextCampDirTime = 0;
-	m_campButtons = 0;
-
-	m_soundUpdateTime = 0.0f;
-	m_heardSoundTime = engine->GetTime() - 8.0f;
-
-	// clear its message queue
-	for (i = 0; i < 32; i++)
-		m_messageQueue[i] = CMENU_IDLE;
-
-	m_actMessageIndex = 0;
-	m_pushMessageIndex = 0;
-
-	m_weaponClipAPI = 0;
-	m_weaponReloadAPI = false;
-	m_lookAtAPI = nullvec;
-	m_moveAIAPI = false;
-	m_enemyAPI = nullptr;
-	m_blockCheckEnemyTime = engine->GetTime();
-	m_knifeDistance1API = 0;
-	m_knifeDistance2API = 0;
-	m_gunMinDistanceAPI = 0;
-	m_gunMaxDistanceAPI = 0;
-	m_waypointGoalAPI = -1;
-	m_blockWeaponPickAPI = false;
-	
-	SetEntityWaypoint(GetEntity(), -2);
-
-	// and put buying into its message queue
-	PushMessageQueue(CMENU_BUY);
-	PushTask(TASK_NORMAL, TASKPRI_NORMAL, -1, 1.0f, true);
-
-	// hear range based on difficulty
-	m_maxhearrange = float(m_skill * engine->RandomFloat(7.0f, 15.0f));
-	m_moveSpeed = pev->maxspeed;
-
-	m_tempstrafeSpeed = engine->RandomInt(1, 2) == 1 ? pev->maxspeed : -pev->maxspeed;
+         if (m_campIterator.empty ()) {
+            msg ("Finished iterating camp spots.");
+         }
+      }
+   }
+   else if (op == "begin") {
+      for (int i = 0; i < graph.length (); ++i) {
+         if (graph[i].flags & NodeFlag::Camp) {
+            m_campIterator.push (i);
+         }
+      }
+      if (!m_campIterator.empty ()) {
+         msg ("Ready for iteration. Type 'next' to go to first camp node.");
+         return BotCommandResult::Handled;
+      }
+      msg ("Unable to begin iteration, camp points is not set.");
+   }
+   return BotCommandResult::Handled;
 }
 
-// this function kills a bot (not just using ClientKill, but like the CSBot does)
-// base code courtesy of Lazy (from bots-united forums!)
-void Bot::Kill(void)
-{
-	edict_t* hurtEntity = (*g_engfuncs.pfnCreateNamedEntity) (MAKE_STRING("trigger_hurt"));
+int BotControl::cmdNodeShowStats () {
+   graph.showStats ();
 
-	if (FNullEnt(hurtEntity))
-		return;
-
-	hurtEntity->v.classname = MAKE_STRING(g_weaponDefs[m_currentWeapon].className);
-	hurtEntity->v.dmg_inflictor = GetEntity();
-	hurtEntity->v.dmg = 9999.0f;
-	hurtEntity->v.dmg_take = 1.0f;
-	hurtEntity->v.dmgtime = 2.0f;
-	hurtEntity->v.effects |= EF_NODRAW;
-
-	(*g_engfuncs.pfnSetOrigin) (hurtEntity, Vector(-4000, -4000, -4000));
-
-	KeyValueData kv;
-	kv.szClassName = const_cast <char*> (g_weaponDefs[m_currentWeapon].className);
-	kv.szKeyName = "damagetype";
-	kv.szValue = FormatBuffer("%d", (1 << 4));
-	kv.fHandled = false;
-
-	MDLL_KeyValue(hurtEntity, &kv);
-
-	MDLL_Spawn(hurtEntity);
-	MDLL_Touch(hurtEntity, GetEntity());
-
-	(*g_engfuncs.pfnRemoveEntity) (hurtEntity);
+   return BotCommandResult::Handled;
 }
 
-void Bot::Kick(void)
-{
-	auto myName = GetEntityName(GetEntity());
-	if (IsNullString(myName))
-		return;
+int BotControl::cmdNodeFileInfo () {
+   graph.showFileInfo ();
 
-	ServerCommand("kick \"%s\"", GetEntityName(GetEntity()));
-	CenterPrint("E-Bot '%s' kicked from the server", GetEntityName(GetEntity()));
-
-	if (g_botManager->GetBotsNum() - 1 < ebot_quota.GetInt())
-		ebot_quota.SetInt(g_botManager->GetBotsNum() - 1);
-
-	// crash...
-	/*if (!g_botManager->m_savedBotNames.IsEmpty())
-		g_botManager->m_savedBotNames.PopNoReturn();*/
+   return BotCommandResult::Handled;
 }
 
-// this function handles the selection of teams & class
-void Bot::StartGame(void)
-{
-	// handle counter-strike stuff here...
-	if (m_startAction == CMENU_TEAM)
-	{
-		m_startAction = CMENU_IDLE;  // switch back to idle
+int BotControl::cmdAdjustHeight() {
+   enum args { graph_cmd = 1, cmd, offset };
 
-		if (ebot_forceteam.GetString()[0] == 'C' || ebot_forceteam.GetString()[0] == 'c' ||
-			ebot_forceteam.GetString()[0] == '2')
-			m_wantedTeam = 2;
-		else if (ebot_forceteam.GetString()[0] == 'T' || ebot_forceteam.GetString()[0] == 't' ||
-			ebot_forceteam.GetString()[0] == '1') // 1 = T, 2 = CT
-			m_wantedTeam = 1;
+   if (!hasArg (offset)) {
+      return BotCommandResult::BadFormat;
+   }
+   auto heightOffset = floatValue (offset);
 
-		if (m_wantedTeam != 1 && m_wantedTeam != 2)
-			m_wantedTeam = 5;
+   // adjust the height for all the nodes (negative values possible)
+   for (int i = 0; i < graph.length (); ++i) {
+      graph[i].origin.z += heightOffset;
+   }
+   return BotCommandResult::Handled;
+}
 
-		// select the team the bot wishes to join...
-		FakeClientCommand(GetEntity(), "menuselect %d", m_wantedTeam);
-	}
-	else if (m_startAction == CMENU_CLASS)
-	{
-		m_startAction = CMENU_IDLE;  // switch back to idle
+int BotControl::menuMain (int item) {
+   closeMenu (); // reset menu display
 
-		int maxChoice = (g_gameVersion == CSVER_CZERO) ? 5 : 4;
-		m_wantedClass = engine->RandomInt(1, maxChoice);
+   switch (item) {
+   case 1:
+      m_isMenuFillCommand = false;
+      showMenu (Menu::Control);
+      break;
 
-		// select the class the bot wishes to use...
-		FakeClientCommand(GetEntity(), "menuselect %d", m_wantedClass);
+   case 2:
+      showMenu (Menu::Features);
+      break;
 
-		// bot has now joined the game (doesn't need to be started)
-		m_notStarted = false;
+   case 3:
+      m_isMenuFillCommand = true;
+      showMenu (Menu::TeamSelect);
+      break;
 
-		// check for greeting other players, since we connected
-		if (engine->RandomInt(1, 3) == 1)
-			ChatMessage(CHAT_HELLO);
-	}
+   case 4:
+      bots.killAllBots ();
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+
+   default:
+      showMenu (Menu::Main);
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuFeatures (int item) {
+   closeMenu (); // reset menu display
+
+   auto autoAcquireEditorRights = [&] () {
+      if (!graph.hasEditor ()) {
+         graph.setEditor (m_ent);
+      }
+      return graph.hasEditor () && graph.getEditor () == m_ent ? Menu::NodeMainPage1 : Menu::Features;
+   };
+
+   switch (item) {
+   case 1:
+      showMenu (Menu::WeaponMode);
+      break;
+
+   case 2:
+      showMenu (autoAcquireEditorRights ());
+      break;
+
+   case 3:
+      showMenu (Menu::Personality);
+      break;
+
+   case 4:
+      cv_debug.set (cv_debug.int_ () ^ 1);
+
+      showMenu (Menu::Features);
+      break;
+
+   case 5:
+      if (util.isAlive (m_ent)) {
+         showMenu (Menu::Commands);
+      }
+      else {
+         closeMenu (); // reset menu display
+         msg ("You're dead, and have no access to this menu");
+      }
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuControl (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+      bots.createRandom (true);
+      showMenu (Menu::Control);
+      break;
+
+   case 2:
+      showMenu (Menu::Difficulty);
+      break;
+
+   case 3:
+      bots.kickRandom ();
+      showMenu (Menu::Control);
+      break;
+
+   case 4:
+      bots.kickEveryone ();
+      break;
+
+   case 5:
+      kickBotByMenu (1);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuWeaponMode (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+   case 5:
+   case 6:
+   case 7:
+      bots.setWeaponMode (item);
+      showMenu (Menu::WeaponMode);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuPersonality (int item) {
+   if (m_isMenuFillCommand) {
+      closeMenu (); // reset menu display
+
+      switch (item) {
+      case 1:
+      case 2:
+      case 3:
+      case 4:
+         bots.serverFill (m_menuServerFillTeam, item - 2, m_interMenuData[0]);
+         closeMenu ();
+         break;
+
+      case 10:
+         closeMenu ();
+         break;
+      }
+      return BotCommandResult::Handled;
+   }
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+      m_interMenuData[3] = item - 2;
+      showMenu (Menu::TeamSelect);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuDifficulty (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+      m_interMenuData[0] = 0;
+      break;
+
+   case 2:
+      m_interMenuData[0] = 1;
+      break;
+
+   case 3:
+      m_interMenuData[0] = 2;
+      break;
+
+   case 4:
+      m_interMenuData[0] = 3;
+      break;
+
+   case 5:
+      m_interMenuData[0] = 4;
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   showMenu (Menu::Personality);
+
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuTeamSelect (int item) {
+   if (m_isMenuFillCommand) {
+      closeMenu (); // reset menu display
+
+      if (item < 3) {
+         // turn off cvars if specified team
+         mp_limitteams.set (0);
+         mp_autoteambalance.set (0);
+      }
+
+      switch (item) {
+      case 1:
+      case 2:
+      case 5:
+         m_menuServerFillTeam = item;
+         showMenu (Menu::Difficulty);
+         break;
+
+      case 10:
+         closeMenu ();
+         break;
+      }
+      return BotCommandResult::Handled;
+   }
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 5:
+      m_interMenuData[1] = item;
+
+      if (item == 5) {
+         m_interMenuData[2] = item;
+         bots.addbot ("", m_interMenuData[0], m_interMenuData[3], m_interMenuData[1], m_interMenuData[2], true);
+      }
+      else {
+         showMenu (item == 1 ? Menu::TerroristSelect : Menu::CTSelect);
+      }
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuClassSelect (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+   case 5:
+      m_interMenuData[2] = item;
+      bots.addbot ("", m_interMenuData[0], m_interMenuData[3], m_interMenuData[1], m_interMenuData[2], true);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuCommands (int item) {
+   closeMenu (); // reset menu display
+   Bot *nearest = nullptr;
+
+   switch (item) {
+   case 1:
+   case 2:
+      if (util.findNearestPlayer (reinterpret_cast <void **> (&m_djump), m_ent, 600.0f, true, true, true, true, false) && !m_djump->m_hasC4 && !m_djump->hasHostage ()) {
+         if (item == 1) {
+            m_djump->startDoubleJump (m_ent);
+         }
+         else {
+            if (m_djump) {
+               m_djump->resetDoubleJump ();
+               m_djump = nullptr;
+            }
+         }
+      }
+      showMenu (Menu::Commands);
+      break;
+
+   case 3:
+   case 4:
+      if (util.findNearestPlayer (reinterpret_cast <void **> (&nearest), m_ent, 600.0f, true, true, true, true, item == 4 ? false : true)) {
+         nearest->dropWeaponForUser (m_ent, item == 4 ? false : true);
+      }
+      showMenu (Menu::Commands);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuGraphPage1 (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+      if (graph.hasEditFlag (GraphEdit::On)) {
+         graph.clearEditFlag (GraphEdit::On);
+         enableDrawModels (false);
+
+         msg ("Graph editor has been disabled.");
+      }
+      else {
+         graph.setEditFlag (GraphEdit::On);
+         enableDrawModels (true);
+
+         msg ("Graph editor has been enabled.");
+      }
+      showMenu (Menu::NodeMainPage1);
+      break;
+
+   case 2:
+      graph.setEditFlag (GraphEdit::On);
+      graph.cachePoint (kInvalidNodeIndex);
+
+      showMenu (Menu::NodeMainPage1);
+      break;
+
+   case 3:
+      graph.setEditFlag (GraphEdit::On);
+      showMenu (Menu::NodePath);
+      break;
+
+   case 4:
+      graph.setEditFlag (GraphEdit::On);
+      graph.erasePath ();
+
+      showMenu (Menu::NodeMainPage1);
+      break;
+
+   case 5:
+      graph.setEditFlag (GraphEdit::On);
+      showMenu (Menu::NodeType);
+      break;
+
+   case 6:
+      graph.setEditFlag (GraphEdit::On);
+      graph.erase (kInvalidNodeIndex);
+
+      showMenu (Menu::NodeMainPage1);
+      break;
+
+   case 7:
+      graph.setEditFlag (GraphEdit::On);
+      showMenu (Menu::NodeAutoPath);
+      break;
+
+   case 8:
+      graph.setEditFlag (GraphEdit::On);
+      showMenu (Menu::NodeRadius);
+      break;
+
+   case 9:
+      showMenu (Menu::NodeMainPage2);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuGraphPage2 (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+      showMenu (Menu::NodeDebug);
+      break;
+
+   case 2:
+      graph.setEditFlag (GraphEdit::On);
+
+      if (graph.hasEditFlag (GraphEdit::Auto)) {
+         graph.clearEditFlag (GraphEdit::Auto);
+      }
+      else {
+         graph.setEditFlag (GraphEdit::Auto);
+      }
+
+      if (graph.hasEditFlag (GraphEdit::Auto)) {
+         msg ("Enabled auto nodes placement.");
+      }
+      else {
+         msg ("Disabled auto nodes placement.");
+      }
+      showMenu (Menu::NodeMainPage2);
+      break;
+
+   case 3:
+      graph.setEditFlag (GraphEdit::On);
+      showMenu (Menu::NodeFlag);
+      break;
+
+   case 4:
+      if (graph.checkNodes (true)) {
+         graph.saveGraphData ();
+      }
+      else {
+         msg ("Graph not saved\nThere are errors. See console...");
+      }
+      showMenu (Menu::NodeMainPage2);
+      break;
+
+   case 5:
+      graph.saveGraphData ();
+      showMenu (Menu::NodeMainPage2);
+      break;
+
+   case 6:
+      graph.loadGraphData ();
+      showMenu (Menu::NodeMainPage2);
+      break;
+
+   case 7:
+      if (graph.checkNodes (true)) {
+         msg ("Nodes works fine");
+      }
+      else {
+         msg ("There are errors, see console");
+      }
+      showMenu (Menu::NodeMainPage2);
+      break;
+
+   case 8:
+      graph.setEditFlag (GraphEdit::On);
+
+      if (graph.hasEditFlag (GraphEdit::Noclip)) {
+         graph.clearEditFlag (GraphEdit::Noclip);
+      }
+      else {
+         graph.setEditFlag (GraphEdit::Noclip);
+      }
+      showMenu (Menu::NodeMainPage2);
+
+      // update editor movetype based on flag
+      m_ent->v.movetype = graph.hasEditFlag (GraphEdit::Noclip) ? MOVETYPE_NOCLIP : MOVETYPE_WALK;
+
+      break;
+
+   case 9:
+      showMenu (Menu::NodeMainPage1);
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuGraphRadius (int item) {
+   closeMenu (); // reset menu display
+   graph.setEditFlag (GraphEdit::On); // turn graph on in case
+
+   constexpr float radius[] = { 0.0f, 8.0f, 16.0f, 32.0f, 48.0f, 64.0f, 80.0f, 96.0f, 128.0f };
+
+   if (item >= 1 && item <= 9) {
+      graph.setRadius (kInvalidNodeIndex, radius[item - 1]);
+      showMenu (Menu::NodeRadius);
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuGraphType (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+   case 5:
+   case 6:
+   case 7:
+      graph.add (item - 1);
+      showMenu (Menu::NodeType);
+      break;
+
+   case 8:
+      graph.add (NodeAddFlag::Goal);
+      showMenu (Menu::NodeType);
+      break;
+
+   case 9:
+      graph.startLearnJump ();
+      showMenu (Menu::NodeType);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuGraphDebug (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+      graph.setEditFlag (GraphEdit::On);
+
+      cv_debug_goal.set (graph.getEditorNearest ());
+      if (cv_debug_goal.int_ () != kInvalidNodeIndex) {
+         msg ("Debug goal is set to node %d.", cv_debug_goal.int_ ());
+      }
+      else {
+         msg ("Cannot find the node. Debug goal is disabled.");
+      }
+      showMenu (Menu::NodeDebug);
+      break;
+
+   case 2:
+      graph.setEditFlag (GraphEdit::On);
+
+      cv_debug_goal.set (graph.getFacingIndex ());
+      if (cv_debug_goal.int_ () != kInvalidNodeIndex) {
+         msg ("Debug goal is set to node %d.", cv_debug_goal.int_ ());
+      }
+      else {
+         msg ("Cannot find the node. Debug goal is disabled.");
+      }
+      showMenu (Menu::NodeDebug);
+      break;
+
+   case 3:
+      cv_debug_goal.set (kInvalidNodeIndex);
+      msg ("Debug goal is disabled.");
+      showMenu (Menu::NodeDebug);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuGraphFlag (int item) {
+   closeMenu (); // reset menu display
+   int nearest = graph.getEditorNearest ();
+
+   switch (item) {
+   case 1:
+      graph.toggleFlags (NodeFlag::NoHostage);
+      showMenu (Menu::NodeFlag);
+      break;
+
+   case 2:
+      if (graph[nearest].flags == NodeFlag::CTOnly) {
+         graph.toggleFlags (NodeFlag::CTOnly);
+         graph.toggleFlags (NodeFlag::TerroristOnly);
+      }
+      else {
+         graph.toggleFlags (NodeFlag::TerroristOnly);
+      }
+      showMenu (Menu::NodeFlag);
+      break;
+
+   case 3:
+      if (graph[nearest].flags == NodeFlag::TerroristOnly) {
+         graph.toggleFlags (NodeFlag::TerroristOnly);
+         graph.toggleFlags (NodeFlag::CTOnly);
+      }
+      else {
+         graph.toggleFlags (NodeFlag::CTOnly);
+      }
+      showMenu (Menu::NodeFlag);
+      break;
+
+   case 4:
+      graph.toggleFlags (NodeFlag::Lift);
+      showMenu (Menu::NodeFlag);
+      break;
+
+   case 5:
+      graph.toggleFlags (NodeFlag::Sniper);
+      showMenu (Menu::NodeFlag);
+      break;
+   
+   case 6:
+      graph.toggleFlags (NodeFlag::Goal);
+      showMenu (Menu::NodeFlag);
+      break;
+   
+   case 7:
+      graph.toggleFlags (NodeFlag::Rescue);
+      showMenu (Menu::NodeFlag);
+      break;
+
+   case 8:
+      if (graph[nearest].flags != NodeFlag::Crouch) {
+         graph.toggleFlags (NodeFlag::Crouch);
+         graph[nearest].origin.z += -18.0f;
+      }
+      else {
+         graph.toggleFlags (NodeFlag::Crouch);
+         graph[nearest].origin.z += 18.0f;
+      }
+      
+      showMenu (Menu::NodeFlag);
+      break;
+   
+   case 9:
+      // if the node doesn't have a camp flag, set it and open the camp directions selection menu
+      if (graph[nearest].flags != NodeFlag::Camp) {
+         graph.toggleFlags (NodeFlag::Camp);
+         showMenu (Menu::CampDirections);
+         break;
+      }
+      // otherwise remove the flag, and don't show the camp directions selection menu
+      else {
+         graph.toggleFlags (NodeFlag::Camp);
+         showMenu (Menu::NodeFlag);
+         break;
+      }
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuCampDirections (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+      graph.add (NodeAddFlag::Camp);
+      showMenu (Menu::CampDirections);
+      break;
+
+   case 2:
+      graph.add (NodeAddFlag::CampEnd);
+      showMenu (Menu::CampDirections);
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuAutoPathDistance (int item) {
+   closeMenu (); // reset menu display
+
+   constexpr float distances[] = { 0.0f, 100.0f, 130.0f, 160.0f, 190.0f, 220.0f, 250.0f };
+
+   if (item >= 1 && item <= 7) {
+      graph.setAutoPathDistance (distances[item - 1]);
+   }
+
+   switch (item) {
+   default:
+      showMenu (Menu::NodeAutoPath);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuKickPage1 (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+   case 5:
+   case 6:
+   case 7:
+   case 8:
+      bots.kickBot (item - 1);
+      kickBotByMenu (1);
+      break;
+
+   case 9:
+      kickBotByMenu (2);
+      break;
+
+   case 10:
+      showMenu (Menu::Control);
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuKickPage2 (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+   case 5:
+   case 6:
+   case 7:
+   case 8:
+      bots.kickBot (item + 8 - 1);
+      kickBotByMenu (2);
+      break;
+
+   case 9:
+      kickBotByMenu (3);
+      break;
+
+   case 10:
+      kickBotByMenu (1);
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuKickPage3 (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+   case 5:
+   case 6:
+   case 7:
+   case 8:
+      bots.kickBot (item + 16 - 1);
+      kickBotByMenu (3);
+      break;
+
+   case 9:
+      kickBotByMenu (4);
+      break;
+
+   case 10:
+      kickBotByMenu (2);
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuKickPage4 (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+   case 2:
+   case 3:
+   case 4:
+   case 5:
+   case 6:
+   case 7:
+   case 8:
+      bots.kickBot (item + 24 - 1);
+      kickBotByMenu (4);
+      break;
+
+   case 10:
+      kickBotByMenu (3);
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+int BotControl::menuGraphPath (int item) {
+   closeMenu (); // reset menu display
+
+   switch (item) {
+   case 1:
+      graph.pathCreate (PathConnection::Outgoing);
+      showMenu (Menu::NodePath);
+      break;
+
+   case 2:
+      graph.pathCreate (PathConnection::Incoming);
+      showMenu (Menu::NodePath);
+      break;
+
+   case 3:
+      graph.pathCreate (PathConnection::Bidirectional);
+      showMenu (Menu::NodePath);
+      break;
+
+   case 10:
+      closeMenu ();
+      break;
+   }
+   return BotCommandResult::Handled;
+}
+
+bool BotControl::executeCommands () {
+   if (m_args.empty ()) {
+      return false;
+   }
+   const auto &prefix = m_args[0];
+
+   // no handling if not for us
+   if (prefix != product.cmdPri && prefix != product.cmdSec) {
+      return false;
+   }
+   auto &client = util.getClient (game.indexOfPlayer (m_ent));
+
+   // do not allow to execute stuff for non admins
+   if (m_ent != game.getLocalEntity () && !(client.flags & ClientFlags::Admin)) {
+      msg ("Access to %s commands is restricted.", product.name);
+
+      // reset issuer, but returns "true" to suppress "unknown command" message
+      setIssuer (nullptr);
+
+      return true;
+   }
+
+   auto aliasMatch = [] (String &test, const String &cmd, String &aliasName) -> bool {
+      for (auto &alias : test.split ("/")) {
+         if (alias == cmd) {
+            aliasName = alias;
+            return true;
+         }
+      }
+      return false;
+   };
+   String cmd;
+
+   // give some help
+   if (hasArg (1) && strValue (1) == "help") {
+      const auto hasSecondArg = hasArg (2);
+
+      for (auto &item : m_cmds) {
+         if (!hasSecondArg) {
+            cmd = item.name.split ("/")[0];
+         }
+
+         if (!hasSecondArg || aliasMatch (item.name, strValue (2), cmd)) {
+            msg ("Command: \"%s %s\"", prefix, cmd);
+            msg ("Format: %s", item.format);
+            msg ("Help: %s", conf.translate (item.help));
+
+            auto aliases = item.name.split ("/");
+
+            if (aliases.length () > 1) {
+               msg ("Aliases: %s", String::join (aliases, ", "));
+            }
+
+            if (hasSecondArg) {
+               return true;
+            }
+            else {
+               msg ("\n");
+            }
+         }
+      }
+
+      if (!hasSecondArg) {
+         return true;
+      }
+      else {
+         msg ("No help found for \"%s\"", strValue (2));
+      }
+      return true;
+   }
+   cmd.clear ();
+
+   // if no args passed just print all the commands
+   if (m_args.length () == 1) {
+      msg ("usage %s <command> [arguments]", prefix);
+      msg ("valid commands are: ");
+
+      for (auto &item : m_cmds) {
+         msg ("   %s - %s", item.name.split ("/")[0], conf.translate (item.help));
+      }
+      return true;
+   }
+
+   // first search for a actual cmd
+   for (auto &item : m_cmds) {
+      if (aliasMatch (item.name, m_args[1], cmd)) {
+         switch ((this->*item.handler) ()) {
+         case BotCommandResult::Handled:
+         default:
+            break;
+
+         case BotCommandResult::ListenServer:
+            msg ("Command \"%s %s\" is only available from the listenserver console.", prefix, cmd);
+            break;
+
+         case BotCommandResult::BadFormat:
+            msg ("Incorrect usage of \"%s %s\" command. Correct usage is:", prefix, cmd);
+            msg ("\n\t%s\n", item.format);
+            msg ("Please type \"%s help %s\" to get more information.", prefix, cmd);
+            break;
+         }
+
+         m_isFromConsole = false;
+         return true;
+      }
+   }
+   msg ("Unknown command: %s", m_args[1]);
+
+   // clear all the arguments upon finish
+   m_args.clear ();
+
+   return true;
+}
+
+bool BotControl::executeMenus () {
+   if (!util.isPlayer (m_ent) || game.isBotCmd ()) {
+      return false;
+   }
+   auto &issuer = util.getClient (game.indexOfPlayer (m_ent));
+
+   // check if it's menu select, and some key pressed
+   if (strValue (0) != "menuselect" || strValue (1).empty () || issuer.menu == Menu::None) {
+      return false;
+   }
+
+   // let's get handle
+   for (auto &menu : m_menus) {
+      if (menu.ident == issuer.menu) {
+         return (this->*menu.handler) (strValue (1).int_ ()) == BotCommandResult::Handled;
+      }
+   }
+   return false;
+}
+
+void BotControl::showMenu (int id) {
+   static bool menusParsed = false;
+
+   // make menus looks like we need only once
+   if (!menusParsed) {
+      m_ignoreTranslate = false; // always translate menus
+
+      for (auto &parsed : m_menus) {
+         StringRef translated = conf.translate (parsed.text);
+
+         // translate all the things
+         parsed.text = translated;
+
+         // make menu looks best
+         if (!(game.is (GameFlags::Legacy))) {
+            for (int j = 0; j < 10; ++j) {
+               parsed.text.replace (strings.format ("%d.", j), strings.format ("\\r%d.\\w", j));
+            }
+         }
+      }
+      menusParsed = true;
+   }
+
+   if (!util.isPlayer (m_ent)) {
+      return;
+   }
+   auto &client = util.getClient (game.indexOfPlayer (m_ent));
+
+   auto sendMenu = [&](int32 slots, bool last, StringRef text) {
+      MessageWriter (MSG_ONE, msgs.id (NetMsg::ShowMenu), nullptr, m_ent)
+         .writeShort (slots)
+         .writeChar (-1)
+         .writeByte (last ? HLFalse : HLTrue)
+         .writeString (text.chars ());
+   };
+   constexpr size_t maxMenuSentLength = 140;
+
+   for (const auto &display : m_menus) {
+      if (display.ident == id) {
+         String text = (game.is (GameFlags::Xash3D | GameFlags::Mobility) && !cv_display_menu_text.bool_ ()) ? " " : display.text.chars ();
+
+         // split if needed
+         if (text.length () > maxMenuSentLength) {
+            auto chunks = text.split (maxMenuSentLength);
+
+            // send in chunks
+            for (size_t i = 0; i < chunks.length (); ++i) {
+               sendMenu (display.slots, i == chunks.length () - 1, chunks[i]);
+            }
+         }
+         else {
+            sendMenu (display.slots, true, text);
+         }
+
+         client.menu = id;
+         engfuncs.pfnClientCommand (m_ent, "speak \"player/geiger1\"\n"); // stops others from hearing menu sounds..
+
+         break;
+      }
+   }
+}
+
+void BotControl::closeMenu () {
+   if (!util.isPlayer (m_ent)) {
+      return;
+   }
+   auto &client = util.getClient (game.indexOfPlayer (m_ent));
+
+   // do not reset menu if already none
+   if (client.menu == Menu::None) {
+      return;
+   }
+
+   MessageWriter (MSG_ONE, msgs.id (NetMsg::ShowMenu), nullptr, m_ent)
+      .writeShort (0)
+      .writeChar (0)
+      .writeByte (0)
+      .writeString ("");
+
+   client.menu = Menu::None;
+}
+
+void BotControl::kickBotByMenu (int page) {
+   if (page > 4 || page < 1) {
+      return;
+   }
+
+   static StringRef headerTitle = conf.translate ("Bots Remove Menu");
+   static StringRef notABot = conf.translate ("Not a Bot");
+   static StringRef backKey = conf.translate ("Back");
+   static StringRef moreKey = conf.translate ("More");
+
+   String menus;
+   menus.assignf ("\\y%s (%d/4):\\w\n\n", headerTitle, page);
+
+   int menuKeys = (page == 4) ? cr::bit (9) : (cr::bit (8) | cr::bit (9));
+   int menuKey = (page - 1) * 8;
+
+   for (int i = menuKey; i < page * 8; ++i) {
+      auto bot = bots[i];
+
+      // check for fakeclient bit, since we're clear it upon kick, but actual bot struct destroyed after client disconnected
+      if (bot != nullptr && (bot->pev->flags & FL_FAKECLIENT)) {
+         menuKeys |= cr::bit (cr::abs (i - menuKey));
+         menus.appendf ("%1.1d. %s%s\n", i - menuKey + 1, bot->pev->netname.chars (), bot->m_team == Team::CT ? " \\y(CT)\\w" : " \\r(T)\\w");
+      }
+      else {
+         menus.appendf ("\\d %1.1d. %s\\w\n", i - menuKey + 1, notABot);
+      }
+   }
+   menus.appendf ("\n%s 0. %s", (page == 4) ? "" : strings.format (" 9. %s...\n", moreKey), backKey);
+
+   // force to clear current menu
+   closeMenu ();
+
+   auto id = Menu::KickPage1 - 1 + page;
+
+   for (auto &menu : m_menus) {
+      if (menu.ident == id) {
+         menu.slots = menuKeys & static_cast <uint32> (-1);
+         menu.text = menus;
+
+         break;
+      }
+   }
+   showMenu (id);
+}
+
+void BotControl::assignAdminRights (edict_t *ent, char *infobuffer) {
+   if (!game.isDedicated () || util.isFakeClient (ent)) {
+      return;
+   }
+   StringRef key = cv_password_key.str ();
+   StringRef password = cv_password.str ();
+
+   if (!key.empty () && !password.empty ()) {
+      auto &client = util.getClient (game.indexOfPlayer (ent));
+
+      if (password == engfuncs.pfnInfoKeyValue (infobuffer, key.chars ())) {
+         client.flags |= ClientFlags::Admin;
+      }
+      else {
+         client.flags &= ~ClientFlags::Admin;
+      }
+   }
+}
+
+void BotControl::maintainAdminRights () {
+   if (!game.isDedicated ()) {
+      return;
+   }
+
+   StringRef key = cv_password_key.str ();
+   StringRef password = cv_password.str ();
+
+   for (auto &client : util.getClients ()) {
+      if (!(client.flags & ClientFlags::Used) || util.isFakeClient (client.ent)) {
+         continue;
+      }
+      auto ent = client.ent;
+
+      if (client.flags & ClientFlags::Admin) {
+         if (key.empty () || password.empty ()) {
+            client.flags &= ~ClientFlags::Admin;
+         }
+         else if (password != engfuncs.pfnInfoKeyValue (engfuncs.pfnGetInfoKeyBuffer (ent), key.chars ())) {
+            client.flags &= ~ClientFlags::Admin;
+            ctrl.msg ("Player %s had lost remote access to %s.", ent->v.netname.chars (), product.name);
+         }
+      }
+      else if (!(client.flags & ClientFlags::Admin) && !key.empty () && !password.empty ()) {
+         if (password == engfuncs.pfnInfoKeyValue (engfuncs.pfnGetInfoKeyBuffer (ent), key.chars ())) {
+            client.flags |= ClientFlags::Admin;
+            ctrl.msg ("Player %s had gained full remote access to %s.", ent->v.netname.chars (), product.name);
+         }
+      }
+   }
+}
+
+void BotControl::flushPrintQueue () {
+   if (m_printQueueFlushTimestamp > game.time () || m_printQueue.empty ()) {
+      return;
+   }
+   auto printable = m_printQueue.popFront ();
+
+   // send to needed destination
+   if (printable.destination == PrintQueueDestination::ServerConsole) {
+      game.print (printable.text.chars ());
+   }
+   else if (!game.isNullEntity (m_ent)) {
+      game.clientPrint (m_ent, printable.text.chars ());
+   }
+   m_printQueueFlushTimestamp = game.time () + 0.05f;
+}
+
+BotControl::BotControl () {
+   m_ent = nullptr;
+   m_djump = nullptr;
+
+   m_ignoreTranslate = false;
+   m_isFromConsole = false;
+   m_isMenuFillCommand = false;
+   m_rapidOutput = false;
+   m_menuServerFillTeam = 5;
+   m_printQueueFlushTimestamp = 0.0f;
+
+   m_cmds.emplace ("add/addbot/add_ct/addbot_ct/add_t/addbot_t/addhs/addhs_t/addhs_ct", "add [difficulty] [personality] [team] [model] [name]", "Adding specific bot into the game.", &BotControl::cmdAddBot);
+   m_cmds.emplace ("kick/kickone/kick_ct/kick_t/kickbot_ct/kickbot_t", "kick [team]", "Kicks off the random bot from the game.", &BotControl::cmdKickBot);
+   m_cmds.emplace ("removebots/kickbots/kickall", "removebots [instant]", "Kicks all the bots from the game.", &BotControl::cmdKickBots);
+   m_cmds.emplace ("kill/killbots/killall/kill_ct/kill_t", "kill [team]", "Kills the specified team / all the bots.", &BotControl::cmdKillBots);
+   m_cmds.emplace ("fill/fillserver", "fill [team] [count] [difficulty] [personality]", "Fill the server (add bots) with specified parameters.", &BotControl::cmdFill);
+   m_cmds.emplace ("vote/votemap", "vote [map_id]", "Forces all the bot to vote to specified map.", &BotControl::cmdVote);
+   m_cmds.emplace ("weapons/weaponmode", "weapons [knife|pistol|shotgun|smg|rifle|sniper|standard]", "Sets the bots weapon mode to use", &BotControl::cmdWeaponMode);
+   m_cmds.emplace ("menu/botmenu", "menu [cmd]", "Opens the main bot menu, or command menu if specified.", &BotControl::cmdMenu);
+   m_cmds.emplace ("version/ver/about", "version [no arguments]", "Displays version information about bot build.", &BotControl::cmdVersion);
+   m_cmds.emplace ("graphmenu/wpmenu/wptmenu", "graphmenu [noarguments]", "Opens and displays bots graph editor.", &BotControl::cmdNodeMenu);
+   m_cmds.emplace ("list/listbots", "list [noarguments]", "Lists the bots currently playing on server.", &BotControl::cmdList);
+   m_cmds.emplace ("graph/g/wp/wpt/waypoint", "graph [help]", "Handles graph operations.", &BotControl::cmdNode);
+   m_cmds.emplace ("cvars", "cvars [save|cvar]", "Display all the cvars with their descriptions.", &BotControl::cmdCvars);
+   m_cmds.emplace ("show_custom", "show_custom [noarguments]", "Shows the current values from custom.cfg.", &BotControl::cmdShowCustom);
+
+   // declare the menus
+   createMenus ();
+}
+
+void BotControl::handleEngineCommands () {
+   collectArgs ();
+   setIssuer (game.getLocalEntity ());
+
+   setFromConsole (true);
+   executeCommands ();
+}
+
+bool BotControl::handleClientSideCommandsWrapper (edict_t *ent, bool isMenus) {
+   collectArgs ();
+   setIssuer (ent);
+
+   setFromConsole (!isMenus);
+   auto result = isMenus ? executeMenus () : executeCommands ();
+
+   if (!result) {
+      setIssuer (nullptr);
+   }
+   return result;
+}
+
+bool BotControl::handleClientCommands (edict_t *ent) {
+   return handleClientSideCommandsWrapper (ent, false);
+}
+
+bool BotControl::handleMenuCommands (edict_t *ent) {
+   return handleClientSideCommandsWrapper (ent, true);
+}
+
+void BotControl::enableDrawModels (bool enable) {
+   StringArray entities;
+
+   entities.push ("info_player_start");
+   entities.push ("info_player_deathmatch");
+   entities.push ("info_vip_start");
+
+   if (enable) {
+      game.setPlayerStartDrawModels ();
+   }
+
+   for (auto &entity : entities) {
+      game.searchEntities ("classname", entity, [&enable] (edict_t *ent) {
+         if (enable) {
+            ent->v.effects &= ~EF_NODRAW;
+         }
+         else {
+            ent->v.effects |= EF_NODRAW;
+         }
+         return EntitySearchResult::Continue;
+         });
+   }
+}
+
+void BotControl::createMenus () {
+   auto keys = [] (int numKeys) -> int {
+      int result = 0;
+
+      for (int i = 0; i < numKeys; ++i) {
+         result |= cr::bit (i);
+      }
+      result |= cr::bit (9);
+
+      return result;
+   };
+
+   // bots main menu
+   m_menus.emplace (
+      Menu::Main, keys (4),
+      "\\yMain Menu\\w\n\n"
+      "1. Control Bots\n"
+      "2. Features\n\n"
+      "3. Fill Server\n"
+      "4. End Round\n\n"
+      "0. Exit",
+      &BotControl::menuMain);
+
+
+   // bots features menu
+   m_menus.emplace (
+      Menu::Features, keys (5),
+      "\\yBots Features\\w\n\n"
+      "1. Weapon Mode Menu\n"
+      "2. Waypoint Menu\n"
+      "3. Select Personality\n\n"
+      "4. Toggle Debug Mode\n"
+      "5. Command Menu\n\n"
+      "0. Exit",
+      &BotControl::menuFeatures);
+
+   // bot control menu
+   m_menus.emplace (
+      Menu::Control, keys (5),
+      "\\yBots Control Menu\\w\n\n"
+      "1. Add a Bot, Quick\n"
+      "2. Add a Bot, Specified\n\n"
+      "3. Remove Random Bot\n"
+      "4. Remove All Bots\n\n"
+      "5. Remove Bot Menu\n\n"
+      "0. Exit",
+      &BotControl::menuControl);
+
+   // weapon mode select menu
+   m_menus.emplace (
+      Menu::WeaponMode, keys (7),
+      "\\yBots Weapon Mode\\w\n\n"
+      "1. Knives only\n"
+      "2. Pistols only\n"
+      "3. Shotguns only\n"
+      "4. Machine Guns only\n"
+      "5. Rifles only\n"
+      "6. Sniper Weapons only\n"
+      "7. All Weapons\n\n"
+      "0. Exit",
+      &BotControl::menuWeaponMode);
+
+   // personality select menu
+   m_menus.emplace (
+      Menu::Personality, keys (4),
+      "\\yBots Personality\\w\n\n"
+      "1. Random\n"
+      "2. Normal\n"
+      "3. Aggressive\n"
+      "4. Careful\n\n"
+      "0. Exit",
+      &BotControl::menuPersonality);
+
+   // difficulty select menu
+   m_menus.emplace (
+      Menu::Difficulty, keys (5),
+      "\\yBots Difficulty Level\\w\n\n"
+      "1. Newbie\n"
+      "2. Average\n"
+      "3. Normal\n"
+      "4. Professional\n"
+      "5. Godlike\n\n"
+      "0. Exit",
+      &BotControl::menuDifficulty);
+
+   // team select menu
+   m_menus.emplace (
+      Menu::TeamSelect, keys (5),
+      "\\ySelect a team\\w\n\n"
+      "1. Terrorist Force\n"
+      "2. Counter-Terrorist Force\n\n"
+      "5. Auto-select\n\n"
+      "0. Exit",
+      &BotControl::menuTeamSelect);
+
+   // terrorist model select menu
+   m_menus.emplace (
+      Menu::TerroristSelect, keys (5),
+      "\\ySelect an appearance\\w\n\n"
+      "1. Phoenix Connexion\n"
+      "2. L337 Krew\n"
+      "3. Arctic Avengers\n"
+      "4. Guerilla Warfare\n\n"
+      "5. Auto-select\n\n"
+      "0. Exit",
+      &BotControl::menuClassSelect);
+
+   // counter-terrorist model select menu
+   m_menus.emplace (
+      Menu::CTSelect, keys (5),
+      "\\ySelect an appearance\\w\n\n"
+      "1. Seal Team 6 (DEVGRU)\n"
+      "2. German GSG-9\n"
+      "3. UK SAS\n"
+      "4. French GIGN\n\n"
+      "5. Auto-select\n\n"
+      "0. Exit",
+      &BotControl::menuClassSelect);
+
+   // command menu
+   m_menus.emplace (
+      Menu::Commands, keys (4),
+      "\\yBot Command Menu\\w\n\n"
+      "1. Make Double Jump\n"
+      "2. Finish Double Jump\n\n"
+      "3. Drop the C4 Bomb\n"
+      "4. Drop the Weapon\n\n"
+      "0. Exit",
+      &BotControl::menuCommands);
+
+   // main waypoint menu
+   m_menus.emplace (
+      Menu::NodeMainPage1, keys (9),
+      "\\yWaypoint Operations (Page 1)\\w\n\n"
+      "1. Show/Hide waypoints\n"
+      "2. Cache waypoint\n"
+      "3. Create path\n"
+      "4. Delete path\n"
+      "5. Add waypoint\n"
+      "6. Delete waypoint\n"
+      "7. Set Autopath Distance\n"
+      "8. Set Radius\n\n"
+      "9. Next...\n\n"
+      "0. Exit",
+      &BotControl::menuGraphPage1);
+
+   // main waypoint menu (page 2)
+   m_menus.emplace (
+      Menu::NodeMainPage2, keys (9),
+      "\\yWaypoint Operations (Page 2)\\w\n\n"
+      "1. Debug goal\n"
+      "2. Autowaypoint on/off\n"
+      "3. Set flags\n"
+      "4. Save waypoints\n"
+      "5. Save without checking\n"
+      "6. Load waypoints\n"
+      "7. Check waypoints\n"
+      "8. Noclip cheat on/off\n\n"
+      "9. Previous...\n\n"
+      "0. Exit",
+      &BotControl::menuGraphPage2);
+
+   // select waypoint radius menu
+   m_menus.emplace (
+      Menu::NodeRadius, keys (9),
+      "\\yWaypoint Radius\\w\n\n"
+      "1. SetRadius 0\n"
+      "2. SetRadius 8\n"
+      "3. SetRadius 16\n"
+      "4. SetRadius 32\n"
+      "5. SetRadius 48\n"
+      "6. SetRadius 64\n"
+      "7. SetRadius 80\n"
+      "8. SetRadius 96\n"
+      "9. SetRadius 128\n\n"
+      "0. Exit",
+      &BotControl::menuGraphRadius);
+
+   // waypoint add menu
+   m_menus.emplace (
+      Menu::NodeType, keys (9),
+      "\\yWaypoint Type\\w\n\n"
+      "1. Normal\n"
+      "\\r2. Terrorist Important\n"
+      "3. Counter-Terrorist Important\n"
+      "\\w4. Block with hostage / Ladder\n"
+      "\\y5. Rescue Zone\n"
+      "\\w6. Camping\n"
+      "7. Camp End\n"
+      "\\r8. Map Goal\n"
+      "\\w9. Jump\n\n"
+      "0. Exit",
+      &BotControl::menuGraphType);
+   
+   // debug goal menu
+   m_menus.emplace (
+      Menu::NodeDebug, keys (3),
+      "\\yDebug goal\\w\n\n"
+      "1. Debug nearest node\n"
+      "2. Debug facing node\n"
+      "3. Stop debugging\n\n"
+      "0. Exit",
+      &BotControl::menuGraphDebug);
+
+   // set waypoint flag menu
+   m_menus.emplace (
+      Menu::NodeFlag, keys (9),
+      "\\yToggle Waypoint Flags\\w\n\n"
+      "1. Block with Hostage\n"
+      "2. Terrorists Specific\n"
+      "3. CTs Specific\n"
+      "4. Use Elevator\n"
+      "5. Sniper Point (\\yFor Camp Points Only!\\w)\n"
+      "6. Map Goal\n"
+      "7. Rescue Zone\n"
+      "8. Crouch Down\n"
+      "9. Camp Point\n\n"
+      "0. Exit",
+      &BotControl::menuGraphFlag);
+   
+   // set camp directions menu
+   m_menus.emplace (
+      Menu::CampDirections, keys (2),
+      "\\ySet Camp Point directions\\w\n\n"
+      "1. Camp Start\n"
+      "2. Camp End\n\n"
+      "0. Exit",
+      &BotControl::menuCampDirections);
+
+   // auto-path max distance
+   m_menus.emplace (
+      Menu::NodeAutoPath, keys (7),
+      "\\yAutoPath Distance\\w\n\n"
+      "1. Distance 0\n"
+      "2. Distance 100\n"
+      "3. Distance 130\n"
+      "4. Distance 160\n"
+      "5. Distance 190\n"
+      "6. Distance 220\n"
+      "7. Distance 250 (Default)\n\n"
+      "0. Exit",
+      &BotControl::menuAutoPathDistance);
+
+   // path connections
+   m_menus.emplace (
+      Menu::NodePath, keys (3),
+      "\\yCreate Path (Choose Direction)\\w\n\n"
+      "1. Outgoing Path\n"
+      "2. Incoming Path\n"
+      "3. Bidirectional (Both Ways)\n\n"
+      "0. Exit",
+      &BotControl::menuGraphPath);
+
+   // kick menus
+   m_menus.emplace (Menu::KickPage1, 0x0, "", &BotControl::menuKickPage1);
+   m_menus.emplace (Menu::KickPage2, 0x0, "", &BotControl::menuKickPage2);
+   m_menus.emplace (Menu::KickPage3, 0x0, "", &BotControl::menuKickPage3);
+   m_menus.emplace (Menu::KickPage4, 0x0, "", &BotControl::menuKickPage4);
 }

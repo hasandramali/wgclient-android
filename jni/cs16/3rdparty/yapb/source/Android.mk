@@ -15,19 +15,20 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../include \
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_C_INCLUDES)
 
 LOCAL_SRC_FILES := \
-	basecode.cpp \
+	config.cpp \
+	botlib.cpp \
 	chatlib.cpp \
 	combat.cpp \
-	globals.cpp \
+	entities.cpp \
 	engine.cpp \
-	precomp.cpp \
-	waypoint.cpp \
-	interface.cpp \
+	graph.cpp \
+	manager.cpp \
+	linkage.cpp \
 	navigate.cpp \
-	support.cpp \
+	message.cpp \
 	netmsg.cpp \
-	callbacks.cpp \
-	experience.cpp \
+	module.cpp \
+	support.cpp \
 	control.cpp \
 
 LOCAL_CFLAGS += -O2 -std=c++11 -DLINUX -D_LINUX -DPOSIX -pipe -fno-strict-aliasing -Wall -Werror
