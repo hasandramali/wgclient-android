@@ -41,7 +41,7 @@ python2 makepak.py pak/ assets/extras.pak
 
 # Build
 ndk-build -j8 NDK_TOOLCHAIN_VERSION=4.8 _CS16CLIENT_ENABLE_OPENMP=$OMP NDK_DEBUG=$RELEASE V=$VERBOSE
-ant $1
+JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/ ANDROID_HOME=android-sdk/ ant debug
 
 if [[ "$1" = "release" ]]; then
 	jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1
