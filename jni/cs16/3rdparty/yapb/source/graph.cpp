@@ -2044,7 +2044,7 @@ void BotGraph::frame () {
 
    // keep the clipping mode enabled, or it can be turned off after new round has started
    if (graph.hasEditFlag (GraphEdit::Noclip) && util.isAlive (m_editor)) {
-      m_editor->v.movetype = MOVETYPE_NOCLIP;
+      m_editor->v.movetype = MOVETYPE_WALK;
    }
 
    float nearestDistance = kInfiniteDistance;
@@ -2398,7 +2398,7 @@ bool BotGraph::checkNodes (bool teleportPlayer) {
    auto teleport = [&] (const Path &path) -> void {
       if (teleportPlayer) {
          engfuncs.pfnSetOrigin (m_editor, path.origin);
-         setEditFlag (GraphEdit::On | GraphEdit::Noclip);
+         setEditFlag (GraphEdit::On);
       }
    };
 
