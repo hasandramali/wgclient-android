@@ -401,9 +401,10 @@ int BotControl::cmdNodeOn () {
       msg ("Graph editor has been enabled.");
    }
    else if (getStr (option) == "noclip") {
-      m_ent->v.movetype = MOVETYPE_NOCLIP;
+      m_ent->v.movetype = MOVETYPE_WALK;
+      graph.clearEditFlag (GraphEdit::Noclip);
 
-      graph.setEditFlag (GraphEdit::On | GraphEdit::Noclip);
+      graph.setEditFlag (GraphEdit::On);
       enableDrawModels (true);
 
       msg ("Graph editor has been enabled with noclip mode.");
@@ -433,7 +434,7 @@ int BotControl::cmdNodeOff () {
 
    // enable various features of editor
    if (getStr (option) == "empty" || getStr (option) == "display") {
-      graph.clearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
+      graph.clearEditFlag (GraphEdit::On | GraphEdit::Auto);
       enableDrawModels (false);
 
       msg ("Graph editor has been disabled.");
@@ -714,7 +715,7 @@ int BotControl::cmdNodeTeleport () {
       msg ("You have been teleported to node %d.", index);
 
       // turn graph on
-      graph.setEditFlag (GraphEdit::On | GraphEdit::Noclip);
+      graph.setEditFlag (GraphEdit::On);
    }
    else {
       msg ("Could not teleport to node %d.", index);
@@ -1402,7 +1403,7 @@ int BotControl::menuGraphPage2 (int item) {
       break;
 
    case 8:
-      graph.setEditFlag (GraphEdit::On | GraphEdit::Noclip);
+      graph.setEditFlag (GraphEdit::On);
       showMenu (Menu::NodeMainPage2);
       break;
 
