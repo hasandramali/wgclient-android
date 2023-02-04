@@ -18,6 +18,11 @@
 #pragma once
 #define ASSERT( x )
 
+void BEGIN_READ( void *buf, int size );
+int READ_CHAR( void );
+int READ_BYTE( void );
+int READ_SHORT( void );
+
 #include <stdint.h>
 
 class BufferReader
