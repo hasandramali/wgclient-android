@@ -220,6 +220,7 @@ public:
 public:
 	void UpdateOnRemove(void);
 	int ShouldToggle(USE_TYPE useType, BOOL currentState) { return 0; }
+	int ShouldToggle( USE_TYPE useType ); //LRC this version uses GetState()
 	void FireBullets(ULONG cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t *pevAttacker = NULL);
 	Vector FireBullets3(Vector vecSrc, Vector vecDirShooting, float flSpread, float flDistance, int iPenetration, int iBulletType, int iDamage, float flRangeModifier, entvars_t *pevAttacker, bool bPistol, int shared_rand = 0);
 	int Intersects(CBaseEntity *pOther) { return 0; }
