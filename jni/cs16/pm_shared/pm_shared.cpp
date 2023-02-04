@@ -51,6 +51,7 @@ char pm_grgchTextureType[1024];
 
 playermove_t *pmove = NULL;
 int g_onladder = 0;
+#define CONTENTS_FOG			-19
 
 void PM_SwapTextures(int i, int j)
 {
@@ -1005,10 +1006,9 @@ void PM_WalkMove()
 	}
 
 	// Don't walk up stairs if not on ground.
-	if (oldonground == -1 && pmove->waterlevel == 0)
-	{
+	if (oldonground == -1 &&   // Don't walk up stairs if not on ground.
+		(pmove->waterlevel  == 0 || pmove->watertype == CONTENT_FOG))
 		return;
-	}
 
 	// If we are jumping out of water, don't do anything more.
 	if (pmove->waterjumptime)
