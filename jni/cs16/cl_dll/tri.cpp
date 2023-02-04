@@ -20,7 +20,7 @@
 extern float g_fFogColor[3];
 extern float g_fStartDist;
 extern float g_fEndDist;
-extern int g_iWaterLevel;
+extern int waterlevel;
 
 /*
 =================
@@ -53,7 +53,7 @@ void BlackFog ( void )
 {
 	//Not in water and we want fog.
 	static float fColorBlack[3] = {0,0,0};
-	bool bFog = g_iWaterLevel < 2 && g_fStartDist > 0 && g_fEndDist > 0;
+	bool bFog = waterlevel < 2 && g_fStartDist > 0 && g_fEndDist > 0;
 	if (bFog)
 		gEngfuncs.pTriAPI->Fog ( fColorBlack, g_fStartDist, g_fEndDist, bFog );
 	else
@@ -63,7 +63,7 @@ void BlackFog ( void )
 void RenderFog ( void )
 {
 	//Not in water and we want fog.
-	bool bFog = g_iWaterLevel < 2 && g_fStartDist > 0 && g_fEndDist > 0;
+	bool bFog = waterlevel < 2 && g_fStartDist > 0 && g_fEndDist > 0;
 	if (bFog)
 		gEngfuncs.pTriAPI->Fog ( g_fFogColor, g_fStartDist, g_fEndDist, bFog );
 //	else
