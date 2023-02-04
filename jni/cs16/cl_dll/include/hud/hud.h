@@ -871,6 +871,7 @@ public:
 	int UpdateClientData( client_data_t *cdata, float time );
 	void AddHudElem(CHudBase *p);
 
+	void _cdecl MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf );
 
 	inline float GetSensitivity() { return m_flMouseSensitivity; }
 	inline HSPRITE GetSprite( int index )
@@ -999,8 +1000,6 @@ public:
 	CHudMsgFunc(SetFOV);
 	CHudMsgFunc(Concuss);
 	CHudMsgFunc(ShadowIdx);
-
-	void _cdecl MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf );
 
 	// Screen information
 	SCREENINFO	m_scrinfo;
