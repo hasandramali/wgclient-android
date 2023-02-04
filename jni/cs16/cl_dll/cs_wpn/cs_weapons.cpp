@@ -69,7 +69,7 @@ static CBasePlayer	player;
 static globalvars_t	Globals = { };
 
 static CBasePlayerWeapon *g_pWpns[ 32 ];
-
+int g_iWaterLevel;
 
 // CS Weapon placeholder entities
 static CAK47 g_AK47;
@@ -1235,7 +1235,7 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	player.pev->velocity = from->client.velocity;
 
 	player.pev->deadflag   = from->client.deadflag;
-	player.pev->waterlevel = from->client.waterlevel;
+	g_iWaterLevel = player.pev->waterlevel = from->client.waterlevel;
 	player.pev->maxspeed   = STATE->client.maxspeed; //!!! Taking "to"
 	player.pev->punchangle = STATE->client.punchangle; //!!! Taking "to"
 	player.pev->fov        = from->client.fov;
