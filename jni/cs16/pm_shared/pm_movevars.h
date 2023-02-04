@@ -54,6 +54,7 @@ typedef struct movevars_s
 	char skyName[32];		// Name of the sky map
 	float rollangle;
 	float rollspeed;
+	int	fog_settings;
 	float skycolor_r;		// Sky color
 	float skycolor_g;
 	float skycolor_b;
