@@ -81,6 +81,12 @@ void __CmdFunc_GunSmoke()
 		gEngfuncs.Cvar_SetValue( "cl_gunsmoke", 1 );
 }
 
+int __MsgFunc_SetFog(const char *pszName, int iSize, void *pbuf)
+{
+	gHUD.MsgFunc_SetFog( pszName, iSize, pbuf );
+	return 1;
+}
+
 /*#define XASH_GENERATE_BUILDNUM
 
 #if defined(XASH_GENERATE_BUILDNUM)
@@ -161,7 +167,7 @@ void CHud :: Init( void )
 	HOOK_MESSAGE( ViewMode );
 	HOOK_MESSAGE( SetFOV );
 	HOOK_MESSAGE( Concuss );
-
+	HOOK_MESSAGE( SetFog );
 	HOOK_MESSAGE( ADStop );
 	HOOK_MESSAGE( ItemStatus );
 	HOOK_MESSAGE( ReqState );

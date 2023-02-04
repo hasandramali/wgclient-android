@@ -32,6 +32,13 @@
 
 #include "events.h"
 
+//LRC - the fogging fog
+float g_fFogColor[3];
+float g_fStartDist;
+float g_fEndDist;
+int g_iFinalEndDist;   //for fading
+float g_fFadeDuration;
+
 #define MAX_CLIENTS 32
 
 extern float g_flRoundTime;
@@ -56,6 +63,10 @@ int CHud :: MsgFunc_ResetHUD(const char *pszName, int iSize, void *pbuf )
 	// reset concussion effect
 	m_iConcussionEffect = 0;
 
+	//LRC - reset fog
+	g_fStartDist = 0;
+	g_fEndDist = 0;
+
 	return 1;
 }
 
@@ -69,6 +80,9 @@ int CHud :: MsgFunc_ViewMode( const char *pszName, int iSize, void *pbuf )
 
 int CHud :: MsgFunc_InitHUD( const char *pszName, int iSize, void *pbuf )
 {
+	//LRC - clear the fog
+	g_fStartDist = 0;
+	g_fEndDist = 0;
 	// prepare all hud data
 	HUDLIST *pList = m_pHudList;
 
@@ -97,6 +111,37 @@ int CHud :: MsgFunc_InitHUD( const char *pszName, int iSize, void *pbuf )
 	return 1;
 }
 
+void CHud :: MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf )
+{
+//	CONPRINT("MSG:SetFog");
+	BEGIN_READ( pbuf, iSize );
+
+	for ( int i = 0; i < 3; i++ )
+		 g_fFogColor[ i ] = READ_BYTE();
+
+	g_fFadeDuration = READ_SHORT();
+	g_fStartDist = READ_SHORT();
+
+	if (g_fFadeDuration > 0)
+	{
+//		// fading in
+//		g_fStartDist = READ_SHORT();
+		g_iFinalEndDist = READ_SHORT();
+//		g_fStartDist = FOG_LIMIT;
+		g_fEndDist = FOG_LIMIT;
+	}
+	else if (g_fFadeDuration < 0)
+	{
+//		// fading out
+//		g_iFinalStartDist = 
+		g_iFinalEndDist = g_fEndDist = READ_SHORT();
+	}
+	else
+	{
+//		g_fStartDist = READ_SHORT();
+		g_fEndDist = READ_SHORT();
+	}
+}
 
 int CHud :: MsgFunc_GameMode(const char *pszName, int iSize, void *pbuf )
 {

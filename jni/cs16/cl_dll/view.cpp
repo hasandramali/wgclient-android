@@ -478,6 +478,8 @@ V_CalcRefdef
 
 ==================
 */
+extern void RenderFog( void ); //LRC
+
 void V_CalcNormalRefdef ( struct ref_params_s *pparams )
 {
 	cl_entity_t		*ent, *view;
@@ -845,6 +847,8 @@ void V_CalcNormalRefdef ( struct ref_params_s *pparams )
 	lasttime = pparams->time;
 
 	v_origin = pparams->vieworg;
+
+	RenderFog();
 }
 
 void V_SmoothInterpolateAngles( float * startAngle, float * endAngle, float * finalAngle, float degreesPerSec )
