@@ -1371,9 +1371,9 @@ void PM_AirMove()
 	PM_FlyMove();
 }
 
-qboolean PM_InWater()
+qboolean PM_InWater( void )
 {
-	return (pmove->waterlevel > 1);
+	return ( pmove->waterlevel > 1 && pmove->watertype != CONTENT_FOG );
 }
 
 // Sets pmove->waterlevel and pmove->watertype values.
@@ -2360,7 +2360,7 @@ void PM_Jump()
 	}
 
 	// If we are in the water most of the way...
-	if (pmove->waterlevel >= 2)
+	if (pmove->waterlevel >= 2 && pmove->watertype != CONTENTS_FOG)
 	{
 		// swimming, not jumping
 		pmove->onground = -1;
@@ -2929,7 +2929,7 @@ void PM_PlayerMove(qboolean server)
 		//  of, and, if so, start out jump.  Otherwise, if we are not moving up, then reset jump timer to 0
 		if (pmove->waterlevel >= 2)
 		{
-			if (pmove->waterlevel == 2)
+			if ( pmove->waterlevel >= 2 && pmove->watertype != CONTENT_FOG) 
 			{
 				PM_CheckWaterJump();
 			}
