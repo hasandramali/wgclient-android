@@ -43,7 +43,6 @@ Render any triangles with transparent rendermode needs here
 */
 void DLLEXPORT HUD_DrawTransparentTriangles( void )
 {
-	BlackFog();
 	ProcessFXObjects();
 	ProcessRain();
 	DrawRain();
