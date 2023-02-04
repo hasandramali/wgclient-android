@@ -27,6 +27,7 @@ SRCS := \
 	./rain.cpp \
 	./tri.cpp \
 	./util.cpp \
+	./parsemsg.cpp \
 	./view.cpp \
 	./input_xash3d.cpp \
 	./vgui_parser.cpp \
