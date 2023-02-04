@@ -100,9 +100,11 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 	static CSprite *SpriteCreate(const char *pSpriteName, const Vector &origin, BOOL animate);
 
-private:
+//private:
 	float m_lastTime;
 	float m_maxFrame;
+
+	virtual STATE GetState( void ) { return (pev->effects & EF_NODRAW)?STATE_OFF:STATE_ON;
 };
 
 class CBeam : public CBaseEntity
@@ -214,6 +216,7 @@ public:
 	CSprite *m_pSprite;
 	int m_iszSpriteName;
 	Vector m_firePosition;
+	virtual STATE GetState( void ) { return (pev->effects & EF_NODRAW)?STATE_OFF:STATE_ON;
 };
 
 #endif
