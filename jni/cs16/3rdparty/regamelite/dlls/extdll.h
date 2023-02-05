@@ -26,11 +26,7 @@
 *
 */
 
-#ifndef EXTDLL_H
-#define EXTDLL_H
-#ifdef _WIN32
 #pragma once
-#endif
 
 #pragma warning(disable:4244)		// int or float down-conversion
 #pragma warning(disable:4305)		// int or float data truncation
@@ -39,9 +35,10 @@
 #pragma warning(disable:4100)		// unreferenced formal parameter
 
 #include "archtypes.h"
+#include "maintypes.h"
+#include "regamedll_common.h"
 
 #ifdef _WIN32
-
 	#define WIN32_LEAN_AND_MEAN
 	#define NOWINRES
 	#define NOSERVICE
@@ -52,11 +49,9 @@
 	#include "winsani_out.h"
 	#undef PlaySound
 #else
-
 	#include <limits.h>
 	#include <stdarg.h>
 	#include <string.h>
-
 #endif // _WIN32
 
 // Misc C-runtime library headers
@@ -80,7 +75,9 @@ typedef float vec_t;					// needed before including progdefs.h
 
 // Shared header describing protocol between engine and DLLs
 #include "eiface.h"
+#include "physint.h" // Xash3D Physic Extension
+#include "triangleapi.h" // TriAPI
+
 // Shared header between the client DLL and the game DLLs
 #include "cdll_dll.h"
-
-#endif // EXTDLL_H
+#include "extdef.h"

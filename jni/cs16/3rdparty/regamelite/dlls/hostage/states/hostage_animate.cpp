@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 void HostageAnimateState::Reset()
@@ -27,7 +29,7 @@ void HostageAnimateState::AddSequence(CHostageImprov *improv, const char *seqNam
 	int seqIndex;
 	CHostage *hostage = improv->GetEntity();
 
-	if (m_sequenceCount >= 8)
+	if (m_sequenceCount >= MAX_SEQUENCES)
 		return;
 
 	if (seqName != NULL)
@@ -37,10 +39,8 @@ void HostageAnimateState::AddSequence(CHostageImprov *improv, const char *seqNam
 
 	m_sequence[m_sequenceCount].seqID = seqIndex;
 	m_sequence[m_sequenceCount].holdTime = holdTime;
-	m_sequence[m_sequenceCount].rate = rate;
-
+	m_sequence[m_sequenceCount++].rate = rate;
 	m_currentSequence = 0;
-	m_sequenceCount++;
 
 	StartSequence(improv, m_sequence);
 }
@@ -54,10 +54,8 @@ void HostageAnimateState::AddSequence(CHostageImprov *improv, int activity, floa
 	{
 		m_sequence[m_sequenceCount].seqID = LookupActivity(model, hostage->pev, activity);
 		m_sequence[m_sequenceCount].holdTime = holdTime;
-		m_sequence[m_sequenceCount].rate = rate;
-
+		m_sequence[m_sequenceCount++].rate = rate;
 		m_currentSequence = 0;
-		m_sequenceCount++;
 	}
 
 	StartSequence(improv, m_sequence);
@@ -76,12 +74,12 @@ bool HostageAnimateState::IsDoneHolding()
 	return false;
 }
 
-void HostageAnimateState::OnEnter(CHostageImprov *improv)
+void HostageAnimateState::__MAKE_VHOOK(OnEnter)(CHostageImprov *improv)
 {
 	;
 }
 
-void HostageAnimateState::OnUpdate(CHostageImprov *improv)
+void HostageAnimateState::__MAKE_VHOOK(OnUpdate)(CHostageImprov *improv)
 {
 	if (m_sequenceCount <= 0)
 		return;
@@ -107,7 +105,7 @@ void HostageAnimateState::OnUpdate(CHostageImprov *improv)
 	StartSequence(improv, &m_sequence[m_currentSequence]);
 }
 
-void HostageAnimateState::OnExit(CHostageImprov *improv)
+void HostageAnimateState::__MAKE_VHOOK(OnExit)(CHostageImprov *improv)
 {
 	;
 }

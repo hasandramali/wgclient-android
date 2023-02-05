@@ -1,17 +1,23 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CEnvExplosion::m_SaveData[] =
 {
 	DEFINE_FIELD(CEnvExplosion, m_iMagnitude, FIELD_INTEGER),
 	DEFINE_FIELD(CEnvExplosion, m_spriteScale, FIELD_INTEGER),
 };
 
-LINK_ENTITY_TO_CLASS(spark_shower, CShower);
+#endif
 
-void CShower::Spawn()
+LINK_ENTITY_TO_CLASS(spark_shower, CShower, CCSShower)
+
+void CShower::__MAKE_VHOOK(Spawn)()
 {
 	pev->velocity = RANDOM_FLOAT(200, 300) * pev->angles;
 	pev->velocity.x += RANDOM_FLOAT(-100, 100);
@@ -36,7 +42,7 @@ void CShower::Spawn()
 	pev->angles = g_vecZero;
 }
 
-void CShower::Think()
+void CShower::__MAKE_VHOOK(Think)()
 {
 	UTIL_Sparks(pev->origin);
 
@@ -50,7 +56,7 @@ void CShower::Think()
 	pev->flags &= ~FL_ONGROUND;
 }
 
-void CShower::Touch(CBaseEntity *pOther)
+void CShower::__MAKE_VHOOK(Touch)(CBaseEntity *pOther)
 {
 	if (pev->flags & FL_ONGROUND)
 		pev->velocity = pev->velocity * 0.1f;
@@ -63,11 +69,10 @@ void CShower::Touch(CBaseEntity *pOther)
 	}
 }
 
-IMPLEMENT_SAVERESTORE(CEnvExplosion, CBaseMonster);
+IMPLEMENT_SAVERESTORE(CEnvExplosion, CBaseMonster)
+LINK_ENTITY_TO_CLASS(env_explosion, CEnvExplosion, CCSEnvExplosion)
 
-LINK_ENTITY_TO_CLASS(env_explosion, CEnvExplosion);
-
-void CEnvExplosion::KeyValue(KeyValueData *pkvd)
+void CEnvExplosion::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "iMagnitude"))
 	{
@@ -78,7 +83,7 @@ void CEnvExplosion::KeyValue(KeyValueData *pkvd)
 		CBaseEntity::KeyValue(pkvd);
 }
 
-void CEnvExplosion::Spawn()
+void CEnvExplosion::__MAKE_VHOOK(Spawn)()
 {
 	pev->solid = SOLID_NOT;
 	pev->effects = EF_NODRAW;
@@ -91,15 +96,15 @@ void CEnvExplosion::Spawn()
 		flSpriteScale = 10.0f;
 	}
 
-	m_spriteScale = (int)flSpriteScale;
+	m_spriteScale = int(flSpriteScale);
 }
 
-void CEnvExplosion::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CEnvExplosion::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	TraceResult tr;
 
-	pev->model = iStringNull;//invisible
-	pev->solid = SOLID_NOT;//intangible
+	pev->model = iStringNull;// invisible
+	pev->solid = SOLID_NOT;// intangible
 
 	Vector vecSpot;// trace starts here!
 
@@ -112,15 +117,11 @@ void CEnvExplosion::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	{
 		pev->origin = tr.vecEndPos + (tr.vecPlaneNormal * (m_iMagnitude - 24) * 0.6f);
 	}
-	else
-	{
-		pev->origin = pev->origin;
-	}
 
 	// draw decal
 	if (! (pev->spawnflags & SF_ENVEXPLOSION_NODECAL))
 	{
-		if (RANDOM_FLOAT(0, 1) < 0.5)
+		if (RANDOM_FLOAT(0, 1) < 0.5f)
 		{
 			UTIL_DecalTrace(&tr, DECAL_SCORCH1);
 		}
@@ -139,7 +140,7 @@ void CEnvExplosion::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 			WRITE_COORD(pev->origin.y);
 			WRITE_COORD(pev->origin.z);
 			WRITE_SHORT(g_sModelIndexFireball);
-			WRITE_BYTE((byte)m_spriteScale); // scale * 10
+			WRITE_BYTE(byte(m_spriteScale)); // scale * 10
 			WRITE_BYTE(15); // framerate
 			WRITE_BYTE(TE_EXPLFLAG_NONE);
 		MESSAGE_END();
@@ -189,7 +190,7 @@ void CEnvExplosion::Smoke()
 			WRITE_COORD(pev->origin.y);
 			WRITE_COORD(pev->origin.z);
 			WRITE_SHORT(g_sModelIndexSmoke);
-			WRITE_BYTE((byte)m_spriteScale); // scale * 10
+			WRITE_BYTE(byte(m_spriteScale)); // scale * 10
 			WRITE_BYTE(12); // framerate
 		MESSAGE_END();
 	}
@@ -201,7 +202,6 @@ void CEnvExplosion::Smoke()
 }
 
 // HACKHACK -- create one of these and fake a keyvalue to get the right explosion setup
-
 void ExplosionCreate(const Vector &center, Vector &angles, edict_t *pOwner, int magnitude, BOOL doDamage)
 {
 	KeyValueData kvd;

@@ -25,27 +25,81 @@
 *   version.
 *
 */
-
-#ifndef ITEMS_H
-#define ITEMS_H
-#ifdef _WIN32
 #pragma once
-#endif
+
+#define DEFINE_ITEMINFO(id, classname)\
+	{ 0, 0, "", 0, "", 0, classname, 0, id, 0, 0 }
+
+enum ItemRestType
+{
+	ITEM_TYPE_BUYING,	// when a player buying items
+	ITEM_TYPE_TOUCHED,	// when the player touches with a weaponbox or armoury_entity
+	ITEM_TYPE_EQUIPPED	// when an entity game_player_equip gives item to player or default item's on player spawn
+};
 
 // constant items
-#define ITEM_HEALTHKIT		1
-#define ITEM_ANTIDOTE		2
-#define ITEM_SECURITY		3
-#define ITEM_BATTERY		4
-#define ITEM_SUIT		5
+#define ITEM_ID_ANTIDOTE	2
+#define ITEM_ID_SECURITY	3
+
+enum ItemID
+{
+	ITEM_NONE = -1,
+	ITEM_SHIELDGUN,
+	ITEM_P228,
+	ITEM_GLOCK,
+	ITEM_SCOUT,
+	ITEM_HEGRENADE,
+	ITEM_XM1014,
+	ITEM_C4,
+	ITEM_MAC10,
+	ITEM_AUG,
+	ITEM_SMOKEGRENADE,
+	ITEM_ELITE,
+	ITEM_FIVESEVEN,
+	ITEM_UMP45,
+	ITEM_SG550,
+	ITEM_GALIL,
+	ITEM_FAMAS,
+	ITEM_USP,
+	ITEM_GLOCK18,
+	ITEM_AWP,
+	ITEM_MP5N,
+	ITEM_M249,
+	ITEM_M3,
+	ITEM_M4A1,
+	ITEM_TMP,
+	ITEM_G3SG1,
+	ITEM_FLASHBANG,
+	ITEM_DEAGLE,
+	ITEM_SG552,
+	ITEM_AK47,
+	ITEM_KNIFE,
+	ITEM_P90,
+	ITEM_NVG,
+	ITEM_DEFUSEKIT,
+	ITEM_KEVLAR,
+	ITEM_ASSAULT,
+	ITEM_LONGJUMP,
+	ITEM_SODACAN,
+	ITEM_HEALTHKIT,
+	ITEM_ANTIDOTE,
+	ITEM_BATTERY
+};
 
 class CItem: public CBaseEntity
 {
 public:
 	virtual void Spawn();
 	virtual CBaseEntity *Respawn();
-	virtual BOOL MyTouch(CBasePlayer *pPlayer) { return FALSE;}
-   
+	virtual BOOL MyTouch(CBasePlayer *pPlayer) { return FALSE; }
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	CBaseEntity *Respawn_();
+
+#endif
+
 public:
 	void EXPORT ItemTouch(CBaseEntity *pOther);
 	void EXPORT Materialize();
@@ -56,7 +110,14 @@ class CWorldItem: public CBaseEntity
 public:
 	virtual void Spawn();
 	virtual void KeyValue(KeyValueData *pkvd);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+
+#endif
+
 public:
 	int m_iType;
 };
@@ -67,6 +128,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CItemBattery: public CItem
@@ -75,6 +145,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CItemAntidote: public CItem
@@ -83,6 +162,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CItemSecurity: public CItem
@@ -91,6 +179,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CItemLongJump: public CItem
@@ -99,6 +196,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CItemKevlar: public CItem
@@ -107,6 +213,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CItemAssaultSuit: public CItem
@@ -115,6 +230,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CItemThighPack: public CItem
@@ -123,6 +247,16 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
-#endif // ITEMS_H
+ItemID GetItemIdByName(const char *pszName);
+ItemID GetItemIdByArmoury(ArmouryItemPack armoury);

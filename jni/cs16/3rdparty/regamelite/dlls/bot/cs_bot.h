@@ -55,13 +55,13 @@
 
 extern int _navAreaCount;
 extern int _currentIndex;
-/*
-extern struct BuyInfo primaryWeaponBuyInfoCT[ PRIMARY_WEAPON_BUY_COUNT ];
-extern struct BuyInfo secondaryWeaponBuyInfoCT[ SECONDARY_WEAPON_BUY_COUNT ];
 
-extern struct BuyInfo primaryWeaponBuyInfoT[ PRIMARY_WEAPON_BUY_COUNT ];
-extern struct BuyInfo secondaryWeaponBuyInfoT[ SECONDARY_WEAPON_BUY_COUNT ];
-*/
+extern struct BuyInfo primaryWeaponBuyInfoCT[PRIMARY_WEAPON_BUY_COUNT];
+extern struct BuyInfo secondaryWeaponBuyInfoCT[SECONDARY_WEAPON_BUY_COUNT];
+
+extern struct BuyInfo primaryWeaponBuyInfoT[PRIMARY_WEAPON_BUY_COUNT];
+extern struct BuyInfo secondaryWeaponBuyInfoT[SECONDARY_WEAPON_BUY_COUNT];
+
 class CCSBot;
 class BotChatterInterface;
 
@@ -80,6 +80,13 @@ public:
 	virtual void OnEnter(CCSBot *me);
 	virtual void OnUpdate(CCSBot *me);
 	virtual const char *GetName() const { return "Idle"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+
+#endif
 };
 
 class HuntState: public BotState
@@ -89,6 +96,14 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "Hunt"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
 
 	void ClearHuntArea() { m_huntArea = NULL; }
 private:
@@ -102,6 +117,14 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "Attack"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
 
 	void SetCrouchAndHold(bool crouch) { m_crouchAndHold = crouch; }
 	void StopAttacking(CCSBot *me);
@@ -141,6 +164,14 @@ public:
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "InvestigateNoise"; }
 
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
+
 private:
 	void AttendCurrentNoise(CCSBot *me);
 	Vector m_checkNoisePosition;
@@ -153,6 +184,14 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "Buy"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
 
 private:
 	bool m_isInitialDelay;
@@ -174,6 +213,14 @@ public:
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "MoveTo"; }
 
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
+
 	void SetGoalPosition(const Vector &pos) { m_goalPosition = pos; }
 	void SetRouteType(RouteType route) { m_routeType = route; }
 
@@ -190,6 +237,14 @@ public:
 	virtual void OnEnter(CCSBot *me);
 	virtual void OnUpdate(CCSBot *me);
 	virtual const char *GetName() const { return "FetchBomb"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+
+#endif
+
 };
 
 class PlantBombState: public BotState
@@ -199,6 +254,15 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "PlantBomb"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
+
 };
 
 class DefuseBombState: public BotState
@@ -208,6 +272,14 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "DefuseBomb"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
 };
 
 class HideState: public BotState
@@ -217,18 +289,26 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "Hide"; }
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
+
 public:
-	void SetHidingSpot(const Vector &pos)	{ m_hidingSpot = pos; }
-	const Vector &GetHidingSpot() const	{ return m_hidingSpot; }
+	void SetHidingSpot(const Vector &pos) { m_hidingSpot = pos; }
+	const Vector &GetHidingSpot() const { return m_hidingSpot; }
 
-	void SetSearchArea(CNavArea *area)	{ m_searchFromArea = area; }
-	void SetSearchRange(float range)	{ m_range = range; }
+	void SetSearchArea(CNavArea *area) { m_searchFromArea = area; }
+	void SetSearchRange(float range) { m_range = range; }
 
-	void SetDuration(float time)		{ m_duration = time; }
-	void SetHoldPosition(bool hold)		{ m_isHoldingPosition = hold; }
+	void SetDuration(float time) { m_duration = time; }
+	void SetHoldPosition(bool hold) { m_isHoldingPosition = hold; }
 
-	bool IsAtSpot() const			{ return m_isAtSpot; }
+	bool IsAtSpot() const { return m_isAtSpot; }
 
 private:
 	CNavArea *m_searchFromArea;
@@ -253,6 +333,15 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "EscapeFromBomb"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
+
 };
 
 class FollowState: public BotState
@@ -262,10 +351,20 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "Follow"; }
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
+
 	void SetLeader(CBaseEntity *leader) { m_leader = leader; }
 
+#ifndef HOOK_GAMEDLL
 private:
+#endif
 	void ComputeLeaderMotionState(float leaderSpeed);
 
 	EHANDLE m_leader;
@@ -302,7 +401,15 @@ public:
 	virtual void OnUpdate(CCSBot *me);
 	virtual void OnExit(CCSBot *me);
 	virtual const char *GetName() const { return "UseEntity"; }
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CCSBot *me);
+	void OnUpdate_(CCSBot *me);
+	void OnExit_(CCSBot *me);
+
+#endif
+
 	void SetEntity(CBaseEntity *entity) { m_entity = entity; }
 
 private:
@@ -310,14 +417,11 @@ private:
 };
 
 // The Counter-strike Bot
-
 class CCSBot: public CBot
 {
 public:
 	CCSBot();														// constructor initializes all values to zero
-
-public:
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);		// invoked when injured by something (EXTEND) - returns the amount of damage inflicted
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);		// invoked when injured by something (EXTEND) - returns the amount of damage inflicted
 	virtual void Killed(entvars_t *pevAttacker, int iGib);									// invoked when killed (EXTEND)
 	virtual void RoundRespawn();
 	virtual void Blind(float duration, float holdTime, float fadeTime, int alpha = 255);					// player blinded by a flashbang
@@ -340,6 +444,26 @@ public:
 
 	virtual bool IsEnemyPartVisible(VisiblePartType part) const;								// if enemy is visible, return the part we see for our current enemy
 
+#ifdef HOOK_GAMEDLL
+
+	bool Initialize_(const BotProfile *profile);
+	void SpawnBot_();
+	void Upkeep_();
+	void Update_();
+	void Walk_();
+	bool Jump_(bool mustJump);
+	void Blind_(float duration, float holdTime, float fadeTime, int alpha);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	void Killed_(entvars_t *pevAttacker, int iGib);
+	void OnTouchingWeapon_(CWeaponBox *box);
+	void OnEvent_(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
+	bool IsVisible_(const Vector *pos, bool testFOV) const;
+	bool IsVisible_(CBasePlayer *player, bool testFOV, unsigned char *visParts) const;
+	bool IsEnemyPartVisible_(VisiblePartType part) const;
+	void RoundRespawn_();
+
+#endif
+
 public:
 	void Disconnect();
 
@@ -354,7 +478,7 @@ public:
 	bool IsEndOfSafeTime() const;				// return true if we were in the safe time last update, but not now
 	float GetSafeTimeRemaining() const;			// return the amount of "safe time" we have left
 	float GetSafeTime() const;				// return what we think the total "safe time" for this map is
-	NOXREF bool IsUnhealthy() const;			// returns true if bot is low on health
+	//bool IsUnhealthy() const;				// returns true if bot is low on health
 
 	// behaviors
 	void Idle();
@@ -499,7 +623,7 @@ public:
 	CNavArea *GetNoiseArea() const;								// return area where noise was heard
 	void ForgetNoise();									// clear the last heard noise
 	bool CanSeeNoisePosition() const;							// return true if we directly see where we think the noise came from
-	NOXREF float GetNoiseRange() const;							// return approximate distance to last noise heard
+	float GetNoiseRange() const;								// return approximate distance to last noise heard
 
 	bool CanHearNearbyEnemyGunfire(float range = -1.0f) const;				// return true if we hear nearby threatening enemy gunfire within given range (-1 == infinite)
 	PriorityType GetNoisePriority() const;							// return priority of last heard noise
@@ -566,14 +690,14 @@ public:
 	#define NO_SPEED_CHANGE false
 	PathResult UpdatePathMovement(bool allowSpeedChange = true);					// move along our computed path - if allowSpeedChange is true, bot will walk when near goal to ensure accuracy
 
-	NOXREF bool AStarSearch(CNavArea *startArea, CNavArea *goalArea);				// find shortest path from startArea to goalArea - don't actually buid the path
+	bool AStarSearch(CNavArea *startArea, CNavArea *goalArea);					// find shortest path from startArea to goalArea - don't actually buid the path
 	bool ComputePath(CNavArea *goalArea, const Vector *goal, RouteType route);			// compute path to goal position
 	bool StayOnNavMesh();
 	CNavArea *GetLastKnownArea() const;								// return the last area we know we were inside of
 	const Vector &GetPathEndpoint() const;								// return final position of our current path
 	float GetPathDistanceRemaining() const;								// eturn estimated distance left to travel along path
 	void ResetStuckMonitor();
-	NOXREF bool IsAreaVisible(CNavArea *area) const;						// is any portion of the area visible to this bot
+	bool IsAreaVisible(CNavArea *area) const;							// is any portion of the area visible to this bot
 	const Vector &GetPathPosition(int numpath) const;
 	bool GetSimpleGroundHeightWithFloor(const Vector *pos, float *height, Vector *normal = NULL);	// find "simple" ground height, treating current nav area as part of the floor
 
@@ -619,7 +743,7 @@ public:
 
 	// approach points
 	void ComputeApproachPoints();						// determine the set of "approach points" representing where the enemy can enter this region
-	NOXREF void UpdateApproachPoints();					// recompute the approach point set if we have moved far enough to invalidate the current ones
+	void UpdateApproachPoints();						// recompute the approach point set if we have moved far enough to invalidate the current ones
 	void ClearApproachPoints();
 	void DrawApproachPoints();						// for debugging
 	float GetHidingSpotCheckTimestamp(HidingSpot *spot) const;		// return time when given spot was last checked
@@ -673,7 +797,9 @@ public:
 	void EXPORT BotTouch(CBaseEntity *other);
 	bool HasAnyAmmo(CBasePlayerWeapon *weapon) const;
 
+#ifndef HOOK_GAMEDLL
 private:
+#endif
 	friend class CCSBotManager;
 
 	// TODO: Get rid of these
@@ -732,7 +858,7 @@ private:
 	Vector m_goalPosition;
 	EHANDLE m_goalEntity;
 	void MoveTowardsPosition(const Vector *pos);				// move towards position, independant of view angle
-	NOXREF void MoveAwayFromPosition(const Vector *pos);			// move away from position, independant of view angle
+	void MoveAwayFromPosition(const Vector *pos);				// move away from position, independant of view angle
 	void StrafeAwayFromPosition(const Vector *pos);				// strafe (sidestep) away from position, independant of view angle
 	void StuckCheck();							// check if we have become stuck
 
@@ -753,7 +879,7 @@ private:
 		Vector pos;			// our movement goal position at this point in the path
 		const CNavLadder *ladder;	// if "how" refers to a ladder, this is it
 	}
-	m_path[ MAX_PATH_LENGTH ];
+	m_path[MAX_PATH_LENGTH];
 	int m_pathLength;
 	int m_pathIndex;
 	float m_areaEnteredTimestamp;
@@ -839,6 +965,7 @@ private:
 		NUM_LOOK_AT_SPOT_STATES
 	}
 	m_lookAtSpotState;
+
 	Vector m_lookAtSpot;					// the spot we're currently looking at
 	PriorityType m_lookAtSpotPriority;
 	float m_lookAtSpotDuration;				// how long we need to look at the spot
@@ -851,12 +978,12 @@ private:
 	float m_peripheralTimestamp;
 
 	enum { MAX_APPROACH_POINTS = 16 };
-	Vector m_approachPoint[ MAX_APPROACH_POINTS ];
+	Vector m_approachPoint[MAX_APPROACH_POINTS];
 	unsigned char m_approachPointCount;
 	Vector m_approachPointViewPosition;			// the position used when computing current approachPoint set
 
 	bool BendLineOfSight(const Vector *eye, const Vector *point, Vector *bend) const;		// "bend" our line of sight until we can see the target point. Return bend point, false if cant bend.
-	NOXREF bool FindApproachPointNearestPath(Vector *pos);						// find the approach point that is nearest to our current path, ahead of us
+	bool FindApproachPointNearestPath(Vector *pos);							// find the approach point that is nearest to our current path, ahead of us
 
 	bool m_isWaitingToTossGrenade;				// lining up throw
 	CountdownTimer m_tossGrenadeTimer;			// timeout timer for grenade tossing
@@ -871,7 +998,7 @@ private:
 		HidingSpot *spot;
 		float timestamp;
 	}
-	m_checkedHidingSpot[ MAX_CHECKED_SPOTS ];
+	m_checkedHidingSpot[MAX_CHECKED_SPOTS];
 	int m_checkedHidingSpotCount;
 
 	// view angle mechanism
@@ -910,7 +1037,7 @@ private:
 		float timestamp;
 		bool isEnemy;
 	}
-	m_watchInfo[ MAX_CLIENTS ];
+	m_watchInfo[MAX_CLIENTS];
 	mutable EHANDLE m_bomber;				// points to bomber if we can see him
 
 	int m_nearbyFriendCount;				// number of nearby teammates
@@ -940,7 +1067,7 @@ private:
 		bool isReloading;
 		bool isProtectedByShield;
 	}
-	m_enemyQueue[ MAX_ENEMY_QUEUE ];			// round-robin queue for simulating reaction times
+	m_enemyQueue[MAX_ENEMY_QUEUE];				// round-robin queue for simulating reaction times
 
 	byte m_enemyQueueIndex;
 	byte m_enemyQueueCount;
@@ -957,7 +1084,7 @@ private:
 	float m_stuckJumpTimestamp;				// time for next jump when stuck
 
 	enum { MAX_VEL_SAMPLES = 5 };
-	float m_avgVel[ MAX_VEL_SAMPLES ];
+	float m_avgVel[MAX_VEL_SAMPLES];
 	int m_avgVelIndex;
 	int m_avgVelCount;
 	Vector m_lastOrigin;
@@ -981,8 +1108,8 @@ private:
 	const CNavNode *m_navNodeList;
 	CNavNode *m_currentNode;
 	NavDirType m_generationDir;
-	int m_analyzeIter;
-	
+	NavAreaList::iterator m_analyzeIter;
+
 	enum ProcessType
 	{
 		PROCESS_NORMAL,
@@ -1012,7 +1139,6 @@ private:
 };
 
 // Inlines
-
 inline float CCSBot::GetCombatRange() const
 {
 	return m_combatRange;
@@ -1075,12 +1201,18 @@ inline bool CCSBot::IsAimingAtEnemy() const
 
 inline bool CCSBot::IsSurprised() const
 {
-	return gpGlobals->time - m_surpriseTimestamp < 5.0f;
+	if (gpGlobals->time - m_surpriseTimestamp < 5.0f)
+		return true;
+
+	return false;
 }
 
 inline float CCSBot::GetSurpriseDelay() const
 {
-	return ( gpGlobals->time -  IsSurprised() )? m_surpriseDelay : 0.0f;
+	if (!IsSurprised())
+		return 0.0f;
+
+	return m_surpriseDelay;
 }
 
 inline void CCSBot::ClearSurpriseDelay()
@@ -1270,12 +1402,12 @@ inline CNavArea *CCSBot::GetLastKnownArea() const
 
 inline const Vector &CCSBot::GetPathEndpoint() const
 {
-	return m_path[ m_pathLength - 1 ].pos;
+	return m_path[m_pathLength - 1].pos;
 }
 
 inline const Vector &CCSBot::GetPathPosition(int numpath) const
 {
-	return m_path[ numpath ].pos;
+	return m_path[numpath].pos;
 }
 
 inline bool CCSBot::IsUsingLadder() const
@@ -1337,6 +1469,7 @@ inline bool CCSBot::IsViewMoving(float angleVelThreshold) const
 	{
 		return false;
 	}
+
 	return true;
 }
 
@@ -1391,12 +1524,12 @@ inline float CCSBot::GetFeetZ() const
 {
 	if (IsCrouching())
 	{
-		const Vector crouch = Vector(0, 0, -StepHeight);
+		const Vector crouch(0, 0, -StepHeight);
 		return (pev->origin + crouch).z;
 	}
 	else
 	{
-		const Vector stand = Vector(0, 0, -HalfHumanHeight);
+		const Vector stand(0, 0, -HalfHumanHeight);
 		return (pev->origin + stand).z;
 	}
 }
@@ -1449,11 +1582,11 @@ public:
 	bool operator()(CNavArea *area)
 	{
 		// collect all the hiding spots in this area
-		const HidingSpotList *list = area->GetHidingSpotList ();
+		const HidingSpotList *list = area->GetHidingSpotList();
 
-		FOR_EACH_LL ((*list), it)
+		for (HidingSpotList::const_iterator iter = list->begin(); iter != list->end(); ++iter)
 		{
-			const HidingSpot *spot = (*list)[it];
+			const HidingSpot *spot = (*iter);
 
 			if (m_count >= MAX_SPOTS)
 				break;
@@ -1482,7 +1615,7 @@ public:
 			if (owner != NULL && m_me->m_iTeam != owner->m_iTeam)
 				continue;
 
-			m_spot[ m_count++ ] = spot->GetPosition();
+			m_spot[m_count++] = spot->GetPosition();
 		}
 
 		// if we've filled up, stop searching
@@ -1495,7 +1628,7 @@ public:
 	CCSBot *m_me;
 	float m_range;
 
-	const Vector *m_spot[ MAX_SPOTS ];
+	const Vector *m_spot[MAX_SPOTS];
 	int m_count;
 };
 
@@ -1520,26 +1653,6 @@ public:
 		}
 
 		return true;
-
-		/*if (hostage->pev->takedamage != DAMAGE_YES)
-			return true;
-
-		if (hostage->m_improv != NULL)
-		{
-			if (!hostage->IsFollowingSomeone() || m_me != hostage->GetLeader())
-				return true;
-		}
-		else if (!hostage->IsFollowing(m_me))
-			return true;
-
-		float range = (hostage->Center() - m_me->pev->origin).Length();
-
-		if (range > m_farRange)
-		{
-			m_farRange = range;
-		}
-
-		return true;*/
 	}
 
 	const CCSBot *m_me;
@@ -1547,7 +1660,6 @@ public:
 };
 
 // Functor used with NavAreaBuildPath()
-
 class PathCost
 {
 public:
@@ -1613,7 +1725,7 @@ public:
 				//{
 				//	fallDistance = ladder->m_bottom.z - area->GetCenter()->z;
 				//}
-				
+
 				float fallDamage = m_bot->GetApproximateFallDamage(fallDistance);
 
 				if (fallDamage > 0.0f)
@@ -1638,7 +1750,7 @@ public:
 			if (area->GetAttributes() & NAV_CROUCH)
 			{
 				// these areas are very slow to move through
-				float crouchPenalty = (m_route == FASTEST_ROUTE) ? 20.0f : 5.0f;
+				float_precision crouchPenalty = (m_route == FASTEST_ROUTE) ? 20.0f : 5.0f;
 
 				// avoid crouch areas if we are rescuing hostages
 				if (m_bot->GetHostageEscortCount())
@@ -1675,7 +1787,7 @@ public:
 				{
 					// cost is proportional to the density of teammates in this area
 					const float costPerFriendPerUnit = 50000.0f;
-					cost += costPerFriendPerUnit * (float)area->GetPlayerCount(m_bot->m_iTeam, m_bot) / size;
+					cost += costPerFriendPerUnit * float(area->GetPlayerCount(m_bot->m_iTeam, m_bot)) / size;
 				}
 			}
 
@@ -1713,7 +1825,7 @@ public:
 		else
 		{
 			const float k = 1.5f;
-			float trimSpeed = (speed < 200.0f) ? speed : 200.0f;
+			float_precision trimSpeed = (speed < 200.0f) ? speed : 200.0f;
 
 			m_cutoff.x = player->pev->origin.x + k * trimSpeed * m_forward.x;
 			m_cutoff.y = player->pev->origin.y + k * trimSpeed * m_forward.y;
@@ -1723,8 +1835,6 @@ public:
 	}
 
 	enum { MAX_TARGET_AREAS = 128 };
-
-	/* <568dc3> ../cstrike/dlls/bot/states/cs_bot_follow.cpp:124 */
 	bool operator()(CNavArea *area)
 	{
 		if (m_targetAreaCount >= MAX_TARGET_AREAS)
@@ -1735,7 +1845,7 @@ public:
 		{
 			if (m_forward.IsZero())
 			{
-				m_targetArea[ m_targetAreaCount++ ] = area;
+				m_targetArea[m_targetAreaCount++] = area;
 			}
 			else
 			{
@@ -1745,7 +1855,7 @@ public:
 
 				//if (DotProduct(to, m_forward) > 0.7071f)
 				if ((to.x * m_forward.x + to.y * m_forward.y) > 0.7071f)
-					m_targetArea[ m_targetAreaCount++ ] = area;
+					m_targetArea[m_targetAreaCount++] = area;
 			}
 		}
 
@@ -1755,13 +1865,13 @@ public:
 	CBasePlayer *m_player;
 	Vector2D m_forward;
 	Vector2D m_cutoff;
-	CNavArea *m_targetArea[ MAX_TARGET_AREAS ];
+	CNavArea *m_targetArea[MAX_TARGET_AREAS];
 	int m_targetAreaCount;
 };
 
 void InstallBotControl();
 void Bot_ServerCommand();
-void Bot_RegisterCvars();
+void Bot_RegisterCVars();
 int GetBotFollowCount(CBasePlayer *leader);
 const Vector *FindNearbyRetreatSpot(CCSBot *me, float maxRange);
 

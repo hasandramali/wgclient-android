@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CRecharge::m_SaveData[] =
 {
 	DEFINE_FIELD(CRecharge, m_flNextCharge, FIELD_TIME),
@@ -12,11 +16,12 @@ TYPEDESCRIPTION CRecharge::m_SaveData[] =
 	DEFINE_FIELD(CRecharge, m_flSoundTime, FIELD_TIME),
 };
 
-IMPLEMENT_SAVERESTORE(CRecharge, CBaseEntity);
+#endif
 
-LINK_ENTITY_TO_CLASS(func_recharge, CRecharge);
+IMPLEMENT_SAVERESTORE(CRecharge, CBaseEntity)
+LINK_ENTITY_TO_CLASS(func_recharge, CRecharge, CCSRecharge)
 
-void CRecharge::KeyValue(KeyValueData *pkvd)
+void CRecharge::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "style")
 		|| FStrEq(pkvd->szKeyName, "height")
@@ -35,7 +40,7 @@ void CRecharge::KeyValue(KeyValueData *pkvd)
 		CBaseToggle::KeyValue(pkvd);
 }
 
-void CRecharge::Spawn()
+void CRecharge::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -47,18 +52,18 @@ void CRecharge::Spawn()
 	UTIL_SetSize(pev, pev->mins, pev->maxs);
 	SET_MODEL(ENT(pev), STRING(pev->model));
 
-	m_iJuice = (int)gSkillData.suitchargerCapacity;
+	m_iJuice = int(gSkillData.suitchargerCapacity);
 	pev->frame = 0;
 }
 
-void CRecharge::Precache()
+void CRecharge::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_SOUND("items/suitcharge1.wav");
 	PRECACHE_SOUND("items/suitchargeno1.wav");
 	PRECACHE_SOUND("items/suitchargeok1.wav");
 }
 
-void CRecharge::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CRecharge::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	// if it's not a player, ignore
 	if (!FClassnameIs(pActivator->pev, "player"))

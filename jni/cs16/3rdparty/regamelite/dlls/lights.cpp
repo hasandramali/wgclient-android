@@ -1,21 +1,25 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CLight::m_SaveData[] =
 {
 	DEFINE_FIELD(CLight, m_iStyle, FIELD_INTEGER),
 	DEFINE_FIELD(CLight, m_iszPattern, FIELD_STRING),
 };
 
-LINK_ENTITY_TO_CLASS(light, CLight);
+#endif
 
-IMPLEMENT_SAVERESTORE(CLight, CPointEntity);
+LINK_ENTITY_TO_CLASS(light, CLight, CCSLight)
+IMPLEMENT_SAVERESTORE(CLight, CPointEntity)
 
 // Cache user-entity-field values until spawn is called.
-
-void CLight::KeyValue(KeyValueData *pkvd)
+void CLight::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "style"))
 	{
@@ -36,7 +40,7 @@ void CLight::KeyValue(KeyValueData *pkvd)
 		CPointEntity::KeyValue(pkvd);
 }
 
-void CLight::Spawn()
+void CLight::__MAKE_VHOOK(Spawn)()
 {
 	// inert light
 	if (FStringNull(pev->targetname))
@@ -59,7 +63,7 @@ void CLight::Spawn()
 	}
 }
 
-void CLight::Restart()
+void CLight::__MAKE_VHOOK(Restart)()
 {
 	if (m_iStyle >= 32)
 	{
@@ -80,7 +84,7 @@ void CLight::Restart()
 	}
 }
 
-void CLight::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CLight::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	if (m_iStyle >= 32)
 	{
@@ -104,16 +108,15 @@ void CLight::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType
 	}
 }
 
-LINK_ENTITY_TO_CLASS(light_spot, CLight);
+LINK_ENTITY_TO_CLASS(light_spot, CLight, CCSLight)
+LINK_ENTITY_TO_CLASS(light_environment, CEnvLight, CCSEnvLight)
 
-LINK_ENTITY_TO_CLASS(light_environment, CEnvLight);
-
-void CEnvLight::KeyValue(KeyValueData *pkvd)
+void CEnvLight::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "_light"))
 	{
 		int r, g, b, v, j;
-		j = sscanf(pkvd->szValue, "%d %d %d %d\n", &r, &g, &b, &v);
+		j = Q_sscanf(pkvd->szValue, "%d %d %d %d\n", &r, &g, &b, &v);
 
 		if (j == 1)
 			g = b = r;
@@ -126,9 +129,9 @@ void CEnvLight::KeyValue(KeyValueData *pkvd)
 		}
 
 		// simulate qrad direct, ambient,and gamma adjustments, as well as engine scaling
-		r = pow(r / 114.0, 0.6) * 264;
-		g = pow(g / 114.0, 0.6) * 264;
-		b = pow(b / 114.0, 0.6) * 264;
+		r = Q_pow(r / 114.0, 0.6) * 264;
+		g = Q_pow(g / 114.0, 0.6) * 264;
+		b = Q_pow(b / 114.0, 0.6) * 264;
 
 		pkvd->fHandled = TRUE;
 
@@ -144,9 +147,17 @@ void CEnvLight::KeyValue(KeyValueData *pkvd)
 		CLight::KeyValue(pkvd);
 }
 
-void CEnvLight::Spawn()
+void CEnvLight::__MAKE_VHOOK(Spawn)()
 {
-   #define SPRINTF_OLD_STD_FIX + 0
+#ifdef HOOK_GAMEDLL
+// NOTE: fix negative the values for function sprintf from STD C++:
+// expected - sv_skyvec_y "0.000000"
+// with using sprintf from STD C++, got - sv_skyvec_y "-0.000000"
+// If we not doing it then the test will be failed!
+#define SPRINTF_OLD_STD_FIX + 0
+#else
+#define SPRINTF_OLD_STD_FIX
+#endif
 
 	char szVector[64];
 	UTIL_MakeAimVectors(pev->angles);

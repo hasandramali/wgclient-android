@@ -57,13 +57,31 @@ public:
 	virtual unsigned int GetPlayerPriority(CBasePlayer *player) const;					// return priority of player (0 = max pri)
 	virtual bool IsImportantPlayer(CBasePlayer *player) const;						// return true if player is important to scenario (VIP, bomb carrier, etc)
 
+#ifdef HOOK_GAMEDLL
+
+	void ClientDisconnect_(CBasePlayer *pPlayer);
+	BOOL ClientCommand_(CBasePlayer *pPlayer, const char *pcmd);
+	void ServerActivate_();
+	void ServerDeactivate_();
+	void ServerCommand_(const char *pcmd);
+	void AddServerCommand_(const char *cmd);
+	void AddServerCommands_();
+	void RestartRound_();
+	void StartFrame_();
+	void OnEvent_(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
+	unsigned int GetPlayerPriority_(CBasePlayer *player) const;
+	bool IsImportantPlayer_(CBasePlayer *player) const;
+
+#endif
+
 public:
 	void ValidateMapData();
-	bool IsLearningMap() const		{ return m_isLearningMap; }
-	void SetLearningMapFlag()		{ m_isLearningMap = true;}
-	bool IsAnalysisRequested() const	{ return m_isAnalysisRequested; }
-	void RequestAnalysis()			{ m_isAnalysisRequested = true; }
-	void AckAnalysisRequest()		{ m_isAnalysisRequested = false; }
+	void OnFreeEntPrivateData(CBaseEntity *pEntity);
+	bool IsLearningMap() const { return IMPL(m_isLearningMap); }
+	void SetLearningMapFlag() { IMPL(m_isLearningMap) = true; }
+	bool IsAnalysisRequested() const { return IMPL(m_isAnalysisRequested); }
+	void RequestAnalysis() { IMPL(m_isAnalysisRequested) = true; }
+	void AckAnalysisRequest() { IMPL(m_isAnalysisRequested) = false; }
 
 	// difficulty levels
 	static BotDifficultyType GetDifficultyLevel()
@@ -88,7 +106,16 @@ public:
 		SCENARIO_RESCUE_HOSTAGES,
 		SCENARIO_ESCORT_VIP
 	};
-	GameScenarioType GetScenario() const			{ return m_gameScenario; }
+	GameScenarioType GetScenario() const
+	{
+#ifdef REGAMEDLL_ADD
+		// if we have included deathmatch mode, so set the game type like SCENARIO_DEATHMATCH
+		if (cv_bot_deathmatch.value > 0)
+			return SCENARIO_DEATHMATCH;
+#endif
+
+		return m_gameScenario;
+	}
 
 	// "zones"
 	// depending on the game mode, these are bomb zones, rescue zones, etc.
@@ -105,11 +132,11 @@ public:
 		Extent m_extent;
 	};
 
-	const Zone *GetZone(int i) const				{ return &m_zone[i]; }
+	const Zone *GetZone(int i) const { return &m_zone[i]; }
 	const Zone *GetZone(const Vector *pos) const;										// return the zone that contains the given position
 	const Zone *GetClosestZone(const Vector *pos) const;									// return the closest zone to the given position
-	const Zone *GetClosestZone(const CBaseEntity *entity) const	{ return GetClosestZone(&entity->pev->origin); }	// return the closest zone to the given entity
-	int GetZoneCount() const					{ return m_zoneCount; }
+	const Zone *GetClosestZone(const CBaseEntity *entity) const { return GetClosestZone(&entity->pev->origin); }		// return the closest zone to the given entity
+	int GetZoneCount() const { return m_zoneCount; }
 
 	const Vector *GetRandomPositionInZone(const Zone *zone) const;
 	CNavArea *GetRandomAreaInZone(const Zone *zone) const;
@@ -130,7 +157,7 @@ public:
 				continue;
 
 			// just use the first overlapping nav area as a reasonable approximation
-			float dist = NavAreaTravelDistance(startArea, m_zone[i].m_area[0], costFunc);
+			float_precision dist = NavAreaTravelDistance(startArea, m_zone[i].m_area[0], costFunc);
 
 			if (/*dist >= 0.0f && */dist < closeDist)
 			{
@@ -151,16 +178,16 @@ public:
 		if (!m_zoneCount)
 			return NULL;
 
-		return &m_zone[ RANDOM_LONG(0, m_zoneCount - 1) ];
+		return &m_zone[RANDOM_LONG(0, m_zoneCount - 1)];
 	}
 
-	bool IsBombPlanted() const			{ return m_isBombPlanted; }						// returns true if bomb has been planted
-	float GetBombPlantTimestamp() const		{ return m_bombPlantTimestamp; }					// return time bomb was planted
-	bool IsTimeToPlantBomb() const			{ return (gpGlobals->time >= m_earliestBombPlantTimestamp); }		// return true if it's ok to try to plant bomb
-	CBasePlayer *GetBombDefuser() const		{ return m_bombDefuser; }						// return the player currently defusing the bomb, or NULL
-	float GetBombTimeLeft() const;												// get the time remaining before the planted bomb explodes
-	CBaseEntity *GetLooseBomb()			{ return m_looseBomb; }							// return the bomb if it is loose on the ground
-	CNavArea *GetLooseBombArea() const		{ return m_looseBombArea; }						// return area that bomb is in/near
+	bool IsBombPlanted() const { return m_isBombPlanted; }								// returns true if bomb has been planted
+	float GetBombPlantTimestamp() const { return m_bombPlantTimestamp; }						// return time bomb was planted
+	bool IsTimeToPlantBomb() const { return (gpGlobals->time >= m_earliestBombPlantTimestamp); }			// return true if it's ok to try to plant bomb
+	CBasePlayer *GetBombDefuser() const { return m_bombDefuser; }							// return the player currently defusing the bomb, or NULL
+	float GetBombTimeLeft() const;											// get the time remaining before the planted bomb explodes
+	CBaseEntity *GetLooseBomb() { return m_looseBomb; }								// return the bomb if it is loose on the ground
+	CNavArea *GetLooseBombArea() const { return m_looseBombArea; }							// return area that bomb is in/near
 	void SetLooseBomb(CBaseEntity *bomb);
 
 	float GetRadioMessageTimestamp(GameEventType event, int teamID) const;			// return the last time the given radio message was sent for given team
@@ -168,53 +195,55 @@ public:
 	void SetRadioMessageTimestamp(GameEventType event, int teamID);
 	void ResetRadioMessageTimestamps();
 
-	float GetLastSeenEnemyTimestamp() const		{ return m_lastSeenEnemyTimestamp; }				// return the last time anyone has seen an enemy
-	void SetLastSeenEnemyTimestamp()		{ m_lastSeenEnemyTimestamp = gpGlobals->time; }
+	float GetLastSeenEnemyTimestamp() const { return m_lastSeenEnemyTimestamp; }			// return the last time anyone has seen an enemy
+	void SetLastSeenEnemyTimestamp() { m_lastSeenEnemyTimestamp = gpGlobals->time; }
 
-	float GetRoundStartTime() const			{ return m_roundStartTimestamp; }
-	float GetElapsedRoundTime() const		{ return gpGlobals->time - m_roundStartTimestamp; }		// return the elapsed time since the current round began
+	float GetRoundStartTime() const { return m_roundStartTimestamp; }
+	float GetElapsedRoundTime() const { return gpGlobals->time - m_roundStartTimestamp; }		// return the elapsed time since the current round began
 
-	bool AllowRogues() const			{ return cv_bot_allow_rogues.value != 0.0f; }
-	bool AllowPistols() const			{ return cv_bot_allow_pistols.value != 0.0f; }
-	bool AllowShotguns() const			{ return cv_bot_allow_shotguns.value != 0.0f; }
-	bool AllowSubMachineGuns() const		{ return cv_bot_allow_sub_machine_guns.value != 0.0f; }
-	bool AllowRifles() const			{ return cv_bot_allow_rifles.value != 0.0f; }
-	bool AllowMachineGuns() const			{ return cv_bot_allow_machine_guns.value != 0.0f; }
-	bool AllowGrenades() const			{ return cv_bot_allow_grenades.value != 0.0f; }
-	bool AllowSnipers() const			{ return cv_bot_allow_snipers.value != 0.0f; }
-	bool AllowTacticalShield() const		{ return cv_bot_allow_shield.value != 0.0f; }
-	bool AllowFriendlyFireDamage() const		{ return friendlyfire.value != 0.0f; }
+	bool AllowRogues() const { return cv_bot_allow_rogues.value != 0.0f; }
+	bool AllowPistols() const { return cv_bot_allow_pistols.value != 0.0f; }
+	bool AllowShotguns() const { return cv_bot_allow_shotguns.value != 0.0f; }
+	bool AllowSubMachineGuns() const { return cv_bot_allow_sub_machine_guns.value != 0.0f; }
+	bool AllowRifles() const { return cv_bot_allow_rifles.value != 0.0f; }
+	bool AllowMachineGuns() const { return cv_bot_allow_machine_guns.value != 0.0f; }
+	bool AllowGrenades() const { return cv_bot_allow_grenades.value != 0.0f; }
+	bool AllowSnipers() const { return cv_bot_allow_snipers.value != 0.0f; }
+	bool AllowTacticalShield() const { return cv_bot_allow_shield.value != 0.0f; }
+	bool AllowFriendlyFireDamage() const { return friendlyfire.value != 0.0f; }
 
 	bool IsWeaponUseable(CBasePlayerItem *item) const;						// return true if the bot can use this weapon
 
-	bool IsDefenseRushing() const		{ return m_isDefenseRushing; }				// returns true if defense team has "decided" to rush this round
+	bool IsDefenseRushing() const { return m_isDefenseRushing; }					// returns true if defense team has "decided" to rush this round
 	bool IsOnDefense(CBasePlayer *player) const;							// return true if this player is on "defense"
 	bool IsOnOffense(CBasePlayer *player) const;							// return true if this player is on "offense"
 
-	bool IsRoundOver() const			{ return m_isRoundOver; }			// return true if the round has ended
+	bool IsRoundOver() const { return m_isRoundOver; }						// return true if the round has ended
 
-	unsigned int GetNavPlace() const		{ return m_navPlace; }
-	void SetNavPlace(unsigned int place)		{ m_navPlace = place; }
+	unsigned int GetNavPlace() const { return m_navPlace; }
+	void SetNavPlace(unsigned int place) { m_navPlace = place; }
 
 	enum SkillType { LOW, AVERAGE, HIGH, RANDOM };
-	NOXREF const char *GetRandomBotName(SkillType skill);
+	const char *GetRandomBotName(SkillType skill);
 
-	static void MonitorBotCVars();
-	static void MaintainBotQuota();
-	static bool AddBot(const BotProfile *profile, BotProfileTeamType team);
+	void MonitorBotCVars();
+	void MaintainBotQuota();
+	bool AddBot(const BotProfile *profile, BotProfileTeamType team);
 
 	#define FROM_CONSOLE true
-	static bool BotAddCommand(BotProfileTeamType team, bool isFromConsole = false);			// process the "bot_add" console command
+	bool BotAddCommand(BotProfileTeamType team, bool isFromConsole = false);			// process the "bot_add" console command
 
+#ifndef HOOK_GAMEDLL
 private:
-	static float m_flNextCVarCheck;
-	static bool m_isMapDataLoaded;				// true if we've attempted to load map data
-	static bool m_isLearningMap;
-	static bool m_isAnalysisRequested;
+#endif
+	static float IMPL(m_flNextCVarCheck);
+	static bool IMPL(m_isMapDataLoaded);				// true if we've attempted to load map data
+	static bool IMPL(m_isLearningMap);
+	static bool IMPL(m_isAnalysisRequested);
 
 	GameScenarioType m_gameScenario;				// what kind of game are we playing
 
-	Zone m_zone[ MAX_ZONES ];
+	Zone m_zone[MAX_ZONES];
 	int m_zoneCount;
 
 	bool m_isBombPlanted;						// true if bomb has been planted
@@ -233,7 +262,7 @@ private:
 
 	bool m_isDefenseRushing;					// whether defensive team is rushing this round or not
 
-	static NavEditCmdType m_editCmd;
+	static NavEditCmdType IMPL(m_editCmd);
 	unsigned int m_navPlace;
 	CountdownTimer m_respawnTimer;
 	bool m_isRespawnStarted;
@@ -241,7 +270,7 @@ private:
 	bool m_bServerActive;
 };
 
-NOXREF inline int OtherTeam(int team)
+inline int OtherTeam(int team)
 {
 	return (team == TERRORIST) ? CT : TERRORIST;
 }
@@ -249,6 +278,12 @@ NOXREF inline int OtherTeam(int team)
 inline CCSBotManager *TheCSBots()
 {
 	return reinterpret_cast<CCSBotManager *>(TheBots);
+}
+
+// Determine whether bots can be used or not
+inline bool AreBotsAllowed()
+{
+	return g_bAllowedCSBot;
 }
 
 void PrintAllEntities();

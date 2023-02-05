@@ -36,6 +36,7 @@ class CHalfLifeTraining: public CHalfLifeMultiplay
 {
 public:
 	CHalfLifeTraining();
+	virtual ~CHalfLifeTraining() {};
 
 	virtual BOOL IsMultiplayer() { return FALSE; }
 	virtual BOOL IsDeathmatch();
@@ -48,7 +49,21 @@ public:
 	virtual int ItemShouldRespawn(CItem *pItem);
 	virtual void CheckMapConditions() {};
 	virtual void CheckWinConditions();
-   
+
+#ifdef HOOK_GAMEDLL
+
+	BOOL IsDeathmatch_();
+	void InitHUD_(CBasePlayer *pl);
+	void PlayerSpawn_(CBasePlayer *pPlayer);
+	void PlayerThink_(CBasePlayer *pPlayer);
+	BOOL FPlayerCanRespawn_(CBasePlayer *pPlayer);
+	edict_t *GetPlayerSpawnSpot_(CBasePlayer *pPlayer);
+	void PlayerKilled_(CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pInflictor);
+	int ItemShouldRespawn_(CItem *pItem);
+	void CheckWinConditions_();
+
+#endif
+
 public:
 	static void HostageDied();
 	static bool PlayerCanBuy(CBasePlayer *pPlayer);
@@ -71,8 +86,19 @@ public:
 	virtual void Think();
 	virtual void Touch(CBaseEntity *pOther);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Think_();
+	void Touch_(CBaseEntity *pOther);
+
+#endif
+
 public:
-	static TYPEDESCRIPTION m_SaveData[5];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[5];
 
 	int m_NeedGrenadeType;
 	string_t sTriggerOnGrenade;
@@ -89,9 +115,19 @@ public:
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 	virtual void Touch(CBaseEntity *pOther);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Touch_(CBaseEntity *pOther);
+
+#endif
+
 public:
-	static TYPEDESCRIPTION m_SaveData[6];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[6];
 
 private:
 	string_t sTriggerWithItems;

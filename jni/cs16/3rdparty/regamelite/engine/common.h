@@ -26,32 +26,31 @@
 *
 */
 
-#ifndef COMMON_H
-#define COMMON_H
-#ifdef _WIN32
 #pragma once
-#endif
 
-#include "maintypes.h"
-#include "bspfile.h"
-#include "info.h"
+#include "const.h"
+#include "qlimits.h"
 
 // Don't allow overflow
 #define SIZEBUF_CHECK_OVERFLOW		0
 #define SIZEBUF_ALLOW_OVERFLOW		BIT(0)
 #define SIZEBUF_OVERFLOWED		BIT(1)
 
-/* <6ae> ../common/common.h:82 */
+#define MAX_NUM_ARGVS			50
+#define NUM_SAFE_ARGVS			7
+
+#define COM_COPY_CHUNK_SIZE		1024
+#define COM_MAX_CMD_LINE		256
+
 typedef struct sizebuf_s
 {
 	const char *buffername;
-	uint16_t flags;
+	uint16 flags;
 	byte *data;
 	int maxsize;
 	int cursize;
 } sizebuf_t;
 
-/* <270aa> ../common/common.h:297 */
 typedef struct downloadtime_s
 {
 	qboolean bUsed;
@@ -59,7 +58,6 @@ typedef struct downloadtime_s
 	int nBytesRemaining;
 } downloadtime_t;
 
-/* <19fa2> ../common/common.h:303 */
 typedef struct incomingtransfer_s
 {
 	qboolean doneregistering;
@@ -73,44 +71,3 @@ typedef struct incomingtransfer_s
 	float fLastStatusUpdate;
 	qboolean custom;
 } incomingtransfer_t;
-
-#ifndef _WIN32
-#define _strlwr(p) for (int i = 0; p[i] != 0; i++) p[i] = tolower(p[i]);
-#endif // _WIN32
-
-#define printf2 _printf2
-#define chatf _print_chat
-
-#define Q_close _close
-#define Q_write _write
-#define Q_memset memset
-#define Q_memcpy memcpy
-#define Q_strlen strlen
-#define Q_memcmp memcmp
-#define Q_strcpy strcpy
-#define Q_strncpy strncpy
-#define Q_strrchr strrchr
-#define Q_strcat strcat
-#define Q_strncat strncat
-#define Q_strcmp strcmp
-#define Q_strncmp strncmp
-//#define Q_strcasecmp _stricmp		// Use Q_stricmp
-//#define Q_strncasecmp _strnicmp	// Use Q_strnicmp
-#define Q_strdup _strdup
-#define Q_stricmp _stricmp
-#define Q_strnicmp _strnicmp
-#define Q_strstr strstr
-#define Q_strchr strchr
-#define Q_strrchr strrchr
-#define Q_strlwr _strlwr
-#define Q_sprintf sprintf
-#define Q_snprintf _snprintf
-#define Q_atoi atoi
-#define Q_atof atof
-#define Q_memmove memmove
-//#define Q_strtoull strtoull
-//#define Q_FileNameCmp FileNameCmp
-#define Q_vsnprintf _vsnprintf
-#define Q_vsnwprintf _vsnwprintf
-
-#endif // COMMON_H

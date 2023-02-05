@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_ump45, CUMP45);
+LINK_ENTITY_TO_CLASS(weapon_ump45, CUMP45, CCSUMP45)
 
-void CUMP45::Spawn()
+void CUMP45::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CUMP45::Spawn()
 	FallInit();
 }
 
-void CUMP45::Precache()
+void CUMP45::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_ump45.mdl");
 	PRECACHE_MODEL("models/w_ump45.mdl");
@@ -30,10 +32,14 @@ void CUMP45::Precache()
 	m_usFireUMP45 = PRECACHE_EVENT(1, "events/ump45.sc");
 }
 
-int CUMP45::GetItemInfo(ItemInfo *p)
+int CUMP45::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
+#ifdef REGAMEDLL_FIXES
 	p->pszAmmo1 = "45acp";
+#else
+	p->pszAmmo1 = "45ACP";
+#endif
 	p->iMaxAmmo1 = MAX_AMMO_45ACP;
 	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;
@@ -47,7 +53,7 @@ int CUMP45::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CUMP45::Deploy()
+BOOL CUMP45::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.0f;
 	m_bDelayFire = false;
@@ -56,7 +62,7 @@ BOOL CUMP45::Deploy()
 	return DefaultDeploy("models/v_ump45.mdl", "models/p_ump45.mdl", UMP45_DRAW, "carbine", UseDecrement() != FALSE);
 }
 
-void CUMP45::PrimaryAttack()
+void CUMP45::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -113,10 +119,10 @@ void CUMP45::UMP45Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireUMP45, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
 
 	m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = DIM_GUN_FLASH;
@@ -148,12 +154,12 @@ void CUMP45::UMP45Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CUMP45::Reload()
+void CUMP45::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_45acp <= 0)
 		return;
 
-	if (DefaultReload(UMP45_MAX_CLIP, UMP45_RELOAD, UMP45_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), UMP45_RELOAD, UMP45_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -162,7 +168,7 @@ void CUMP45::Reload()
 	}
 }
 
-void CUMP45::WeaponIdle()
+void CUMP45::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

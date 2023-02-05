@@ -50,7 +50,7 @@
 
 #define SPEAKER_START_SILENT			1	// wait for trigger 'on' to start announcements
 
-#define	LFO_SQUARE				1	// square
+#define LFO_SQUARE				1	// square
 #define LFO_TRIANGLE				2	// triangle
 #define LFO_RANDOM				3	// random
 
@@ -116,13 +116,24 @@ public:
 	virtual int Restore(CRestore &restore);
 	virtual int ObjectCaps() { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void Restart_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
 public:
 	void EXPORT ToggleUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void EXPORT RampThink();
 	void InitModulationParms();
 
 public:
-	static TYPEDESCRIPTION m_SaveData[4];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[4];
 
 	float m_flAttenuation;	// attenuation value
 	dynpitchvol_t m_dpv;
@@ -139,8 +150,18 @@ public:
 	virtual int Restore(CRestore &restore);
 	virtual void Think();
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Think_();
+
+#endif
+
 public:
-	static TYPEDESCRIPTION m_SaveData[2];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[2];
 
 	float m_flRadius;
 	float m_flRoomtype;
@@ -156,11 +177,22 @@ public:
 	virtual int Restore(CRestore &restore);
 	virtual int ObjectCaps() { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
 public:
 	void EXPORT ToggleUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void EXPORT SpeakerThink();
+
 public:
-	static TYPEDESCRIPTION m_SaveData[1];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
 
 	int m_preset;		// preset number
 };
@@ -173,19 +205,19 @@ int SENTENCEG_GetIndex(const char *szgroupname);
 int SENTENCEG_PlayRndI(edict_t *entity, int isentenceg, float volume, float attenuation, int flags, int pitch);
 int SENTENCEG_PlayRndSz(edict_t *entity, const char *szgroupname, float volume, float attenuation, int flags, int pitch);
 int SENTENCEG_PlaySequentialSz(edict_t *entity, const char *szgroupname, float volume, float attenuation, int flags, int pitch, int ipick, int freset);
-NOXREF void SENTENCEG_Stop(edict_t *entity, int isentenceg, int ipick);
+void SENTENCEG_Stop(edict_t *entity, int isentenceg, int ipick);
 void SENTENCEG_Init();
 int SENTENCEG_Lookup(const char *sample, char *sentencenum);
 void EMIT_SOUND_DYN(edict_t *entity, int channel, const char *sample, float volume, float attenuation, int flags, int pitch);
 void EMIT_SOUND_SUIT(edict_t *entity, const char *sample);
 void EMIT_GROUPID_SUIT(edict_t *entity, int isentenceg);
-NOXREF void EMIT_GROUPNAME_SUIT(edict_t *entity, const char *groupname);
+void EMIT_GROUPNAME_SUIT(edict_t *entity, const char *groupname);
 char *memfgets(byte *pMemFile, int fileSize, int &filePos, char *pBuffer, int bufferSize);
 void TEXTURETYPE_Init();
 char TEXTURETYPE_Find(char *name);
 float TEXTURETYPE_PlaySound(TraceResult *ptr, Vector vecSrc, Vector vecEnd, int iBulletType);
 
-extern char gszallsentencenames[ CVOXFILESENTENCEMAX ][ CBSENTENCENAME_MAX ];
+extern char gszallsentencenames[CVOXFILESENTENCEMAX][CBSENTENCENAME_MAX];
 extern int gcTextures;
 
 #endif // SOUND_H

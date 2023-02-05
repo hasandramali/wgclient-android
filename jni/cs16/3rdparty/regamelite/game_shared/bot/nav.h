@@ -38,6 +38,15 @@
 // to help identify nav files
 #define NAV_MAGIC_NUMBER	0xFEEDFACE
 
+// version
+// 1 = hiding spots as plain vector array
+// 2 = hiding spots as HidingSpot objects
+// 3 = Encounter spots use HidingSpot ID's instead of storing vector again
+// 4 = Includes size of source bsp file to verify nav data correlation
+// ---- Beta Release at V4 -----
+// 5 = Added Place info
+#define NAV_VERSION		5
+
 // A place is a named group of navigation areas
 typedef unsigned int Place;
 
@@ -138,10 +147,10 @@ struct Extent
 	Vector lo;
 	Vector hi;
 
-	float SizeX() const		{ return hi.x - lo.x; }
-	float SizeY() const		{ return hi.y - lo.y;}
-	float SizeZ() const		{ return hi.z - lo.z; }
-	float Area() const		{ return SizeX() * SizeY(); }
+	float SizeX() const { return hi.x - lo.x; }
+	float SizeY() const { return hi.y - lo.y; }
+	float SizeZ() const { return hi.z - lo.z; }
+	float Area() const { return SizeX() * SizeY(); }
 
 	// return true if 'pos' is inside of this extent
 	bool Contains(const Vector *pos) const
@@ -245,7 +254,7 @@ inline float DirectionToAngle(NavDirType dir)
 	return 0.0f;
 }
 
-inline NavDirType AngleToDirection(float angle)
+inline NavDirType AngleToDirection(float_precision angle)
 {
 	while (angle < 0.0f)
 		angle += 360.0f;
@@ -309,7 +318,7 @@ inline float SnapToGrid(float value)
 	return c * GenerationStepSize;
 }
 
-inline float NormalizeAngle(float angle)
+inline float_precision NormalizeAngle(float_precision angle)
 {
 	while (angle < -180.0f)
 		angle += 360.0f;
@@ -346,7 +355,7 @@ inline float AngleDifference(float a, float b)
 
 inline bool AnglesAreEqual(float a, float b, float tolerance = 5.0f)
 {
-	if (abs(int64(AngleDifference(a, b))) < tolerance)
+	if (Q_abs(int64(AngleDifference(a, b))) < tolerance)
 		return true;
 
 	return false;
@@ -354,9 +363,9 @@ inline bool AnglesAreEqual(float a, float b, float tolerance = 5.0f)
 
 inline bool VectorsAreEqual(const Vector *a, const Vector *b, float tolerance = 0.1f)
 {
-	if (abs(a->x - b->x) < tolerance &&
-			abs(a->y - b->y) < tolerance &&
-			abs(a->z - b->z) < tolerance)
+	if (Q_abs(a->x - b->x) < tolerance
+		&& Q_abs(a->y - b->y) < tolerance
+		&& Q_abs(a->z - b->z) < tolerance)
 		return true;
 
 	return false;
@@ -376,7 +385,6 @@ inline bool IsEntityWalkable(entvars_t *entity, unsigned int flags)
 }
 
 // Check LOS, ignoring any entities that we can walk through
-
 inline bool IsWalkableTraceLineClear(Vector &from, Vector &to, unsigned int flags = 0)
 {
 	TraceResult result;

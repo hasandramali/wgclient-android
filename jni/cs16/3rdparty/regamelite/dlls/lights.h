@@ -39,12 +39,23 @@ class CLight: public CPointEntity
 public:
 	virtual void Spawn();
 	virtual void Restart();
+	virtual void KeyValue(KeyValueData *pkvd);
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
-	virtual void KeyValue(KeyValueData *pkvd);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
-	static TYPEDESCRIPTION m_SaveData[2];
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Restart_();
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void KeyValue_(KeyValueData *pkvd);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
+	static TYPEDESCRIPTION IMPL(m_SaveData)[2];
 
 private:
 	int m_iStyle;
@@ -57,6 +68,14 @@ class CEnvLight: public CLight
 public:
 	virtual void Spawn();
 	virtual void KeyValue(KeyValueData *pkvd);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+
+#endif
+
 };
 
 #endif // LIGHT_H

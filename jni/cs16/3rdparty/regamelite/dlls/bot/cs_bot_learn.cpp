@@ -1,6 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-const float updateTimesliceDuration = 0.5f;
+const float updateTimesliceDuration = 0.1f;
 
 int _navAreaCount = 0;
 int _currentIndex = 0;
@@ -11,7 +13,6 @@ inline CNavNode *LadderEndSearch(CBaseEntity *entity, const Vector *pos, NavDirT
 	AddDirectionVector(&center, mountDir, HalfHumanWidth);
 
 	// Test the ladder dismount point first, then each cardinal direction one and two steps away
-
 	for (int d = (-1); d < 2 * NUM_DIRECTIONS; ++d)
 	{
 		Vector tryPos = center;
@@ -35,7 +36,11 @@ inline CNavNode *LadderEndSearch(CBaseEntity *entity, const Vector *pos, NavDirT
 		TraceResult result;
 		UTIL_TraceLine(center + Vector(0, 0, fudge), tryPos + Vector(0, 0, fudge), ignore_monsters, dont_ignore_glass, ENT(entity->pev), &result);
 
-		if (result.flFraction != 1.0f || result.fStartSolid)
+		if (result.flFraction != 1.0f
+#ifdef REGAMEDLL_FIXES
+			|| result.fStartSolid
+#endif
+		)
 			continue;
 
 		// if no node exists here, create one and continue the search
@@ -66,7 +71,7 @@ CNavNode *CCSBot::AddNode(const Vector *destPos, const Vector *normal, NavDirTyp
 
 	// optimization: if deltaZ changes very little, assume connection is commutative
 	const float zTolerance = 10.0f; // 50.0f;
-	if (fabs(source->GetPosition()->z - destPos->z) < zTolerance)
+	if (Q_fabs(source->GetPosition()->z - destPos->z) < zTolerance)
 	{
 		node->ConnectTo(source, OppositeDirection(dir));
 		node->MarkAsVisited(OppositeDirection(dir));
@@ -116,7 +121,7 @@ void drawProgressMeter(float progress, char *title)
 {
 	MESSAGE_BEGIN(MSG_ALL, gmsgBotProgress);
 		WRITE_BYTE(FLAG_PROGRESS_DRAW);
-		WRITE_BYTE((int)progress);
+		WRITE_BYTE(int(progress * 100.0f));
 		WRITE_STRING(title);
 	MESSAGE_END();
 }
@@ -138,8 +143,8 @@ void hideProgressMeter()
 
 void CCSBot::StartLearnProcess()
 {
-	startProgressMeter("Analyzing map geometry...");
-	drawProgressMeter(0, "Analyzing map geometry...");
+	startProgressMeter("#CZero_LearningMap");
+	drawProgressMeter(0, "#CZero_LearningMap");
 	BuildLadders();
 
 	Vector normal;
@@ -165,7 +170,6 @@ void CCSBot::StartLearnProcess()
 // outwards, tracking all valid steps and generating a directed graph of CNavNodes.
 // Sample the map one "step" in a cardinal direction to learn the map.
 // Returns true if sampling needs to continue, or false if done.
-
 bool CCSBot::LearnStep()
 {
 	// take a step
@@ -174,9 +178,10 @@ bool CCSBot::LearnStep()
 		if (m_currentNode == NULL)
 		{
 			// search is exhausted - continue search from ends of ladders
-			FOR_EACH_LL (TheNavLadderList, it)
+			NavLadderList::iterator iter;
+			for (iter = TheNavLadderList.begin(); iter != TheNavLadderList.end(); ++iter)
 			{
-				CNavLadder *ladder = TheNavLadderList[it];
+				CNavLadder *ladder = (*iter);
 
 				// check ladder bottom
 				if ((m_currentNode = LadderEndSearch(ladder->m_entity, &ladder->m_bottom, ladder->m_dir)) != 0)
@@ -318,13 +323,14 @@ bool CCSBot::LearnStep()
 						walkable = false;
 					}
 				}
-            
+#ifdef REGAMEDLL_FIXES
 				// if we're incrementally generating, don't overlap existing nav areas
 				CNavArea *overlap = TheNavAreaGrid.GetNavArea(&to, HumanHeight);
 				if (overlap != NULL)
 				{
 					walkable = false;
 				}
+#endif
 				if (walkable)
 				{
 					// we can move here
@@ -357,27 +363,28 @@ void CCSBot::UpdateLearnProcess()
 void CCSBot::StartAnalyzeAlphaProcess()
 {
 	m_processMode = PROCESS_ANALYZE_ALPHA;
-	m_analyzeIter = TheNavAreaList.Head ();
+	m_analyzeIter = TheNavAreaList.begin();
 
-	_navAreaCount = TheNavAreaList.Count();
+	_navAreaCount = TheNavAreaList.size();
 	_currentIndex = 0;
 
+	ApproachAreaAnalysisPrep();
 	DestroyHidingSpots();
 
-	startProgressMeter("Analyzing hiding spots...");
-	drawProgressMeter(0, "Analyzing hiding spots...");
+	startProgressMeter("#CZero_AnalyzingHidingSpots");
+	drawProgressMeter(0, "#CZero_AnalyzingHidingSpots");
 }
 
 bool CCSBot::AnalyzeAlphaStep()
 {
 	++_currentIndex;
-	if (m_analyzeIter == TheNavAreaList.InvalidIndex ())
+	if (m_analyzeIter == TheNavAreaList.end())
 		return false;
 
-	CNavArea *area = TheNavAreaList.Element (m_analyzeIter);
+	CNavArea *area = (*m_analyzeIter);
 	area->ComputeHidingSpots();
 	area->ComputeApproachAreas();
-	m_analyzeIter = TheNavAreaList.Next (m_analyzeIter);
+	++m_analyzeIter;
 
 	return true;
 }
@@ -389,35 +396,36 @@ void CCSBot::UpdateAnalyzeAlphaProcess()
 	{
 		if (AnalyzeAlphaStep() == false)
 		{
-			drawProgressMeter(50, "Analyzing hiding spots...");
+			drawProgressMeter(0.5f, "#CZero_AnalyzingHidingSpots");
+			CleanupApproachAreaAnalysisPrep();
 			StartAnalyzeBetaProcess();
 			return;
 		}
 	}
 
-	float progress = (double (_currentIndex) / double (_navAreaCount)) * 0.5f;
-	drawProgressMeter(progress, "Analyzing hiding spots...");
+	float progress = (double(_currentIndex) / double(_navAreaCount)) * 0.5f;
+	drawProgressMeter(progress, "#CZero_AnalyzingHidingSpots");
 }
 
 void CCSBot::StartAnalyzeBetaProcess()
 {
 	m_processMode = PROCESS_ANALYZE_BETA;
-	m_analyzeIter = TheNavAreaList.Head ();
+	m_analyzeIter = TheNavAreaList.begin();
 
-	_navAreaCount = TheNavAreaList.Count ();
+	_navAreaCount = TheNavAreaList.size();
 	_currentIndex = 0;
 }
 
 bool CCSBot::AnalyzeBetaStep()
 {
 	++_currentIndex;
-	if (m_analyzeIter == TheNavAreaList.InvalidIndex ())
+	if (m_analyzeIter == TheNavAreaList.end())
 		return false;
 
-	CNavArea *area = TheNavAreaList.Element (m_analyzeIter);
+	CNavArea *area = (*m_analyzeIter);
 	area->ComputeSpotEncounters();
 	area->ComputeSniperSpots();
-	m_analyzeIter = TheNavAreaList.Next (m_analyzeIter);
+	++m_analyzeIter;
 
 	return true;
 }
@@ -429,14 +437,14 @@ void CCSBot::UpdateAnalyzeBetaProcess()
 	{
 		if (AnalyzeBetaStep() == false)
 		{
-			drawProgressMeter(100, "Analyzing approach points...");
+			drawProgressMeter(1, "#CZero_AnalyzingApproachPoints");
 			StartSaveProcess();
 			return;
 		}
 	}
-
-	float progress = (double (_currentIndex) / double (_navAreaCount) + 1.0f) * 0.5f;
-	drawProgressMeter(progress, "Analyzing approach points...");
+	
+	float progress = (double(_currentIndex) / double(_navAreaCount) + 1.0f) * 0.5f;
+	drawProgressMeter(progress, "#CZero_AnalyzingApproachPoints");
 }
 
 void CCSBot::StartSaveProcess()
@@ -458,13 +466,18 @@ void CCSBot::UpdateSaveProcess()
 	HintMessageToAllPlayers("Saving...");
 	SaveNavigationMap(filename);
 
-	Q_sprintf(msg, "Navigation file '%s' saved.", filename);
+	Q_snprintf(msg, sizeof(msg), "Navigation file '%s' saved.", filename);
 	HintMessageToAllPlayers(msg);
 
 	hideProgressMeter();
 	StartNormalProcess();
 
-	Q_sprintf (cmd, "changelevel %s\n", STRING (gpGlobals->mapname));
+#ifndef REGAMEDLL_FIXES
+	Q_snprintf(cmd, sizeof(cmd), "map %s\n", STRING(gpGlobals->mapname));
+#else
+	Q_snprintf(cmd, sizeof(cmd), "changelevel %s\n", STRING(gpGlobals->mapname));
+#endif
+
 	SERVER_COMMAND(cmd);
 }
 

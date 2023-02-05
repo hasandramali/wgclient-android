@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 const char *TutorIdentifierList[] =
 {
 	"YOU_FIRED_A_SHOT",
@@ -157,6 +161,8 @@ const char *TutorIdentifierList[] =
 	"INGAME_HINT_3"
 };
 
+#endif // HOOK_GAMEDLL
+
 CCSTutor::CCSTutor()
 {
 	m_stateSystem = new CCSTutorStateSystem;
@@ -177,22 +183,19 @@ CCSTutor::CCSTutor()
 
 CCSTutor::~CCSTutor()
 {
-	for (int i = 0; i < m_messageMap.Count (); i++)
-		delete [] m_messageMap[i]->name;
-	m_messageMap.PurgeAndDeleteElements ();
-
-	if (m_stateSystem != NULL)
+	if (m_stateSystem)
 	{
 		delete m_stateSystem;
+		m_stateSystem = NULL;
 	}
 
-	if (m_currentMessageEvent != NULL)
+	if (m_currentMessageEvent)
 	{
 		DeleteEvent(m_currentMessageEvent);
 		m_currentMessageEvent = NULL;
 	}
 
-	if (m_lastScenarioEvent != NULL)
+	if (m_lastScenarioEvent)
 	{
 		DeleteEvent(m_lastScenarioEvent);
 		m_lastScenarioEvent = NULL;
@@ -423,11 +426,10 @@ void CCSTutor::ReadTutorMessageFile()
 			messageData = MP_COM_Parse(messageData);
 			token = MP_COM_GetToken();
 
-			TutorMap *newMap = new TutorMap;
-			newMap->name = CloneString (token);
-			newMap->msg = ConstructTutorMessage (messageData, &defaultMessage);
+			std::string identifier = token;
+			TutorMessage *tm = ConstructTutorMessage(messageData, &defaultMessage);
 
-			m_messageMap.AddToTail (newMap);
+			m_messageMap[identifier] = tm;
 		}
 		else if (!Q_stricmp(token, "Defaults"))
 		{
@@ -443,11 +445,9 @@ void CCSTutor::ApplyPersistentDecay()
 	for (TutorMessageID mid = YOU_FIRED_A_SHOT; mid < TUTOR_NUM_MESSAGES; mid++)
 	{
 		TutorMessage *definition = GetTutorMessageDefinition(mid);
-
-		if (definition != NULL)
+		if (definition)
 		{
 			int timesShown = GET_TIMES_TUTOR_MESSAGE_SHOWN(mid);
-
 			if (timesShown != -1)
 			{
 				definition->m_timesShown = timesShown;
@@ -464,16 +464,11 @@ bool CCSTutor::HasCurrentWindowBeenActiveLongEnough(float time)
 bool CCSTutor::ShouldShowMessageEvent(TutorMessageEvent *event, float time)
 {
 	if (event == NULL)
-	{
 		return false;
-	}
 
 	TutorMessage *message = GetTutorMessageDefinition(event->GetID());
-
 	if (message == NULL)
-	{
 		return false;
-	}
 
 	if (message->m_class == TUTORMESSAGECLASS_NORMAL)
 	{
@@ -485,26 +480,17 @@ bool CCSTutor::ShouldShowMessageEvent(TutorMessageEvent *event, float time)
 	}
 
 	if (!(m_messageTypeMask & message->m_type) || (time - message->m_lastCloseTime < message->m_minRepeatInterval))
-	{
 		return false;
-	}
 
 	if (HasCurrentWindowBeenActiveLongEnough(time))
-	{
 		return true;
-	}
 
 	if (message->m_interruptFlag != TUTORMESSAGEINTERRUPTFLAG_NOW_DAMMIT)
-	{
 		return false;
-	}
 
 	TutorMessage *current = GetTutorMessageDefinition(m_currentlyShownMessageID);
-
 	if (current == NULL || (DoMessagesHaveSameID(event->GetID(), m_currentlyShownMessageID) && current->m_keepOld != TUTORMESSAGEKEEPOLDTYPE_DONT_KEEP_OLD))
-	{
 		return false;
-	}
 
 	if (message->m_priority > current->m_priority
 		|| message->m_priority == current->m_priority
@@ -524,12 +510,7 @@ void CCSTutor::CheckForInterruptingMessageEvent(float time)
 	TutorMessage *oldMessage = GetTutorMessageDefinition(m_currentlyShownMessageID);
 	TutorMessageEvent *oldEvent = m_currentMessageEvent;
 
-	if (event == NULL)
-	{
-		return;
-	}
-
-	while (event != NULL)
+	while (event)
 	{
 		if (ShouldShowMessageEvent(event, time))
 		{
@@ -545,14 +526,14 @@ void CCSTutor::CheckForInterruptingMessageEvent(float time)
 		return;
 	}
 
-	if (oldEvent != NULL)
+	if (oldEvent)
 	{
 		ProcessShownDeathsForEvent(event);
 		DeleteEvent(oldEvent);
 	}
 
 	CloseCurrentWindow();
-	if (oldMessage != NULL)
+	if (oldMessage)
 	{
 		oldMessage->m_lastCloseTime = time;
 	}
@@ -561,7 +542,7 @@ void CCSTutor::CheckForInterruptingMessageEvent(float time)
 	ConstructMessageAndDisplay();
 }
 
-void CCSTutor::TutorThink(float time)
+void CCSTutor::__MAKE_VHOOK(TutorThink)(float time)
 {
 	if (m_nextViewableCheckTime <= time)
 	{
@@ -606,13 +587,10 @@ void CCSTutor::TutorThink(float time)
 
 void CCSTutor::CheckForWindowClose(float time)
 {
-	if (m_currentlyShownMessageID < 0 || m_currentlyShownMessageID >= 150 || time <= m_currentlyShownMessageCloseTime)
-	{
+	if (m_currentlyShownMessageID < 0 || m_currentlyShownMessageID >= TUTOR_NUM_MESSAGES || time <= m_currentlyShownMessageCloseTime)
 		return;
-	}
 
 	TutorMessageEvent *event = GetTutorMessageUpdateEvent();
-
 	if (event == NULL)
 	{
 		ClearCurrentEvent();
@@ -625,21 +603,15 @@ void CCSTutor::CheckForWindowClose(float time)
 
 void CCSTutor::CheckForContentUpdate()
 {
-	if (m_currentlyShownMessageID < 0 || m_currentlyShownMessageID >= 150)
-	{
+	if (m_currentlyShownMessageID < 0 || m_currentlyShownMessageID >= TUTOR_NUM_MESSAGES)
 		return;
-	}
 
 	TutorMessage *definition = GetTutorMessageDefinition(m_currentlyShownMessageID);
-
 	if (definition == NULL || definition->m_keepOld != TUTORMESSAGEKEEPOLDTYPE_UPDATE_CONTENT)
-	{
 		return;
-	}
 
 	TutorMessageEvent *event = GetTutorMessageUpdateEvent();
-
-	if (event != NULL)
+	if (event)
 	{
 		UpdateCurrentMessage(event);
 		DeleteEventFromEventList(event);
@@ -649,8 +621,7 @@ void CCSTutor::CheckForContentUpdate()
 void CCSTutor::ClearCurrentEvent(bool closeWindow, bool processDeathsForEvent)
 {
 	TutorMessage *oldMessage = GetTutorMessageDefinition(m_currentlyShownMessageID);
-
-	if (oldMessage != NULL)
+	if (oldMessage)
 	{
 		oldMessage->m_lastCloseTime = gpGlobals->time;
 	}
@@ -669,7 +640,7 @@ void CCSTutor::ClearCurrentEvent(bool closeWindow, bool processDeathsForEvent)
 	m_currentlyShownMessageCloseTime = 0;
 	m_currentlyShownMessageMinimumCloseTime = 0;
 
-	if (m_currentMessageEvent != NULL)
+	if (m_currentMessageEvent)
 	{
 		DeleteEvent(m_currentMessageEvent);
 		m_currentMessageEvent = NULL;
@@ -679,9 +650,7 @@ void CCSTutor::ClearCurrentEvent(bool closeWindow, bool processDeathsForEvent)
 void CCSTutor::ProcessShownDeathsForEvent(TutorMessageEvent *event)
 {
 	if (event == NULL)
-	{
 		return;
-	}
 
 	for (int i = 0; i < ARRAYSIZE(m_playerDeathInfo); ++i)
 	{
@@ -698,11 +667,9 @@ TutorMessageEvent *CCSTutor::GetTutorMessageUpdateEvent()
 	TutorMessage *definition = GetTutorMessageDefinition(m_currentlyShownMessageID);
 
 	if (definition == NULL || definition->m_keepOld == TUTORMESSAGEKEEPOLDTYPE_DONT_KEEP_OLD)
-	{
 		return NULL;
-	}
 
-	for (TutorMessageEvent *event = m_eventList; event != NULL; event = event->GetNext())
+	for (TutorMessageEvent *event = m_eventList; event; event = event->GetNext())
 	{
 		if (DoMessagesHaveSameID(event->GetID(), m_currentlyShownMessageID))
 		{
@@ -715,9 +682,9 @@ TutorMessageEvent *CCSTutor::GetTutorMessageUpdateEvent()
 
 bool CCSTutor::GetDuplicateMessagesFromEventList(TutorMessageEvent *&event1, TutorMessageEvent *&event2)
 {
-	for (event1 = m_eventList; event1 != NULL; event1 = event1->GetNext())
+	for (event1 = m_eventList; event1; event1 = event1->GetNext())
 	{
-		for (event2 = event1->GetNext(); event2 != NULL; event2 = event2->GetNext())
+		for (event2 = event1->GetNext(); event2; event2 = event2->GetNext())
 		{
 			if (DoMessagesHaveSameID(event1->GetID(), event2->GetID()))
 			{
@@ -732,8 +699,7 @@ bool CCSTutor::GetDuplicateMessagesFromEventList(TutorMessageEvent *&event1, Tut
 void CCSTutor::CheckForInactiveEvents(float time)
 {
 	TutorMessageEvent *event = m_eventList;
-
-	while (event != NULL)
+	while (event)
 	{
 		if (!event->IsActive(time))
 		{
@@ -751,9 +717,7 @@ void CCSTutor::CheckForInactiveEvents(float time)
 	TutorMessageEvent *event1 = NULL;
 	TutorMessageEvent *event2 = NULL;
 
-	bool foundDup = GetDuplicateMessagesFromEventList(event1, event2);
-
-	if (foundDup)
+	if (GetDuplicateMessagesFromEventList(event1, event2))
 	{
 		if (event1->GetTimeActive(time) < event2->GetTimeActive(time))
 		{
@@ -773,13 +737,10 @@ void CCSTutor::CheckForInactiveEvents(float time)
 void CCSTutor::CancelEvent(TutorMessageID mid)
 {
 	if (m_currentlyShownMessageID == mid)
-	{
 		ClearCurrentEvent();
-	}
 
 	TutorMessageEvent *event = m_eventList;
-
-	while (event != NULL)
+	while (event)
 	{
 		TutorMessageEvent *temp = event->GetNext();
 
@@ -792,7 +753,7 @@ void CCSTutor::CancelEvent(TutorMessageID mid)
 		event = temp;
 	}
 
-	if (m_lastScenarioEvent != NULL && m_lastScenarioEvent->GetID() == mid)
+	if (m_lastScenarioEvent && m_lastScenarioEvent->GetID() == mid)
 	{
 		DeleteEvent(m_lastScenarioEvent);
 		m_lastScenarioEvent = NULL;
@@ -803,7 +764,7 @@ NOXREF void CCSTutor::LookupHotKey(TutorMessageID mid, int paramNum, wchar_t *bu
 {
 #ifdef _WIN32
 	_snwprintf(buf, buflen - 1, L"KEY%d", paramNum);
-#endif // _WIN32
+#endif
 }
 
 TutorMessageEvent *CCSTutor::CreateTutorMessageEvent(TutorMessageID mid, CBaseEntity *entity, CBaseEntity *other)
@@ -818,18 +779,14 @@ TutorMessageEvent *CCSTutor::CreateTutorMessageEvent(TutorMessageID mid, CBaseEn
 	localPlayer = UTIL_GetLocalPlayer();
 
 	if (localPlayer == NULL)
-	{
 		return NULL;
-	}
 
 	message = GetTutorMessageDefinition(mid);
 
 	if (message == NULL)
-	{
 		return NULL;
-	}
 
-	event = new TutorMessageEvent
+	event = new(std::nothrow) TutorMessageEvent
 	(
 		mid,
 		message->m_duplicateID,
@@ -838,7 +795,7 @@ TutorMessageEvent *CCSTutor::CreateTutorMessageEvent(TutorMessageID mid, CBaseEn
 		message->m_priority
 	);
 
-	if (event != NULL)
+	if (event)
 	{
 		switch (mid)
 		{
@@ -897,7 +854,7 @@ TutorMessageEvent *CCSTutor::CreateTutorMessageEvent(TutorMessageID mid, CBaseEn
 			char numLeftStr[16];
 			int numtasks = 0;
 
-			if (TheCareerTasks != NULL)
+			if (TheCareerTasks)
 			{
 				numtasks = TheCareerTasks->GetNumRemainingTasks();
 			}
@@ -925,12 +882,8 @@ TutorMessageEvent *CCSTutor::CreateTutorMessageEvent(TutorMessageID mid, CBaseEn
 			{
 				switch (localPlayer->m_iTeam)
 				{
-				case CT:
-					numCT--;
-					break;
-				case TERRORIST:
-					numT--;
-					break;
+				case CT:	numCT--; break;
+				case TERRORIST:	numT--;  break;
 				}
 			}
 
@@ -949,13 +902,9 @@ TutorMessageEvent *CCSTutor::CreateTutorMessageEvent(TutorMessageID mid, CBaseEn
 
 			ConstructRecentDeathsList(localPlayer->m_iTeam, teammateList, sizeof(teammateList), event);
 			event->AddParameter(teammateList);
-
 			break;
 		}
-		default:
-			break;
 		}
-
 	}
 
 	return event;
@@ -963,7 +912,7 @@ TutorMessageEvent *CCSTutor::CreateTutorMessageEvent(TutorMessageID mid, CBaseEn
 
 void CCSTutor::AddToEventList(TutorMessageEvent *event)
 {
-	if (event != NULL)
+	if (event)
 	{
 		event->SetNext(m_eventList);
 		m_eventList = event;
@@ -972,18 +921,13 @@ void CCSTutor::AddToEventList(TutorMessageEvent *event)
 
 void CCSTutor::CreateAndAddEventToList(TutorMessageID mid, CBaseEntity *entity, CBaseEntity *other)
 {
-	TutorMessageEvent *event;
-	TutorMessage *message;
-
-	event = CreateTutorMessageEvent(mid, entity, other);
-
-	if (event != NULL)
+	auto event = CreateTutorMessageEvent(mid, entity, other);
+	if (event)
 	{
-		message = GetTutorMessageDefinition(mid);
-
-		if (message != NULL && message->m_type == TUTORMESSAGETYPE_SCENARIO)
+		auto message = GetTutorMessageDefinition(mid);
+		if (message && message->m_type == TUTORMESSAGETYPE_SCENARIO)
 		{
-			if (m_lastScenarioEvent != NULL)
+			if (m_lastScenarioEvent)
 			{
 				DeleteEvent(m_lastScenarioEvent);
 				m_lastScenarioEvent = NULL;
@@ -999,15 +943,13 @@ void CCSTutor::CreateAndAddEventToList(TutorMessageID mid, CBaseEntity *entity, 
 void CCSTutor::DeleteEventFromEventList(TutorMessageEvent *event)
 {
 	if (event == NULL)
-	{
 		return;
-	}
 
 	TutorMessageEvent *temp = m_eventList;
 
 	if (temp != event)
 	{
-		if (temp != NULL)
+		if (temp)
 		{
 			while (event != temp->GetNext())
 			{
@@ -1019,7 +961,7 @@ void CCSTutor::DeleteEventFromEventList(TutorMessageEvent *event)
 				}
 			}
 
-			if (temp != NULL && temp->GetNext() == event)
+			if (temp && temp->GetNext() == event)
 			{
 				temp->SetNext(temp->GetNext()->GetNext());
 			}
@@ -1031,7 +973,7 @@ void CCSTutor::DeleteEventFromEventList(TutorMessageEvent *event)
 
 void CCSTutor::ClearEventList()
 {
-	while (m_eventList != NULL)
+	while (m_eventList)
 	{
 		TutorMessageEvent *temp = m_eventList;
 		m_eventList = m_eventList->GetNext();
@@ -1042,26 +984,22 @@ void CCSTutor::ClearEventList()
 
 void CCSTutor::DeleteEvent(TutorMessageEvent *event)
 {
-	for (int i = 0; i < ARRAYSIZE(m_playerDeathInfo); ++i)
+	for (auto& playerDeathInfo : m_playerDeathInfo)
 	{
-		if (m_playerDeathInfo[i].m_event == event)
-		{
-			m_playerDeathInfo[i].m_event = NULL;
+		if (playerDeathInfo.m_event == event) {
+			playerDeathInfo.m_event = nullptr;
 		}
 	}
 
-	if (event != NULL)
-	{
-		delete event;
-	}
+	delete event;
 }
 
-void CCSTutor::PurgeMessages()
+void CCSTutor::__MAKE_VHOOK(PurgeMessages)()
 {
 	ClearCurrentEvent();
 	ClearEventList();
 
-	if (m_lastScenarioEvent != NULL)
+	if (m_lastScenarioEvent)
 	{
 		DeleteEvent(m_lastScenarioEvent);
 		m_lastScenarioEvent = NULL;
@@ -1108,8 +1046,7 @@ NOXREF bool CCSTutor::ShouldUpdateCurrentMessage(TutorMessageID messageID)
 	if (DoMessagesHaveSameID(messageID, m_currentlyShownMessageID))
 	{
 		TutorMessage *definition = GetTutorMessageDefinition(messageID);
-
-		if (definition != NULL && definition->m_keepOld != TUTORMESSAGEKEEPOLDTYPE_DONT_KEEP_OLD)
+		if (definition && definition->m_keepOld != TUTORMESSAGEKEEPOLDTYPE_DONT_KEEP_OLD)
 		{
 			return true;
 		}
@@ -1122,7 +1059,7 @@ void CCSTutor::UpdateCurrentMessage(TutorMessageEvent *event)
 {
 	TransferDeathEvents(m_currentMessageEvent, event);
 
-	if (m_currentMessageEvent != NULL)
+	if (m_currentMessageEvent)
 	{
 		DeleteEvent(m_currentMessageEvent);
 		m_currentMessageEvent = NULL;
@@ -1132,12 +1069,10 @@ void CCSTutor::UpdateCurrentMessage(TutorMessageEvent *event)
 	m_currentMessageEvent = event;
 
 	TutorMessage *definition = GetTutorMessageDefinition(event->GetID());
-
-	if (definition != NULL)
+	if (definition)
 	{
 		CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
-
-		if (localPlayer != NULL)
+		if (localPlayer)
 		{
 			m_currentlyShownMessageCloseTime = definition->m_duration + gpGlobals->time;
 
@@ -1150,18 +1085,15 @@ void CCSTutor::UpdateCurrentMessage(TutorMessageEvent *event)
 	}
 }
 
-void CCSTutor::ShowTutorMessage(TutorMessageEvent *event)
+void CCSTutor::__MAKE_VHOOK(ShowTutorMessage)(TutorMessageEvent *event)
 {
 	TutorMessageID mid = static_cast<TutorMessageID>(event->GetID());
 
 	if (mid < 0 || mid >= TUTOR_NUM_MESSAGES)
-	{
 		return;
-	}
 
 	TutorMessage *message = GetTutorMessageDefinition(mid);
-
-	if (message != NULL)
+	if (message)
 	{
 		m_currentlyShownMessageID = mid;
 		m_currentMessageEvent = event;
@@ -1174,19 +1106,15 @@ void CCSTutor::ShowTutorMessage(TutorMessageEvent *event)
 void CCSTutor::ConstructMessageAndDisplay()
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
-
-	if (localPlayer != NULL && !localPlayer->IsBot())
+	if (localPlayer && !localPlayer->IsBot())
 	{
 		TutorMessageID mid = static_cast<TutorMessageID>(m_currentMessageEvent->GetID());
 
 		if (mid < 0 || mid >= TUTOR_NUM_MESSAGES)
-		{
 			return;
-		}
 
 		TutorMessage *message = GetTutorMessageDefinition(mid);
-
-		if (message != NULL)
+		if (message)
 		{
 			message->m_timesShown++;
 			ComputeDisplayTimesForMessage();
@@ -1195,7 +1123,7 @@ void CCSTutor::ConstructMessageAndDisplay()
 	}
 }
 
-void CCSTutor::CallEventHandler(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
+void CCSTutor::__MAKE_VHOOK(CallEventHandler)(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
 	switch (event)
 	{
@@ -1369,12 +1297,10 @@ void CCSTutor::CallEventHandler(GameEventType event, CBaseEntity *entity, CBaseE
 void CCSTutor::HandleWeaponFired(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
-
-	if (localPlayer != NULL && localPlayer->IsAlive())
+	if (localPlayer && localPlayer->IsAlive())
 	{
 		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
-
-		if (player != NULL && player == localPlayer)
+		if (player && player == localPlayer)
 		{
 			CheckForNeedToReload();
 		}
@@ -1385,25 +1311,22 @@ void CCSTutor::HandleWeaponFiredOnEmpty(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer == NULL)
+		return;
+
+	CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (player && player->IsPlayer() && player == localPlayer)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
-
-		if (player != NULL && player->IsPlayer() && player == localPlayer)
+		CBasePlayerWeapon *currentWeapon = static_cast<CBasePlayerWeapon *>(player->m_pActiveItem);
+		if (currentWeapon && player->m_rgAmmo[currentWeapon->m_iPrimaryAmmoType] <= 0)
 		{
-			CBasePlayerWeapon *currentWeapon = static_cast<CBasePlayerWeapon *>(player->m_pActiveItem);
-
-			if (currentWeapon != NULL && player->m_rgAmmo[currentWeapon->m_iPrimaryAmmoType] <= 0)
+			TutorMessage *message = GetTutorMessageDefinition(YOU_ARE_OUT_OF_AMMO);
+			if (message)
 			{
-				TutorMessage *message = GetTutorMessageDefinition(YOU_ARE_OUT_OF_AMMO);
-
-				if (message != NULL)
-				{
-					message->m_lastCloseTime = 0;
-				}
-
-				CreateAndAddEventToList(YOU_ARE_OUT_OF_AMMO);
+				message->m_lastCloseTime = 0;
 			}
+
+			CreateAndAddEventToList(YOU_ARE_OUT_OF_AMMO);
 		}
 	}
 }
@@ -1411,8 +1334,7 @@ void CCSTutor::HandleWeaponFiredOnEmpty(CBaseEntity *entity, CBaseEntity *other)
 void CCSTutor::HandleWeaponReloaded(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *player = static_cast<CBasePlayer *>(entity);
-
-	if (player != NULL && player->IsPlayer() && player == UTIL_GetLocalPlayer())
+	if (player && player->IsPlayer() && player == UTIL_GetLocalPlayer())
 	{
 		CancelEvent(YOU_SHOULD_RELOAD);
 	}
@@ -1423,22 +1345,16 @@ void CCSTutor::HandlePlayerDied(CBaseEntity *entity, CBaseEntity *other)
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
 	if (localPlayer == NULL)
-	{
 		return;
-	}
 
 	CBasePlayer *victim = static_cast<CBasePlayer *>(entity);
 	CBasePlayer *attacker = static_cast<CBasePlayer *>(other);
 
-	if (victim != NULL && !victim->IsPlayer())
-	{
+	if (victim && !victim->IsPlayer())
 		victim = NULL;
-	}
 
-	if (attacker != NULL && !attacker->IsPlayer())
-	{
+	if (attacker && !attacker->IsPlayer())
 		attacker = NULL;
-	}
 
 	if (victim == localPlayer && !attacker)
 	{
@@ -1480,32 +1396,19 @@ void CCSTutor::HandlePlayerDied(CBaseEntity *entity, CBaseEntity *other)
 				{
 					switch (numT)
 					{
-					case 0:
-						CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY_HEADSHOT, entity, other);
-						break;
-					case 1:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT_ONE_LEFT, entity, other);
-						break;
-					default:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT, entity, other);
-						break;
+					case 0: CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY_HEADSHOT, entity, other); break;
+					case 1: CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT_ONE_LEFT, entity, other); break;
+					default: CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT, entity, other); break;
 					}
-
 					break;
 				}
 				case TERRORIST:
 				{
 					switch (numCT)
 					{
-					case 0:
-						CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY_HEADSHOT, entity, other);
-						break;
-					case 1:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT_ONE_LEFT, entity, other);
-						break;
-					default:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT, entity, other);
-						break;
+					case 0: CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY_HEADSHOT, entity, other); break;
+					case 1: CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT_ONE_LEFT, entity, other); break;
+					default: CreateAndAddEventToList(YOU_KILLED_PLAYER_HEADSHOT, entity, other); break;
 					}
 					break;
 				}
@@ -1519,32 +1422,19 @@ void CCSTutor::HandlePlayerDied(CBaseEntity *entity, CBaseEntity *other)
 				{
 					switch (numT)
 					{
-					case 0:
-						CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY, entity, other);
-						break;
-					case 1:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER_ONE_LEFT, entity, other);
-						break;
-					default:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER, entity, other);
-						break;
+					case 0: CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY, entity, other); break;
+					case 1: CreateAndAddEventToList(YOU_KILLED_PLAYER_ONE_LEFT, entity, other); break;
+					default: CreateAndAddEventToList(YOU_KILLED_PLAYER, entity, other); break;
 					}
-
 					break;
 				}
 				case TERRORIST:
 				{
 					switch (numCT)
 					{
-					case 0:
-						CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY, entity, other);
-						break;
-					case 1:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER_ONE_LEFT, entity, other);
-						break;
-					default:
-						CreateAndAddEventToList(YOU_KILLED_PLAYER, entity, other);
-						break;
+					case 0: CreateAndAddEventToList(YOU_KILLED_LAST_ENEMY, entity, other); break;
+					case 1: CreateAndAddEventToList(YOU_KILLED_PLAYER_ONE_LEFT, entity, other); break;
+					default: CreateAndAddEventToList(YOU_KILLED_PLAYER, entity, other); break;
 					}
 					break;
 				}
@@ -1587,7 +1477,6 @@ void CCSTutor::HandlePlayerDied(CBaseEntity *entity, CBaseEntity *other)
 						CreateAndAddEventToList(TEAMMATE_KILLED, entity, other);
 					}
 				}
-
 				break;
 			}
 			case TERRORIST:
@@ -1618,7 +1507,6 @@ void CCSTutor::HandlePlayerDied(CBaseEntity *entity, CBaseEntity *other)
 						CreateAndAddEventToList(TEAMMATE_KILLED, entity, other);
 					}
 				}
-
 				break;
 			}
 		}
@@ -1631,32 +1519,19 @@ void CCSTutor::HandlePlayerDied(CBaseEntity *entity, CBaseEntity *other)
 			{
 				switch (numT)
 				{
-				case 0:
-					CreateAndAddEventToList(LAST_ENEMY_KILLED, entity, other);
-					break;
-				case 1:
-					CreateAndAddEventToList(ENEMY_KILLED_ONE_LEFT, entity, other);
-					break;
-				default:
-					CreateAndAddEventToList(ENEMY_KILLED, entity, other);
-					break;
+				case 0: CreateAndAddEventToList(LAST_ENEMY_KILLED, entity, other); break;
+				case 1: CreateAndAddEventToList(ENEMY_KILLED_ONE_LEFT, entity, other); break;
+				default: CreateAndAddEventToList(ENEMY_KILLED, entity, other); break;
 				}
-
 				break;
 			}
 			case TERRORIST:
 			{
 				switch (numCT)
 				{
-				case 0:
-					CreateAndAddEventToList(LAST_ENEMY_KILLED, entity, other);
-					break;
-				case 1:
-					CreateAndAddEventToList(ENEMY_KILLED_ONE_LEFT, entity, other);
-					break;
-				default:
-					CreateAndAddEventToList(ENEMY_KILLED, entity, other);
-					break;
+				case 0: CreateAndAddEventToList(LAST_ENEMY_KILLED, entity, other); break;
+				case 1: CreateAndAddEventToList(ENEMY_KILLED_ONE_LEFT, entity, other); break;
+				default: CreateAndAddEventToList(ENEMY_KILLED, entity, other); break;
 				}
 				break;
 			}
@@ -1668,29 +1543,29 @@ void CCSTutor::HandlePlayerTookDamage(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer == NULL)
+		return;
+
+	CBasePlayer *victim = static_cast<CBasePlayer *>(entity);
+	CBasePlayer *attacker = static_cast<CBasePlayer *>(other);
+
+	if (victim && !victim->IsPlayer())
 	{
-		CBasePlayer *victim = static_cast<CBasePlayer *>(entity);
-		CBasePlayer *attacker = static_cast<CBasePlayer *>(other);
+		victim = NULL;
+	}
 
-		if (victim != NULL && !victim->IsPlayer())
-		{
-			victim = NULL;
-		}
+	if (attacker && !attacker->IsPlayer())
+	{
+		attacker = NULL;
+	}
 
-		if (attacker != NULL && !attacker->IsPlayer())
-		{
-			attacker = NULL;
-		}
-
-		if (victim != NULL && victim == localPlayer)
-		{
-			CreateAndAddEventToList(YOU_WERE_JUST_HURT);
-		}
-		else if (attacker != NULL && victim != NULL && attacker == localPlayer && victim->m_iTeam == localPlayer->m_iTeam)
-		{
-			CreateAndAddEventToList(YOU_ATTACKED_TEAMMATE);
-		}
+	if (victim && victim == localPlayer)
+	{
+		CreateAndAddEventToList(YOU_WERE_JUST_HURT);
+	}
+	else if (attacker && victim && attacker == localPlayer && victim->m_iTeam == localPlayer->m_iTeam)
+	{
+		CreateAndAddEventToList(YOU_ATTACKED_TEAMMATE);
 	}
 }
 
@@ -1698,14 +1573,13 @@ void CCSTutor::HandlePlayerBlindedByFlashbang(CBaseEntity *entity, CBaseEntity *
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (localPlayer == NULL)
+		return;
 
-		if (player != NULL && player->IsPlayer() && player == localPlayer)
-		{
-			CreateAndAddEventToList(YOU_ARE_BLIND_FROM_FLASHBANG);
-		}
+	CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (player && player->IsPlayer() && player == localPlayer)
+	{
+		CreateAndAddEventToList(YOU_ARE_BLIND_FROM_FLASHBANG);
 	}
 }
 
@@ -1726,16 +1600,14 @@ NOXREF void CCSTutor::HandleClientCorpseSpawned(CBaseEntity *entity, CBaseEntity
 	CBasePlayer *player = static_cast<CBasePlayer *>(entity);
 
 	if (player == NULL || !player->IsPlayer())
-	{
 		return;
-	}
 
 	ClientCorpseStruct *corpse = new ClientCorpseStruct;
 
 	corpse->m_position = player->pev->origin;
 	corpse->m_team = player->m_iTeam;
 
-	m_clientCorpseList.AddToTail(corpse);
+	m_clientCorpseList.push_back(corpse);
 }
 
 void CCSTutor::HandleBuyMenuOpenned(CBaseEntity *entity, CBaseEntity *other)
@@ -1767,7 +1639,7 @@ void CCSTutor::HandlePlayerLeftBuyZone(CBaseEntity *entity, CBaseEntity *other)
 	ClearEventList();
 	ClearCurrentEvent();
 
-	if (m_lastScenarioEvent != NULL)
+	if (m_lastScenarioEvent)
 	{
 		m_lastScenarioEvent->SetActivationTime(gpGlobals->time);
 		AddToEventList(m_lastScenarioEvent);
@@ -1780,9 +1652,7 @@ void CCSTutor::HandleBombPlanted(CBaseEntity *entity, CBaseEntity *other)
 	CBasePlayer *player = UTIL_GetLocalPlayer();
 
 	if (player == NULL)
-	{
 		return;
-	}
 
 	if (player->IsAlive() && player->m_iTeam == CT)
 	{
@@ -1798,28 +1668,21 @@ void CCSTutor::HandleBombDefused(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		CBasePlayer *defuser = static_cast<CBasePlayer *>(entity);
+	if (localPlayer == NULL)
+		return;
 
-		if (defuser != NULL && defuser->IsPlayer() && defuser == localPlayer)
+	CBasePlayer *defuser = static_cast<CBasePlayer *>(entity);
+	if (defuser && defuser->IsPlayer() && defuser == localPlayer)
+	{
+		CreateAndAddEventToList(YOU_DEFUSED_BOMB);
+	}
+	else
+	{
+		switch (localPlayer->m_iTeam)
 		{
-			CreateAndAddEventToList(YOU_DEFUSED_BOMB);
-		}
-		else
-		{
-			switch (localPlayer->m_iTeam)
-			{
-			case CT:
-				CreateAndAddEventToList(BOMB_DEFUSED_CT);
-				break;
-			case TERRORIST:
-				CreateAndAddEventToList(BOMB_DEFUSED_T);
-				break;
-			default:
-				CreateAndAddEventToList(ROUND_OVER);
-				break;
-			}
+		case CT:	CreateAndAddEventToList(BOMB_DEFUSED_CT); break;
+		case TERRORIST:	CreateAndAddEventToList(BOMB_DEFUSED_T); break;
+		default:	CreateAndAddEventToList(ROUND_OVER); break;
 		}
 	}
 }
@@ -1828,14 +1691,13 @@ void CCSTutor::HandleBombDefusing(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (localPlayer == NULL)
+		return;
 
-		if (player != NULL && player->IsPlayer() && player == localPlayer && !player->m_bHasDefuser)
-		{
-			CreateAndAddEventToList(DEFUSING_WITHOUT_KIT);
-		}
+	CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (player && player->IsPlayer() && player == localPlayer && !player->m_bHasDefuser)
+	{
+		CreateAndAddEventToList(DEFUSING_WITHOUT_KIT);
 	}
 }
 
@@ -1843,19 +1705,14 @@ void CCSTutor::HandleBombExploded(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer == NULL)
+		return;
+
+	switch (localPlayer->m_iTeam)
 	{
-		switch (localPlayer->m_iTeam)
-		{
-		case CT:
-			CreateAndAddEventToList(BOMB_EXPLODED_CT);
-			break;
-		case TERRORIST:
-			CreateAndAddEventToList(BOMB_EXPLODED_T);
-			break;
-		default:
-			break;
-		}
+	case CT:	CreateAndAddEventToList(BOMB_EXPLODED_CT); break;
+	case TERRORIST:	CreateAndAddEventToList(BOMB_EXPLODED_T); break;
+	default: break;
 	}
 }
 
@@ -1864,40 +1721,32 @@ void CCSTutor::HandleRoundStart(CBaseEntity *entity, CBaseEntity *other)
 	CBasePlayer *player = UTIL_GetLocalPlayer();
 
 	m_roundStartTime = gpGlobals->time;
-	if (player != NULL)
+	if (player == NULL)
+		return;
+
+	if (IsBombMap())
 	{
-		if (IsBombMap())
+		switch (player->m_iTeam)
 		{
-			switch (player->m_iTeam)
-			{
-			case CT:
-				CreateAndAddEventToList(ROUND_START_DE_CT);
-				break;
-			case TERRORIST:
-			{
-				if (player->m_bHasC4)
-					CreateAndAddEventToList(YOU_ARE_BOMB_CARRIER, entity, other);
-				else
-					CreateAndAddEventToList(ROUND_START_DE_T);
-				break;
-			}
-			default:
-				break;
-			}
+		case CT:
+			CreateAndAddEventToList(ROUND_START_DE_CT);
+			break;
+		case TERRORIST:
+		{
+			if (player->m_bHasC4)
+				CreateAndAddEventToList(YOU_ARE_BOMB_CARRIER, entity, other);
+			else
+				CreateAndAddEventToList(ROUND_START_DE_T);
+			break;
 		}
-		else if (IsHostageMap())
+		}
+	}
+	else if (IsHostageMap())
+	{
+		switch (player->m_iTeam)
 		{
-			switch (player->m_iTeam)
-			{
-			case CT:
-				CreateAndAddEventToList(ROUND_START_CS_CT);
-				break;
-			case TERRORIST:
-				CreateAndAddEventToList(ROUND_START_CS_T);
-				break;
-			default:
-				break;
-			}
+		case CT:	CreateAndAddEventToList(ROUND_START_CS_CT); break;
+		case TERRORIST:	CreateAndAddEventToList(ROUND_START_CS_T); break;
 		}
 	}
 }
@@ -1906,14 +1755,13 @@ void CCSTutor::HandleBeingShotAt(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (localPlayer == NULL)
+		return;
 
-		if (player != NULL && player->IsPlayer() && player == localPlayer && localPlayer->IsAlive())
-		{
-			CreateAndAddEventToList(YOU_HAVE_BEEN_SHOT_AT, entity, other);
-		}
+	CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (player && player->IsPlayer() && player == localPlayer && localPlayer->IsAlive())
+	{
+		CreateAndAddEventToList(YOU_HAVE_BEEN_SHOT_AT, entity, other);
 	}
 }
 
@@ -1921,31 +1769,24 @@ void CCSTutor::HandleHostageUsed(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer == NULL)
+		return;
+
+	CBasePlayer *activator = static_cast<CBasePlayer *>(entity);
+	if (activator && activator->IsPlayer())
 	{
-		CBasePlayer *activator = static_cast<CBasePlayer *>(entity);
+		bool unusedHostages = !CheckForAllHostagesFollowingSomeone();
 
-		if (activator != NULL && activator->IsPlayer())
+		if (activator == localPlayer)
 		{
-			bool unusedHostages = !CheckForAllHostagesFollowingSomeone();
-
-			if (activator == localPlayer)
+			CreateAndAddEventToList(unusedHostages ? YOU_USED_HOSTAGE_MORE_LEFT : YOU_USED_HOSTAGE_NO_MORE_LEFT);
+		}
+		else if (!unusedHostages)
+		{
+			switch (localPlayer->m_iTeam)
 			{
-				CreateAndAddEventToList(unusedHostages ? YOU_USED_HOSTAGE_MORE_LEFT : YOU_USED_HOSTAGE_NO_MORE_LEFT);
-			}
-			else if (!unusedHostages)
-			{
-				switch (localPlayer->m_iTeam)
-				{
-				case CT:
-					CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_CT);
-					break;
-				case TERRORIST:
-					CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_T);
-					break;
-				default:
-					break;
-				}
+			case CT:	CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_CT); break;
+			case TERRORIST:	CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_T); break;
 			}
 		}
 	}
@@ -1955,23 +1796,16 @@ void CCSTutor::HandleHostageRescued(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		CBasePlayer *rescuer = static_cast<CBasePlayer *>(entity);
+	if (localPlayer == NULL)
+		return;
 
-		if (rescuer != NULL && rescuer->IsPlayer())
+	CBasePlayer *rescuer = static_cast<CBasePlayer *>(entity);
+	if (rescuer && rescuer->IsPlayer())
+	{
+		switch (localPlayer->m_iTeam)
 		{
-			switch (localPlayer->m_iTeam)
-			{
-			case CT:
-				CreateAndAddEventToList((localPlayer == rescuer) ? YOU_RESCUED_HOSTAGE : HOSTAGE_RESCUED_CT);
-				break;
-			case TERRORIST:
-				CreateAndAddEventToList(HOSTAGE_RESCUED_T);
-				break;
-			default:
-				break;
-			}
+		case CT:	CreateAndAddEventToList((localPlayer == rescuer) ? YOU_RESCUED_HOSTAGE : HOSTAGE_RESCUED_CT); break;
+		case TERRORIST:	CreateAndAddEventToList(HOSTAGE_RESCUED_T); break;
 		}
 	}
 }
@@ -1980,19 +1814,13 @@ void CCSTutor::HandleAllHostagesRescued(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer == NULL)
+		return;
+
+	switch (localPlayer->m_iTeam)
 	{
-		switch (localPlayer->m_iTeam)
-		{
-		case CT:
-			CreateAndAddEventToList(ALL_HOSTAGES_RESCUED_CT);
-			break;
-		case TERRORIST:
-			CreateAndAddEventToList(ALL_HOSTAGES_RESCUED_T);
-			break;
-		default:
-			break;
-		}
+	case CT:	CreateAndAddEventToList(ALL_HOSTAGES_RESCUED_CT); break;
+	case TERRORIST:	CreateAndAddEventToList(ALL_HOSTAGES_RESCUED_T); break;
 	}
 }
 
@@ -2000,14 +1828,13 @@ void CCSTutor::HandleHostageDamaged(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		CBasePlayer *attacker = static_cast<CBasePlayer *>(other);
+	if (localPlayer == NULL)
+		return;
 
-		if (entity != NULL && attacker != NULL && attacker->IsPlayer() && localPlayer == attacker)
-		{
-			CreateAndAddEventToList(YOU_DAMAGED_HOSTAGE);
-		}
+	CBasePlayer *attacker = static_cast<CBasePlayer *>(other);
+	if (entity && attacker && attacker->IsPlayer() && localPlayer == attacker)
+	{
+		CreateAndAddEventToList(YOU_DAMAGED_HOSTAGE);
 	}
 }
 
@@ -2015,34 +1842,26 @@ void CCSTutor::HandleHostageKilled(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer == NULL)
+		return;
+
+	CheckForAllHostagesDead();
+
+	CBasePlayer *attacker = static_cast<CBasePlayer *>(other);
+	if (entity && attacker && attacker->IsPlayer())
 	{
-		CheckForAllHostagesDead();
-
-		CBasePlayer *attacker = static_cast<CBasePlayer *>(other);
-
-		if (entity != NULL && attacker != NULL && attacker->IsPlayer())
+		bool unusedHostages = CheckForAllHostagesFollowingSomeone();
+		if (localPlayer == attacker)
 		{
-			bool unusedHostages = CheckForAllHostagesFollowingSomeone();
+			CreateAndAddEventToList(YOU_KILLED_HOSTAGE);
+		}
 
-			if (localPlayer == attacker)
+		if (unusedHostages)
+		{
+			switch (localPlayer->m_iTeam)
 			{
-				CreateAndAddEventToList(YOU_KILLED_HOSTAGE);
-			}
-
-			if (unusedHostages)
-			{
-				switch (localPlayer->m_iTeam)
-				{
-				case CT:
-					CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_CT);
-					break;
-				case TERRORIST:
-					CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_T);
-					break;
-				default:
-					break;
-				}
+			case CT: CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_CT); break;
+			case TERRORIST: CreateAndAddEventToList(ALL_HOSTAGES_FOLLOWING_T); break;
 			}
 		}
 	}
@@ -2050,9 +1869,7 @@ void CCSTutor::HandleHostageKilled(CBaseEntity *entity, CBaseEntity *other)
 
 void CCSTutor::HandleRoundDraw(CBaseEntity *entity, CBaseEntity *other)
 {
-	CHalfLifeMultiplay *mp = g_pGameRules;
-
-	if (mp->m_iTotalRoundsPlayed)
+	if (CSGameRules()->m_iTotalRoundsPlayed)
 	{
 		CreateAndAddEventToList(ROUND_DRAW);
 	}
@@ -2076,15 +1893,14 @@ void CCSTutor::HandleDeathCameraStart(CBaseEntity *entity, CBaseEntity *other)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (localPlayer == NULL)
+		return;
 
-		if (player != NULL && player->IsPlayer() && player == localPlayer)
-		{
-			m_messageTypeMask = (TUTORMESSAGETYPE_FRIEND_DEATH | TUTORMESSAGETYPE_ENEMY_DEATH | TUTORMESSAGETYPE_HINT | TUTORMESSAGETYPE_END_GAME);
-			CreateAndAddEventToList(DEATH_CAMERA_START);
-		}
+	CBasePlayer *player = static_cast<CBasePlayer *>(entity);
+	if (player && player->IsPlayer() && player == localPlayer)
+	{
+		m_messageTypeMask = (TUTORMESSAGETYPE_FRIEND_DEATH | TUTORMESSAGETYPE_ENEMY_DEATH | TUTORMESSAGETYPE_HINT | TUTORMESSAGETYPE_END_GAME);
+		CreateAndAddEventToList(DEATH_CAMERA_START);
 	}
 }
 
@@ -2232,59 +2048,52 @@ void CCSTutor::HandleCareerTaskDone(CBaseEntity *entity, CBaseEntity *other)
 {
 	int numTasksRemaining = 0;
 
-	if (TheCareerTasks != NULL && (numTasksRemaining = TheCareerTasks->GetNumRemainingTasks()) > 0)
+	if (TheCareerTasks && (numTasksRemaining = TheCareerTasks->GetNumRemainingTasks()) > 0)
 		CreateAndAddEventToList((numTasksRemaining == 1) ? CAREER_TASK_DONE_ONE_LEFT : CAREER_TASK_DONE_MORE_LEFT);
 	else
 		CreateAndAddEventToList(CAREER_TASK_DONE_ALL_DONE);
 }
 
-void CCSTutor::HandleShotFired(Vector source, Vector target)
+void CCSTutor::__MAKE_VHOOK(HandleShotFired)(Vector source, Vector target)
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer == NULL)
+		return;
+
+	float d1, d, angle, FiringLineDistanceToPlayer;
+
+	d1 = (source - localPlayer->pev->origin).Length();
+
+	if (d1 > 32.0f)
 	{
-		float d1, d, angle, FiringLineDistanceToPlayer;
+		d = (target - source).Length();
+		angle = d1 / d;
 
-		d1 = (source - localPlayer->pev->origin).Length();
+		FiringLineDistanceToPlayer = Q_sin(Q_acos(angle)) * d1;
 
-		if (d1 > 32.0f)
+		if (FiringLineDistanceToPlayer <= 3000.0f)
 		{
-			d = (target - source).Length();
-			angle = d1 / d;
-
-			FiringLineDistanceToPlayer = sin(acos(angle)) * d1;
-
-			if (FiringLineDistanceToPlayer <= 3000.0f)
-			{
-				OnEvent(EVENT_BEING_SHOT_AT, localPlayer);
-			}
+			OnEvent(EVENT_BEING_SHOT_AT, localPlayer);
 		}
 	}
 }
 
 void CCSTutor::GetNumPlayersAliveOnTeams(int &numT, int &numCT)
 {
-	numT = 0;
-	numCT = 0;
+	numT = numCT = 0;
 
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
-		if (player == NULL || !player->IsAlive())
-		{
+		if (!player || !player->IsAlive())
 			continue;
-		}
 
 		switch (player->m_iTeam)
 		{
-		case CT:
-			numCT++;
-			break;
-		case TERRORIST:
-			numT++;
-			break;
+		case CT:	++numCT; break;
+		case TERRORIST:	++numT;  break;
 		}
 	}
 }
@@ -2293,25 +2102,20 @@ void CCSTutor::CheckForLooseWeaponViewable()
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
-	{
-		bool sawFirst = false;
-		CBaseEntity *weapon = NULL;
-		TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_LOOSE_WEAPON);
+	if (localPlayer == NULL)
+		return;
 
-		if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
+	TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_LOOSE_WEAPON);
+	if (message && message->m_class == TUTORMESSAGECLASS_EXAMINE)
+		return;
+
+	CBaseEntity *weapon = NULL;
+	while ((weapon = UTIL_FindEntityByClassname(weapon, "weaponbox")))
+	{
+		if (IsEntityInViewOfPlayer(weapon, localPlayer))
 		{
-			while ((weapon = UTIL_FindEntityByClassname(weapon, "weaponbox")) != NULL)
-			{
-				if (IsEntityInViewOfPlayer(weapon, localPlayer))
-				{
-					if (!sawFirst)
-					{
-						sawFirst = true;
-						CreateAndAddEventToList(YOU_SEE_LOOSE_WEAPON);
-					}
-				}
-			}
+			CreateAndAddEventToList(YOU_SEE_LOOSE_WEAPON);
+			break;
 		}
 	}
 }
@@ -2320,25 +2124,20 @@ void CCSTutor::CheckForLooseDefuserViewable()
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL && localPlayer->m_iTeam == CT)
-	{
-		bool sawFirst = false;
-		CBaseEntity *defuser = NULL;
-		TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_LOOSE_DEFUSER);
+	if (localPlayer == NULL || localPlayer->m_iTeam != CT)
+		return;
 
-		if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
+	TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_LOOSE_DEFUSER);
+	if (message && message->m_class == TUTORMESSAGECLASS_EXAMINE)
+		return;
+
+	CBaseEntity *defuser = NULL;
+	while ((defuser = UTIL_FindEntityByClassname(defuser, "item_thighpack")))
+	{
+		if (IsEntityInViewOfPlayer(defuser, localPlayer))
 		{
-			while ((defuser = UTIL_FindEntityByClassname(defuser, "item_thighpack")) != NULL)
-			{
-				if (IsEntityInViewOfPlayer(defuser, localPlayer))
-				{
-					if (!sawFirst)
-					{
-						sawFirst = true;
-						CreateAndAddEventToList(YOU_SEE_LOOSE_DEFUSER);
-					}
-				}
-			}
+			CreateAndAddEventToList(YOU_SEE_LOOSE_DEFUSER);
+			break;
 		}
 	}
 }
@@ -2348,20 +2147,16 @@ void CCSTutor::CheckForBombViewable()
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
 	if (localPlayer == NULL)
-	{
 		return;
-	}
 
 	CBaseEntity *bomb = UTIL_FindEntityByClassname(NULL, "grenade");
-
-	if (bomb != NULL && ((CGrenade *)bomb)->m_bIsC4 && IsEntityInViewOfPlayer(bomb, localPlayer))
+	if (bomb && ((CGrenade *)bomb)->m_bIsC4 && IsEntityInViewOfPlayer(bomb, localPlayer))
 	{
 		switch (localPlayer->m_iTeam)
 		{
 			case CT:
 			{
 				TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_PLANTED_BOMB_CT);
-
 				if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
 				{
 					CreateAndAddEventToList(YOU_SEE_PLANTED_BOMB_CT);
@@ -2371,7 +2166,6 @@ void CCSTutor::CheckForBombViewable()
 			case TERRORIST:
 			{
 				TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_PLANTED_BOMB_T);
-
 				if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
 				{
 					CreateAndAddEventToList(YOU_SEE_PLANTED_BOMB_T);
@@ -2383,10 +2177,9 @@ void CCSTutor::CheckForBombViewable()
 	else
 	{
 		CBasePlayer *bombCarrier = NULL;
-
 		for (int i = 1; i <= gpGlobals->maxClients; ++i)
 		{
-			CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+			CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 			if (player && player->m_bHasC4)
 			{
@@ -2397,34 +2190,32 @@ void CCSTutor::CheckForBombViewable()
 
 		bomb = UTIL_FindEntityByClassname(NULL, "weapon_c4");
 
-		if (bomb != NULL && IsEntityInViewOfPlayer(bomb, localPlayer))
+		if (bomb && IsEntityInViewOfPlayer(bomb, localPlayer))
 		{
-			if (bombCarrier != NULL)
+			if (bombCarrier)
 			{
 				if (bombCarrier != localPlayer)
 				{
 					switch (localPlayer->m_iTeam)
 					{
-						case CT:
+					case CT:
+					{
+						TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_BOMB_CARRIER_CT);
+						if (!message || message->m_class != TUTORMESSAGECLASS_EXAMINE)
 						{
-							TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_BOMB_CARRIER_CT);
-
-							if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
-							{
-								CreateAndAddEventToList(YOU_SEE_BOMB_CARRIER_CT);
-							}
-							break;
+							CreateAndAddEventToList(YOU_SEE_BOMB_CARRIER_CT);
 						}
-						case TERRORIST:
+						break;
+					}
+					case TERRORIST:
+					{
+						TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_BOMB_CARRIER_T);
+						if (!message || message->m_class != TUTORMESSAGECLASS_EXAMINE)
 						{
-							TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_BOMB_CARRIER_T);
-
-							if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
-							{
-								CreateAndAddEventToList(YOU_SEE_BOMB_CARRIER_T);
-							}
-							break;
+							CreateAndAddEventToList(YOU_SEE_BOMB_CARRIER_T);
 						}
+						break;
+					}
 					}
 				}
 			}
@@ -2435,7 +2226,6 @@ void CCSTutor::CheckForBombViewable()
 					case CT:
 					{
 						TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_LOOSE_BOMB_CT);
-
 						if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
 						{
 							CreateAndAddEventToList(YOU_SEE_LOOSE_BOMB_CT);
@@ -2445,7 +2235,6 @@ void CCSTutor::CheckForBombViewable()
 					case TERRORIST:
 					{
 						TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_LOOSE_BOMB_T);
-
 						if (message == NULL || message->m_class != TUTORMESSAGECLASS_EXAMINE)
 						{
 							CreateAndAddEventToList(YOU_SEE_LOOSE_BOMB_T);
@@ -2463,12 +2252,9 @@ void CCSTutor::CheckForBombsiteViewable()
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
 	if (localPlayer == NULL)
-	{
 		return;
-	}
 
 	TutorMessageID mid = CheckForInBombZone();
-
 	if (mid == TUTOR_NUM_MESSAGES)
 	{
 		switch (localPlayer->m_iTeam)
@@ -2493,35 +2279,27 @@ void CCSTutor::CheckForBombsiteViewable()
 		}
 
 		TutorMessage *definition = GetTutorMessageDefinition(mid);
-
 		if (definition == NULL || definition->m_class != TUTORMESSAGECLASS_EXAMINE)
 		{
 			bool sawFirst = false;
 			CBaseEntity *bombTarget = NULL;
 
-			while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "func_bomb_target")) != NULL)
+			while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "func_bomb_target")))
 			{
 				if (IsBombPlantedInBombsite(bombTarget))
 				{
-					if (!sawFirst)
-					{
-						sawFirst = true;
-						CreateAndAddEventToList(mid);
-						break;
-					}
+					sawFirst = true;
+					CreateAndAddEventToList(mid);
+					break;
 				}
 			}
 
-			while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "info_bomb_target")) != NULL)
+			if (!sawFirst)
 			{
-				if (sawFirst)
-					break;
-
-				if (IsBombPlantedInBombsite(bombTarget))
+				while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "info_bomb_target")))
 				{
-					if (!sawFirst)
+					if (IsBombPlantedInBombsite(bombTarget))
 					{
-						sawFirst = true;
 						CreateAndAddEventToList(mid);
 						break;
 					}
@@ -2538,11 +2316,11 @@ TutorMessageID CCSTutor::CheckForInBombZone()
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 	TutorMessageID mid = TUTOR_NUM_MESSAGES;
 
-	if (localPlayer != NULL && localPlayer->m_iTeam == CT)
+	if (localPlayer && localPlayer->m_iTeam == CT)
 	{
 		CBaseEntity *bombTarget = NULL;
 
-		while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "func_bomb_target")) != NULL)
+		while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "func_bomb_target")))
 		{
 			if (IsBombPlantedInBombsite(bombTarget))
 			{
@@ -2550,7 +2328,7 @@ TutorMessageID CCSTutor::CheckForInBombZone()
 			}
 		}
 
-		while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "info_bomb_target")) != NULL)
+		while ((bombTarget = UTIL_FindEntityByClassname(bombTarget, "info_bomb_target")))
 		{
 			if (IsBombPlantedInBombsite(bombTarget))
 			{
@@ -2565,8 +2343,7 @@ TutorMessageID CCSTutor::CheckForInBombZone()
 bool CCSTutor::IsBombPlantedInBombsite(CBaseEntity *bombTarget)
 {
 	CGrenade *bomb = NULL;
-
-	while ((bomb = (CGrenade *)UTIL_FindEntityByClassname(bomb, "grenade")) != NULL)
+	while ((bomb = (CGrenade *)UTIL_FindEntityByClassname(bomb, "grenade")))
 	{
 		if (bomb->m_bIsC4 && IsEntityInBombsite(bomb, bombTarget))
 		{
@@ -2585,50 +2362,42 @@ void CCSTutor::CheckForHostageViewable()
 		return;
 
 	CBaseEntity *hostageEntity = NULL;
-	bool sawFirst = false;
-
-	while ((hostageEntity = UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")) != NULL)
+	while ((hostageEntity = UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")))
 	{
 		bool validHostage = false;
 		CHostage *hostage = static_cast<CHostage *>(hostageEntity);
 
-		if (hostage->pev->takedamage == DAMAGE_YES)
+		if (hostage->IsAlive())
 		{
 			if (!hostage->IsFollowingSomeone())
 				validHostage = true;
 		}
 
-		if (hostage->IsValid() && validHostage && IsEntityInViewOfPlayer(hostage, localPlayer) && !sawFirst)
+		if (validHostage && IsEntityInViewOfPlayer(hostage, localPlayer))
 		{
-			sawFirst = true;
-
 			switch (localPlayer->m_iTeam)
 			{
-				case CT:
-				{
-					TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_HOSTAGE_CT);
+			case CT:
+			{
+				TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_HOSTAGE_CT);
+				if (message && message->m_class == TUTORMESSAGECLASS_EXAMINE)
+					return;
 
-					if (message != NULL && message->m_class == TUTORMESSAGECLASS_EXAMINE)
-					{
-						return;
-					}
-
-					CreateAndAddEventToList(YOU_SEE_HOSTAGE_CT);
-					break;
-				}
-				case TERRORIST:
-				{
-					TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_HOSTAGE_T);
-
-					if (message != NULL && message->m_class == TUTORMESSAGECLASS_EXAMINE)
-					{
-						return;
-					}
-
-					CreateAndAddEventToList(YOU_SEE_HOSTAGE_T);
-					break;
-				}
+				CreateAndAddEventToList(YOU_SEE_HOSTAGE_CT);
+				break;
 			}
+			case TERRORIST:
+			{
+				TutorMessage *message = GetTutorMessageDefinition(YOU_SEE_HOSTAGE_T);
+				if (message && message->m_class == TUTORMESSAGECLASS_EXAMINE)
+					return;
+
+				CreateAndAddEventToList(YOU_SEE_HOSTAGE_T);
+				break;
+			}
+			}
+
+			break;
 		}
 	}
 }
@@ -2636,12 +2405,9 @@ void CCSTutor::CheckForHostageViewable()
 void CCSTutor::CheckForTimeRunningOut()
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
-	CHalfLifeMultiplay *mpRules = g_pGameRules;
 
-	if (localPlayer == NULL || mpRules->IsFreezePeriod() || mpRules->TimeRemaining() > 30.0f)
-	{
+	if (localPlayer == NULL || CSGameRules()->IsFreezePeriod() || CSGameRules()->GetRoundRemainingTime() > 30.0f)
 		return;
-	}
 
 	if (IsBombMap())
 	{
@@ -2674,7 +2440,7 @@ void CCSTutor::CheckForAllHostagesDead()
 	bool foundLiveOne = false;
 	CHostage *hostage = NULL;
 
-	while ((hostage = (CHostage *)UTIL_FindEntityByClassname(hostage, "hostage_entity")) != NULL)
+	while ((hostage = (CHostage *)UTIL_FindEntityByClassname(hostage, "hostage_entity")))
 	{
 		if (hostage->IsAlive())
 		{
@@ -2694,9 +2460,9 @@ bool CCSTutor::CheckForAllHostagesFollowingSomeone()
 	bool foundUnusedOne = false;
 	CHostage *hostage = NULL;
 
-	while ((hostage = (CHostage *)UTIL_FindEntityByClassname(hostage, "hostage_entity")) != NULL)
+	while ((hostage = (CHostage *)UTIL_FindEntityByClassname(hostage, "hostage_entity")))
 	{
-		if (hostage->pev->takedamage == DAMAGE_YES)
+		if (hostage->IsAlive())
 		{
 			if (!hostage->IsFollowingSomeone())
 			{
@@ -2709,20 +2475,17 @@ bool CCSTutor::CheckForAllHostagesFollowingSomeone()
 	return foundUnusedOne ? false : true;
 }
 
-TutorMessage *CCSTutor::GetTutorMessageDefinition(int messageID)
+TutorMessage *CCSTutor::__MAKE_VHOOK(GetTutorMessageDefinition)(int messageID)
 {
 	if (messageID < 0 || messageID >= TUTOR_NUM_MESSAGES)
-	{
 		return NULL;
-	}
 
-	for (int i = 0; i < m_messageMap.Count (); i++)
+	TutorMessageMapIter iter = m_messageMap.find(TutorIdentifierList[messageID]);
+	if (iter != m_messageMap.end())
 	{
-		TutorMap *map = m_messageMap[i];
-
-		if (!Q_stricmp (TutorIdentifierList[messageID], map->name))
-			return map->msg;
+		return (*iter).second;
 	}
+
 	return NULL;
 }
 
@@ -2744,48 +2507,42 @@ CBaseEntity *CCSTutor::GetEntityForMessageID(int messageID, CBaseEntity *last)
 #if 1
 			CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-			if (localPlayer != NULL)
+			if (localPlayer)
 			{
-				if (!m_clientCorpseList.Count())
-				{
+				if (m_clientCorpseList.empty())
 					return NULL;
-				}
 
 				ClientCorpseStruct *lastCorpse = NULL;
-				int iter;
+				ClientCorpseListIter iter;
 
-				if (last != NULL)
+				if (last)
 				{
-					iter = m_clientCorpseList.Head();
+					iter = m_clientCorpseList.begin();
 
-					while (iter != m_clientCorpseList.InvalidIndex())
+					while (iter != m_clientCorpseList.end())
 					{
-						lastCorpse = m_clientCorpseList[iter];
+						lastCorpse = (*iter);
 
 						if ((CBaseEntity *)lastCorpse == last)
-						{
 							break;
-						}
 
-						iter = m_clientCorpseList.Next (iter);
+						++iter;
 					}
 
-					while (iter != m_clientCorpseList.InvalidIndex ())
+					while (iter != m_clientCorpseList.end())
 					{
-						ClientCorpseStruct *corpse = m_clientCorpseList[iter];
+						ClientCorpseStruct *corpse = (*iter);
 
 						if (corpse->m_team == localPlayer->m_iTeam)
-						{
 							return (CBaseEntity *)&corpse->m_position;
-						}
 
-						iter = m_clientCorpseList.Next (iter);
+						++iter;
 					}
 
 					return NULL;
 				}
 				else
-					return (CBaseEntity *)&m_clientCorpseList.Element (m_clientCorpseList.Head ())->m_position;
+					return (CBaseEntity *)&m_clientCorpseList.front()->m_position;
 			}
 #endif
 			break;
@@ -2819,41 +2576,48 @@ CBaseEntity *CCSTutor::GetEntityForMessageID(int messageID, CBaseEntity *last)
 void CCSTutor::CheckHintMessages(float time)
 {
 	if (m_deadAirStartTime <= 0.0f || (time - m_deadAirStartTime <= cv_tutor_hint_interval_time.value))
-	{
 		return;
-	}
 
 	m_lastHintShown++;
 
-	bool confusingHint = false;
-
-	if (IsHostageMap())
+	while (true)
 	{
-		if (m_lastHintShown > HINT_HOSTAGE_START)
+		bool confusingHint = false;
+		if (IsHostageMap())
 		{
-			confusingHint = true;
-		}
-	}
-
-	if (!confusingHint)
-	{
-		if (IsBombMap() && m_lastHintShown < HINT_END)
-		{
-			if (m_lastHintShown == HINT_END)
+			if (m_lastHintShown >= HINT_BOMB_START && m_lastHintShown <= HINT_BOMB_END)
 			{
-				m_lastHintShown = HINT_1;
+				confusingHint = true;
 			}
 		}
+		else if (IsBombMap())
+		{
+			if (m_lastHintShown >= HINT_HOSTAGE_START && m_lastHintShown <= HINT_HOSTAGE_END)
+			{
+				confusingHint = true;
+			}
+		}
+
+		if (!confusingHint)
+		{
+			break;
+		}
+
+		m_lastHintShown++;
+
+		if (m_lastHintShown <= HINT_BEGIN || m_lastHintShown >= HINT_END)
+		{
+			m_lastHintShown = HINT_1;
+		}
 	}
 
-	if (m_lastHintShown > HINT_END)
+	if (m_lastHintShown <= HINT_BEGIN || m_lastHintShown >= HINT_END)
 	{
 		m_lastHintShown = HINT_1;
 	}
 
 	TutorMessage *message = GetTutorMessageDefinition(m_lastHintShown);
-
-	if (message != NULL)
+	if (message)
 	{
 		CreateAndAddEventToList(m_lastHintShown);
 	}
@@ -2862,20 +2626,15 @@ void CCSTutor::CheckHintMessages(float time)
 void CCSTutor::CheckInGameHintMessages(float time)
 {
 	if (m_deadAirStartTime <= 0.0f || (time - m_deadAirStartTime <= cv_tutor_hint_interval_time.value))
-	{
 		return;
-	}
 
 	m_lastInGameHintShown++;
 
 	if (m_lastInGameHintShown <= INGAME_HINT_BEGIN || m_lastInGameHintShown >= INGAME_HINT_END)
-	{
 		return;
-	}
 
 	TutorMessage *message = GetTutorMessageDefinition(m_lastInGameHintShown);
-
-	if (message != NULL)
+	if (message)
 	{
 		CreateAndAddEventToList(m_lastInGameHintShown);
 	}
@@ -2892,41 +2651,34 @@ void CCSTutor::CheckForNeedToReload(bool isPassiveCheck)
 	Q_memset(&itemInfo, 0, sizeof(itemInfo));
 
 	if (localPlayer == NULL || !localPlayer->IsPlayer())
-	{
 		return;
-	}
 
 	currentItem = localPlayer->m_pActiveItem;
 
 	if (currentItem == NULL || !currentItem->IsWeapon())
-	{
 		return;
-	}
 
 	currentWeapon = static_cast<CBasePlayerWeapon *>(currentItem);
 	currentWeapon->GetItemInfo(&itemInfo);
 
 	if (itemInfo.iSlot && itemInfo.iSlot != 1)
-	{
 		return;
-	}
 
 	if (localPlayer->m_rgAmmo[currentWeapon->m_iPrimaryAmmoType])
 	{
 		if (isPassiveCheck)
 		{
-			if (2 * currentWeapon->m_iClip < currentItem->iMaxClip() && !currentWeapon->m_fInReload)
+			if ((2 * currentWeapon->m_iClip) < currentItem->iMaxClip() && !currentWeapon->m_fInReload)
 			{
 				CreateAndAddEventToList(YOU_SHOULD_RELOAD);
 			}
 		}
 		else
 		{
-			if (5 * currentWeapon->m_iClip < currentItem->iMaxClip() && !currentWeapon->m_fInReload)
+			if ((5 * currentWeapon->m_iClip) < currentItem->iMaxClip() && !currentWeapon->m_fInReload)
 			{
 				TutorMessage *message = GetTutorMessageDefinition(YOU_SHOULD_RELOAD);
-
-				if (message != NULL)
+				if (message)
 				{
 					message->m_lastCloseTime = 0;
 				}
@@ -2936,8 +2688,7 @@ void CCSTutor::CheckForNeedToReload(bool isPassiveCheck)
 			else
 			{
 				TutorMessage *message = GetTutorMessageDefinition(YOU_SHOULD_RELOAD);
-
-				if (message != NULL)
+				if (message)
 				{
 					message->m_lastCloseTime = gpGlobals->time;
 				}
@@ -2949,8 +2700,7 @@ void CCSTutor::CheckForNeedToReload(bool isPassiveCheck)
 		if (!isPassiveCheck)
 		{
 			TutorMessage *message = GetTutorMessageDefinition(YOU_ARE_OUT_OF_AMMO);
-
-			if (message != NULL)
+			if (message)
 			{
 				message->m_lastCloseTime = 0;
 			}
@@ -2977,7 +2727,7 @@ void CCSTutor::CheckExamineMessages(float time)
 		CBaseEntity *entity = NULL;
 		bool isPlayerLooking = false;
 
-		while ((entity = GetEntityForMessageID(i, entity)) != NULL)
+		while ((entity = GetEntityForMessageID(i, entity)))
 		{
 			if (i == YOU_SEE_FRIEND_CORPSE || i == YOU_SEE_ENEMY_CORPSE)
 			{
@@ -3031,15 +2781,11 @@ void CCSTutor::CheckExamineMessages(float time)
 			else if (i == YOU_SEE_HOSTAGE_CT_EXAMINE)
 			{
 				CHostage *hostage = static_cast<CHostage *>(entity);
-
-				if (entity->pev->takedamage == DAMAGE_YES)
+				if (entity->IsAlive())
 				{
 					if (!hostage->IsFollowingSomeone())
 						validEntity = true;
 				}
-
-				if (!hostage->IsValid() || !validEntity)
-					continue;
 			}
 
 			if (validEntity)
@@ -3055,8 +2801,7 @@ void CCSTutor::CheckExamineMessages(float time)
 bool CCSTutor::CanLocalPlayerBuyStuff()
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
-
-	if (localPlayer != NULL)
+	if (localPlayer)
 	{
 		return localPlayer->CanPlayerBuy();
 	}
@@ -3069,14 +2814,12 @@ void CCSTutor::CheckBuyZoneMessages()
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
 	if (localPlayer == NULL || m_currentlyShownMessageID == BUY_TIME_BEGIN)
-	{
 		return;
-	}
 
 	CBasePlayerWeapon *primary = static_cast<CBasePlayerWeapon *>(localPlayer->m_rgpPlayerItems[PRIMARY_WEAPON_SLOT]);
 	CBasePlayerWeapon *secondary = static_cast<CBasePlayerWeapon *>(localPlayer->m_rgpPlayerItems[PISTOL_SLOT]);
 
-	if (primary != NULL)
+	if (primary)
 	{
 		if (localPlayer->NeedsPrimaryAmmo() && localPlayer->CanAffordPrimaryAmmo())
 		{
@@ -3093,7 +2836,7 @@ void CCSTutor::CheckBuyZoneMessages()
 		}
 	}
 
-	if (secondary != NULL && localPlayer->NeedsSecondaryAmmo() && localPlayer->CanAffordSecondaryAmmo())
+	if (secondary && localPlayer->NeedsSecondaryAmmo() && localPlayer->CanAffordSecondaryAmmo())
 	{
 		TheTutor->OnEvent(EVENT_TUTOR_NEED_TO_BUY_SECONDARY_AMMO);
 	}
@@ -3120,35 +2863,30 @@ bool CCSTutor::IsHostageMap()
 
 bool CCSTutor::IsBombMap()
 {
-	CHalfLifeMultiplay *mpRules = g_pGameRules;
-
-	return mpRules->m_bMapHasBombTarget;
+	return CSGameRules()->m_bMapHasBombTarget;
 }
 
 void CCSTutor::ResetPlayerDeathInfo()
 {
-	for (int i = 0; i < ARRAYSIZE(m_playerDeathInfo); ++i)
-	{
-		m_playerDeathInfo[i].m_hasBeenShown = false;
-		m_playerDeathInfo[i].m_event = NULL;
+	for (auto& playerDeathInfo : m_playerDeathInfo) {
+		playerDeathInfo.m_hasBeenShown = false;
+		playerDeathInfo.m_event = nullptr;
 	}
 }
 
 void CCSTutor::ConstructRecentDeathsList(TeamName team, char *buf, int buflen, TutorMessageEvent *event)
 {
 	if (!buf || !buflen)
-	{
 		return;
-	}
 
 	char scratch[32];
 	buf[0] = '\0';
 
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
 
-		if (pPlayer == NULL)
+		if (!pPlayer)
 			continue;
 
 		// ignore alive players
@@ -3168,11 +2906,10 @@ void CCSTutor::ConstructRecentDeathsList(TeamName team, char *buf, int buflen, T
 
 void CCSTutor::TransferDeathEvents(TutorMessageEvent *oldEvent, TutorMessageEvent *newEvent)
 {
-	for (int i = 0; i < ARRAYSIZE(m_playerDeathInfo); ++i)
+	for (auto& playerDeathInfo : m_playerDeathInfo)
 	{
-		if (m_playerDeathInfo[i].m_event == oldEvent)
-		{
-			m_playerDeathInfo[i].m_event = newEvent;
+		if (playerDeathInfo.m_event == oldEvent) {
+			playerDeathInfo.m_event = newEvent;
 		}
 	}
 }

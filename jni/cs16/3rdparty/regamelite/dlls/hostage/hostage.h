@@ -36,14 +36,15 @@
 #define MAX_HOSTAGES			12
 #define MAX_HOSTAGES_NAV		20
 
-#define HOSTAGE_STEPSIZE		26.0
-#define HOSTAGE_STEPSIZE_DEFAULT	18.0
+#define HOSTAGE_STEPSIZE		26.0f
+#define HOSTAGE_STEPSIZE_DEFAULT	18.0f
 
 #define VEC_HOSTAGE_VIEW		Vector(0, 0, 12)
 #define VEC_HOSTAGE_HULL_MIN		Vector(-10, -10, 0)
 #define VEC_HOSTAGE_HULL_MAX		Vector(10, 10, 62)
 
 #define VEC_HOSTAGE_CROUCH		Vector(10, 10, 30)
+#define RESCUE_HOSTAGES_RADIUS		256.0f				// rescue zones from legacy info_*
 
 class CHostage;
 class CLocalNav;
@@ -76,10 +77,8 @@ enum HostageChatterType
 	NUM_HOSTAGE_CHATTER_TYPES,
 };
 
-
 // Improved the hostages from CZero
 #include "hostage/hostage_improv.h"
-
 
 extern CHostageManager *g_pHostages;
 extern int g_iHostageNumber;
@@ -88,7 +87,6 @@ extern cvar_t cv_hostage_debug;
 extern cvar_t cv_hostage_stop;
 
 // A Counter-Strike Hostage Simple
-
 class CHostage: public CBaseMonster
 {
 public:
@@ -96,11 +94,28 @@ public:
 	virtual void Precache();
 	virtual int ObjectCaps();		// make hostage "useable"
 	virtual int Classify() { return CLASS_HUMAN_PASSIVE; }
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	virtual int BloodColor() { return BLOOD_COLOR_RED; }
+
+#ifndef REGAMEDLL_FIXES
+	virtual BOOL IsAlive() { return (pev->takedamage == DAMAGE_YES); }
+#endif
+
 	virtual void Touch(CBaseEntity *pOther);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	int ObjectCaps_();
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	void Touch_(CBaseEntity *pOther);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	void EXPORT IdleThink();
 	void EXPORT Remove();
@@ -143,7 +158,7 @@ public:
 			return m_improv->IsFollowing();
 		}
 
-		if( ( entity == NULL && m_hTargetEnt == NULL ) || ( entity != NULL && m_hTargetEnt != entity ) )
+		if ((!entity && !m_hTargetEnt) || (entity != NULL && m_hTargetEnt != entity))
 			return false;
 
 		if (m_State != FOLLOW)
@@ -151,10 +166,11 @@ public:
 
 		return true;
 	}
-	bool IsValid() { return (pev->takedamage == DAMAGE_YES); }
-	bool IsDead() { return (pev->deadflag == DEAD_DEAD); }
-	bool IsAtHome() { return (pev->origin - m_vStart).IsLengthGreaterThan(20) != true; }
-	const Vector *GetHomePosition() { return &m_vStart; }
+
+	bool IsValid() const { return (pev->takedamage == DAMAGE_YES); }
+	bool IsDead() const { return (pev->deadflag == DEAD_DEAD); }
+	bool IsAtHome() const { return (pev->origin - m_vStart).IsLengthGreaterThan(20) != true; }
+	const Vector *GetHomePosition() const { return &m_vStart; }
 
 public:
 	int m_Activity;
@@ -175,7 +191,7 @@ public:
 	CBasePlayer *m_target;
 	CLocalNav *m_LocalNav;
 	int nTargetNode;
-	Vector vecNodes[ MAX_NODES ];
+	Vector vecNodes[MAX_NODES];
 	EHANDLE m_hStoppedTargetEnt;
 	float m_flNextFullThink;
 	float m_flPathCheckInterval;
@@ -214,11 +230,6 @@ public:
 	};
 
 	void AddSound(HostageChatterType type, char *filename);
-
-#ifdef _WIN32
-	#undef PlaySound
-#endif // _WIN32
-
 	float PlaySound(CBaseEntity *entity, HostageChatterType type);
 	char *GetSound(HostageChatterType type, float *duration);
 	void Shuffle(ChatterSet *chatter);
@@ -271,12 +282,12 @@ public:
 
 		for (int i = 0; i < m_hostageCount; i++)
 		{
-			range = (m_hostage[ i ]->pev->origin - pos).Length();
+			range = (m_hostage[i]->pev->origin - pos).Length();
 
 			if (range < closeRange)
 			{
 				closeRange = range;
-				close = m_hostage[ i ];
+				close = m_hostage[i];
 			}
 		}
 
@@ -287,10 +298,16 @@ public:
 	}
 
 private:
-	CHostage *m_hostage[ MAX_HOSTAGES ];
+	CHostage *m_hostage[MAX_HOSTAGES];
 	int m_hostageCount;
 	SimpleChatter m_chatter;
 };
+
+// Determine whether hostage improv can be used or not
+inline bool AreImprovAllowed()
+{
+	return g_bHostageImprov;
+}
 
 void Hostage_RegisterCVars();
 void InstallHostageManager();

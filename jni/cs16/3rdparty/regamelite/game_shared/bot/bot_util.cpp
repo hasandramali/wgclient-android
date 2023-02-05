@@ -1,32 +1,38 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 short s_iBeamSprite = 0;
 float cosTable[ COS_TABLE_SIZE ];
 
-bool UTIL_IsNameTaken (const char *name, bool ignoreHumans)
+#endif
+
+bool UTIL_IsNameTaken(const char *name, bool ignoreHumans)
 {
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBaseEntity *player = UTIL_PlayerByIndex (i);
+		CBaseEntity *player = UTIL_PlayerByIndex(i);
 
 		if (player == NULL)
 			continue;
 
-		if (FNullEnt (player->pev))
+		if (FNullEnt(player->pev))
 			continue;
 
-		if (FStrEq (STRING (player->pev->netname), ""))
+		if (FStrEq(STRING(player->pev->netname), ""))
 			continue;
 
-		if (player->IsPlayer () && (((CBasePlayer *)player)->IsBot () == TRUE))
+		if (player->IsPlayer() && ((CBasePlayer *)player)->IsBot())
 		{
 			// bots can have prefixes so we need to check the name
 			// against the profile name instead.
 			CBot *bot = static_cast<CBot *>(player);
-			if (FStrEq (name, bot->GetProfile ()->GetName ()))
+			if (FStrEq(name, bot->GetProfile()->GetName()))
 			{
 				return true;
 			}
@@ -35,7 +41,7 @@ bool UTIL_IsNameTaken (const char *name, bool ignoreHumans)
 		{
 			if (!ignoreHumans)
 			{
-				if (FStrEq (name, STRING (player->pev->netname)))
+				if (FStrEq(name, STRING(player->pev->netname)))
 					return true;
 			}
 		}
@@ -44,20 +50,20 @@ bool UTIL_IsNameTaken (const char *name, bool ignoreHumans)
 	return false;
 }
 
-int UTIL_ClientsInGame ()
+int UTIL_ClientsInGame()
 {
 	int iCount = 0;
 	for (int iIndex = 1; iIndex <= gpGlobals->maxClients; ++iIndex)
 	{
-		CBaseEntity *pPlayer = UTIL_PlayerByIndex (iIndex);
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex(iIndex);
 
 		if (pPlayer == NULL)
 			continue;
 
-		if (FNullEnt (pPlayer->pev))
+		if (FNullEnt(pPlayer->pev))
 			continue;
 
-		if (FStrEq (STRING (pPlayer->pev->netname), ""))
+		if (FStrEq(STRING(pPlayer->pev->netname), ""))
 			continue;
 
 		++iCount;
@@ -71,18 +77,16 @@ int UTIL_ActivePlayersInGame()
 	int iCount = 0;
 	for (int iIndex = 1; iIndex <= gpGlobals->maxClients; ++iIndex)
 	{
-		CBaseEntity *entity = UTIL_PlayerByIndex(iIndex);
+		CBasePlayer *player = UTIL_PlayerByIndex(iIndex);
 
-		if (entity == NULL)
+		if (player == NULL)
 			continue;
 
-		if (FNullEnt(entity->pev))
+		if (FNullEnt(player->pev))
 			continue;
 
-		if (FStrEq(STRING(entity->pev->netname), ""))
+		if (FStrEq(STRING(player->pev->netname), ""))
 			continue;
-
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
 
 		// ignore spectators
 		if (player->m_iTeam != TERRORIST && player->m_iTeam != CT)
@@ -103,18 +107,16 @@ int UTIL_HumansInGame(bool ignoreSpectators)
 
 	for (int iIndex = 1; iIndex <= gpGlobals->maxClients; ++iIndex)
 	{
-		CBaseEntity *entity = UTIL_PlayerByIndex(iIndex);
+		CBasePlayer *player = UTIL_PlayerByIndex(iIndex);
 
-		if (entity == NULL)
+		if (player == NULL)
 			continue;
 
-		if (FNullEnt(entity->pev))
+		if (FNullEnt(player->pev))
 			continue;
 
-		if (FStrEq(STRING(entity->pev->netname), ""))
+		if (FStrEq(STRING(player->pev->netname), ""))
 			continue;
-
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
 
 		if (player->IsBot())
 			continue;
@@ -136,18 +138,16 @@ int UTIL_HumansOnTeam(int teamID, bool isAlive)
 	int iCount = 0;
 	for (int iIndex = 1; iIndex <= gpGlobals->maxClients; ++iIndex)
 	{
-		CBaseEntity *entity = UTIL_PlayerByIndex(iIndex);
+		CBasePlayer *player = UTIL_PlayerByIndex(iIndex);
 
-		if (entity == NULL)
+		if (player == NULL)
 			continue;
 
-		if (FNullEnt(entity->pev))
+		if (FNullEnt(player->pev))
 			continue;
 
-		if (FStrEq(STRING(entity->pev->netname), ""))
+		if (FStrEq(STRING(player->pev->netname), ""))
 			continue;
-
-		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
 
 		if (player->IsBot())
 			continue;
@@ -170,7 +170,7 @@ int UTIL_BotsInGame()
 
 	for (int iIndex = 1; iIndex <= gpGlobals->maxClients; ++iIndex)
 	{
-		CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(iIndex));
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(iIndex);
 
 		if (pPlayer == NULL)
 			continue;
@@ -197,7 +197,7 @@ bool UTIL_KickBotFromTeam(TeamName kickTeam)
 	// try to kick a dead bot first
 	for (i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 		if (player == NULL)
 			continue;
@@ -223,7 +223,7 @@ bool UTIL_KickBotFromTeam(TeamName kickTeam)
 	// no dead bots, kick any bot on the given team
 	for (i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 		if (player == NULL)
 			continue;
@@ -254,7 +254,7 @@ bool UTIL_IsTeamAllBots(int team)
 	int botCount = 0;
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 		if (player == NULL)
 			continue;
@@ -274,20 +274,19 @@ bool UTIL_IsTeamAllBots(int team)
 		++botCount;
 	}
 
-	return (botCount) ? true : false;
+	return botCount ? true : false;
 }
 
 // Return the closest active player to the given position.
 // If 'distance' is non-NULL, the distance to the closest player is returned in it.
-
-/*extern*/ CBasePlayer *UTIL_GetClosestPlayer(const Vector *pos, float *distance)
+extern CBasePlayer *UTIL_GetClosestPlayer(const Vector *pos, float *distance)
 {
 	CBasePlayer *closePlayer = NULL;
 	float closeDistSq = 1.0e12f;	// 999999999999.9f
 
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 		if (!IsEntityValid(player))
 			continue;
@@ -304,22 +303,21 @@ bool UTIL_IsTeamAllBots(int team)
 	}
 
 	if (distance)
-		*distance = sqrt(closeDistSq);
+		*distance = Q_sqrt(closeDistSq);
 
 	return closePlayer;
 }
 
 // Return the closest active player on the given team to the given position.
 // If 'distance' is non-NULL, the distance to the closest player is returned in it.
-
-/*extern*/ CBasePlayer *UTIL_GetClosestPlayer(const Vector *pos, int team, float *distance)
+extern CBasePlayer *UTIL_GetClosestPlayer(const Vector *pos, int team, float *distance)
 {
 	CBasePlayer *closePlayer = NULL;
 	float closeDistSq = 1.0e12f;	// 999999999999.9f
 
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 		if (!IsEntityValid(player))
 			continue;
@@ -339,7 +337,7 @@ bool UTIL_IsTeamAllBots(int team)
 	}
 
 	if (distance)
-		*distance = sqrt(closeDistSq);
+		*distance = Q_sqrt(closeDistSq);
 
 	return closePlayer;
 }
@@ -371,7 +369,7 @@ bool UTIL_IsVisibleToTeam(const Vector &spot, int team, float maxRange)
 {
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 		if (player == NULL)
 			continue;
@@ -404,7 +402,7 @@ bool UTIL_IsVisibleToTeam(const Vector &spot, int team, float maxRange)
 CBasePlayer *UTIL_GetLocalPlayer()
 {
 	if (!IS_DEDICATED_SERVER())
-		return static_cast<CBasePlayer *>(UTIL_PlayerByIndex(1));
+		return UTIL_PlayerByIndex(1);
 
 	return NULL;
 }
@@ -473,7 +471,7 @@ void UTIL_DrawBeamPoints(Vector vecStart, Vector vecEnd, int iLifetime, byte bRe
 	MESSAGE_END();
 }
 
-void CONSOLE_ECHO(char *pszMsg, ...)
+void CONSOLE_ECHO(const char *pszMsg, ...)
 {
 	va_list argptr;
 	static char szStr[1024];
@@ -485,7 +483,7 @@ void CONSOLE_ECHO(char *pszMsg, ...)
 	SERVER_PRINT(szStr);
 }
 
-void CONSOLE_ECHO_LOGGED(char *pszMsg, ...)
+void CONSOLE_ECHO_LOGGED(const char *pszMsg, ...)
 {
 	va_list argptr;
 	static char szStr[1024];
@@ -520,8 +518,8 @@ void InitBotTrig()
 {
 	for (int i = 0; i < COS_TABLE_SIZE; ++i)
 	{
-		float angle = 2.0f * M_PI * (float)i / (float)(COS_TABLE_SIZE - 1);
-		cosTable[i] = cos(angle);
+		float_precision angle = 2.0f * M_PI * float(i) / float(COS_TABLE_SIZE - 1);
+		cosTable[i] = Q_cos(angle);
 	}
 }
 
@@ -540,7 +538,6 @@ float BotSIN(float angle)
 }
 
 // Determine if this event is audible, and if so, return its audible range and priority
-
 bool IsGameEventAudible(GameEventType event, CBaseEntity *entity, CBaseEntity *other, float *range, PriorityType *priority, bool *isHostile)
 {
 	CBasePlayer *player = static_cast<CBasePlayer *>(entity);

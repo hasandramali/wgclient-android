@@ -1,14 +1,20 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
-vec3_t vec3_origin (0, 0, 0);
-int nanmask = 255<<23;
+#ifndef HOOK_GAMEDLL
+
+vec3_t vec3_origin = { 0, 0, 0 };
+int nanmask = 255 << 23;
+
+#endif
 
 float anglemod(float a)
 {
-	a = (360.0 / 65536) * ((int)(a  *(65536 / 360.0)) & 65535);
+	a = (360.0 / 65536) * (int(a  *(65536 / 360.0)) & 65535);
 	return a;
 }
 
@@ -16,20 +22,20 @@ void AngleVectors(const vec_t *angles, vec_t *forward, vec_t *right, vec_t *up)
 {
 	float sr, sp, sy, cr, cp;
 
-	float cy;
-	float angle;
+	float_precision cy;
+	float_precision angle;
 
-	angle = (float)(angles[YAW] * (M_PI * 2 / 360));
-	sy = sin(angle);
-	cy = cos(angle);
+	angle = float_precision(angles[YAW] * (M_PI * 2 / 360));
+	sy = Q_sin(angle);
+	cy = Q_cos(angle);
 
-	angle = (float)(angles[PITCH] * (M_PI * 2 / 360));
-	sp = sin(angle);
-	cp = cos(angle);
+	angle = float_precision(angles[PITCH] * (M_PI * 2 / 360));
+	sp = Q_sin(angle);
+	cp = Q_cos(angle);
 
-	angle = (float)(angles[ROLL] * (M_PI * 2 / 360));
-	sr = sin(angle);
-	cr = cos(angle);
+	angle = float_precision(angles[ROLL] * (M_PI * 2 / 360));
+	sr = Q_sin(angle);
+	cr = Q_cos(angle);
 
 	if (forward)
 	{
@@ -57,14 +63,14 @@ void AngleVectorsTranspose(const vec_t *angles, vec_t *forward, vec_t *right, ve
 	float sr, sp, sy, cr, cp, cy;
 
 	angle = angles[YAW] * (M_PI * 2 / 360);
-	sy = sin(angle);
-	cy = cos(angle);
+	sy = Q_sin(angle);
+	cy = Q_cos(angle);
 	angle = angles[PITCH] * (M_PI * 2 / 360);
-	sp = sin(angle);
-	cp = cos(angle);
+	sp = Q_sin(angle);
+	cp = Q_cos(angle);
 	angle = angles[ROLL] * (M_PI * 2 / 360);
-	sr = sin(angle);
-	cr = cos(angle);
+	sr = Q_sin(angle);
+	cr = Q_cos(angle);
 
 	if (forward)
 	{
@@ -88,20 +94,20 @@ void AngleVectorsTranspose(const vec_t *angles, vec_t *forward, vec_t *right, ve
 
 void AngleMatrix(const vec_t *angles, float (*matrix)[4])
 {
-	float angle;
-	float  sr, sp, sy, cr, cp, cy;
+	float_precision angle;
+	float_precision  sr, sp, sy, cr, cp, cy;
 
-	angle = (float)(angles[ROLL] * (M_PI * 2 / 360));
-	sy = sin(angle);
-	cy = cos(angle);
+	angle = float_precision(angles[ROLL] * (M_PI * 2 / 360));
+	sy = Q_sin(angle);
+	cy = Q_cos(angle);
 
-	angle = (float)(angles[YAW] * (M_PI * 2 / 360));
-	sp = sin(angle);
-	cp = cos(angle);
+	angle = float_precision(angles[YAW] * (M_PI * 2 / 360));
+	sp = Q_sin(angle);
+	cp = Q_cos(angle);
 
-	angle = (float)(angles[PITCH] * (M_PI * 2 / 360));
-	sr = sin(angle);
-	cr = cos(angle);
+	angle = float_precision(angles[PITCH] * (M_PI * 2 / 360));
+	sr = Q_sin(angle);
+	cr = Q_cos(angle);
 
 	matrix[0][0] = cr * cp;
 	matrix[1][0] = cr * sp;
@@ -126,14 +132,14 @@ void AngleIMatrix(const vec_t *angles, float (*matrix)[4])
 	float sr, sp, sy, cr, cp, cy;
 
 	angle = angles[YAW] * (M_PI * 2 / 360);
-	sy = sin(angle);
-	cy = cos(angle);
+	sy = Q_sin(angle);
+	cy = Q_cos(angle);
 	angle = angles[PITCH] * (M_PI * 2 / 360);
-	sp = sin(angle);
-	cp = cos(angle);
+	sp = Q_sin(angle);
+	cp = Q_cos(angle);
 	angle = angles[ROLL] * (M_PI * 2 / 360);
-	sr = sin(angle);
-	cr = cos(angle);
+	sr = Q_sin(angle);
+	cr = Q_cos(angle);
 
 	// matrix = (YAW * PITCH) * ROLL
 	matrix[0][0] = cp * cy;
@@ -170,7 +176,6 @@ void NormalizeAngles(float *angles)
 // Interpolate Euler angles.
 // FIXME:  Use Quaternions to avoid discontinuities
 // Frac is 0.0 to 1.0 (i.e., should probably be clamped, but doesn't have to be)
-
 void InterpolateAngles(float *start, float *end, float *output, float frac)
 {
 	int i;
@@ -210,7 +215,7 @@ float AngleBetweenVectors(const vec_t *v1, const vec_t *v2)
 	if (!l1 || !l2)
 		return 0.0f;
 
-	angle = acos(DotProduct(v1, v2)) / (l1 * l2);
+	angle = Q_acos(DotProduct(v1, v2)) / (l1 * l2);
 	angle = (angle * 180.0f) / M_PI;
 
 	return angle;
@@ -218,15 +223,14 @@ float AngleBetweenVectors(const vec_t *v1, const vec_t *v2)
 
 void VectorTransform(const vec_t *in1, float (*in2)[4], vec_t *out)
 {
-	out[0] = _DotProduct(in1, in2[0]) + in2[0][3];
-	out[1] = _DotProduct(in1, in2[1]) + in2[1][3];
-	out[2] = _DotProduct(in1, in2[2]) + in2[2][3];
+	out[0] = DotProduct(in1, in2[0]) + in2[0][3];
+	out[1] = DotProduct(in1, in2[1]) + in2[1][3];
+	out[2] = DotProduct(in1, in2[2]) + in2[2][3];
 }
 
 int VectorCompare(const vec_t *v1, const vec_t *v2)
 {
-	int i;
-	for (i = 0; i < 3; ++i)
+	for (int i = 0; i < 3; ++i)
 	{
 		if (v1[i] != v2[i])
 			return 0;
@@ -242,7 +246,7 @@ void VectorMA(const vec_t *veca, float scale, const vec_t *vecb, vec_t *vecc)
 	vecc[2] = veca[2] + scale * vecb[2];
 }
 
-float _DotProduct(const vec_t *v1, const vec_t *v2)
+float_precision _DotProduct(const vec_t *v1, const vec_t *v2)
 {
 	return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
 }
@@ -268,22 +272,21 @@ void _VectorCopy(vec_t *in, vec_t *out)
 	out[2] = in[2];
 }
 
-void _CrossProduct(const vec_t *v1, const vec_t *v2, vec_t *cross)
+void CrossProduct(const vec_t *v1, const vec_t *v2, vec_t *cross)
 {
 	cross[0] = v1[1] * v2[2] - v1[2] * v2[1];
 	cross[1] = v1[2] * v2[0] - v1[0] * v2[2];
 	cross[2] = v1[0] * v2[1] - v1[1] * v2[0];
 }
 
-float Length(const vec_t *v)
+float_precision Length(const vec_t *v)
 {
-	int i;
-	float length = 0.0f;
+	float_precision length = 0.0f;
 
-	for (i = 0; i < 3; ++i)
+	for (int i = 0; i < 3; ++i)
 		length += v[i] * v[i];
 
-	return sqrt(length);
+	return Q_sqrt(length);
 }
 
 float Distance(const vec_t *v1, const vec_t *v2)
@@ -293,12 +296,12 @@ float Distance(const vec_t *v1, const vec_t *v2)
 	return Length(d);
 }
 
-float VectorNormalize(vec_t *v)
+float_precision VectorNormalize(vec_t *v)
 {
-	float length;
-	float ilength;
+	float_precision length;
+	float_precision ilength;
 
-	length = sqrt((float)(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]));
+	length = Q_sqrt(float_precision(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]));
 
 	if (length)
 	{
@@ -355,9 +358,9 @@ void VectorMatrix(vec_t *forward, vec_t *right, vec_t *up)
 	tmp[1] = 0;
 	tmp[2] = 1.0f;
 
-	_CrossProduct(forward, tmp, right);
+	CrossProduct(forward, tmp, right);
 	VectorNormalize(right);
-	_CrossProduct(right, forward, up);
+	CrossProduct(right, forward, up);
 	VectorNormalize(up);
 }
 
@@ -375,12 +378,12 @@ void VectorAngles(const vec_t *forward, vec_t *angles)
 	}
 	else
 	{
-		yaw = (atan2(forward[1], forward[0]) * 180 / M_PI);
+		yaw = (Q_atan2(forward[1], forward[0]) * 180 / M_PI);
 		if (yaw < 0)
 			yaw += 360;
 
-		tmp = sqrt (forward[0] * forward[0] + forward[1] * forward[1]);
-		pitch = (atan2(forward[2], tmp) * 180 / M_PI);
+		tmp = Q_sqrt(forward[0] * forward[0] + forward[1] * forward[1]);
+		pitch = (Q_atan2(forward[2], tmp) * 180 / M_PI);
 		if (pitch < 0)
 			pitch += 360;
 	}

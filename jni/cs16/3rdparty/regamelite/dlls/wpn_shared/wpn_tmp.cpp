@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_tmp, CTMP);
+LINK_ENTITY_TO_CLASS(weapon_tmp, CTMP, CCSTMP)
 
-void CTMP::Spawn()
+void CTMP::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -17,7 +19,7 @@ void CTMP::Spawn()
 	FallInit();
 }
 
-void CTMP::Precache()
+void CTMP::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_tmp.mdl");
 	PRECACHE_MODEL("models/w_tmp.mdl");
@@ -29,7 +31,7 @@ void CTMP::Precache()
 	m_usFireTMP = PRECACHE_EVENT(1, "events/tmp.sc");
 }
 
-int CTMP::GetItemInfo(ItemInfo *p)
+int CTMP::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "9mm";
@@ -46,7 +48,7 @@ int CTMP::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CTMP::Deploy()
+BOOL CTMP::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.2f;
 	m_iShotsFired = 0;
@@ -56,7 +58,7 @@ BOOL CTMP::Deploy()
 	return DefaultDeploy("models/v_tmp.mdl", "models/p_tmp.mdl", TMP_DRAW, "onehanded", UseDecrement() != FALSE);
 }
 
-void CTMP::PrimaryAttack()
+void CTMP::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -114,10 +116,10 @@ void CTMP::TMPFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireTMP, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), 5, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), 5, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -146,13 +148,15 @@ void CTMP::TMPFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CTMP::Reload()
+void CTMP::__MAKE_VHOOK(Reload)()
 {
+#ifdef REGAMEDLL_FIXES
 	// to prevent reload if not enough ammo
 	if (m_pPlayer->ammo_9mm <= 0)
 		return;
+#endif
 
-	if (DefaultReload(TMP_MAX_CLIP, TMP_RELOAD, TMP_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), TMP_RELOAD, TMP_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -161,7 +165,7 @@ void CTMP::Reload()
 	}
 }
 
-void CTMP::WeaponIdle()
+void CTMP::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

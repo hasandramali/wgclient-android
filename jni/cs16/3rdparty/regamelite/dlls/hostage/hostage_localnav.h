@@ -52,7 +52,11 @@ typedef struct localnode_s
 
 } localnode_t;
 
+#ifndef HOOK_GAMEDLL
+
 #define s_flStepSize_LocalNav m_LocalNav->s_flStepSize
+
+#endif
 
 class CLocalNav
 {
@@ -62,7 +66,7 @@ public:
 
 	void SetTargetEnt(CBaseEntity *pTarget)
 	{
-		if (pTarget)
+		if (pTarget != NULL)
 			m_pTargetEnt = pTarget->edict();
 		else
 			m_pTargetEnt = NULL;
@@ -97,16 +101,19 @@ public:
 	static void HostagePrethink();
 	static float s_flStepSize;
 
+#ifndef HOOK_GAMEDLL
 private:
-	static EHANDLE _queue[ MAX_HOSTAGES_NAV ];
+#endif
+
+	static EHANDLE _queue[MAX_HOSTAGES_NAV];
 	static int qptr;
 	static int tot_inqueue;
 	static float nodeval;
 	static float flNextCvarCheck;
 	static float flLastThinkTime;
-	static EHANDLE hostages[ MAX_HOSTAGES_NAV ];
+	static EHANDLE hostages[MAX_HOSTAGES_NAV];
 	static int tot_hostages;
-   
+
 	CHostage *m_pOwner;
 	edict_t *m_pTargetEnt;
 	BOOL m_fTargetEntHit;

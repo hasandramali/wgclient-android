@@ -41,7 +41,13 @@ public:
 	void SpectatorConnect();
 	void SpectatorDisconnect();
 	void SpectatorThink();
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
+
 private:
 	void SpectatorImpulseCommand();
 };

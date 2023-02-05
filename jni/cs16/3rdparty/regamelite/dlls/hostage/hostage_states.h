@@ -80,6 +80,15 @@ public:
 	virtual void OnMoveToFailure(const Vector &goal, MoveToFailureType reason) { m_moveState = MoveFailed; }
 	virtual void OnInjury(float amount = -1.0f) { m_fleeTimer.Invalidate(); m_mustFlee = true; }
 
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CHostageImprov *improv);
+	void OnUpdate_(CHostageImprov *improv);
+	void OnExit_(CHostageImprov *improv);
+	void UpdateStationaryAnimation_(CHostageImprov *improv);
+
+#endif
+
 private:
 	CountdownTimer m_waveTimer;
 	CountdownTimer m_fleeTimer;
@@ -111,6 +120,15 @@ public:
 	virtual const char *GetName() const { return "Escape:ToCover"; }
 	virtual void OnMoveToFailure(const Vector &goal, MoveToFailureType reason);
 
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CHostageImprov *improv);
+	void OnUpdate_(CHostageImprov *improv);
+	void OnExit_(CHostageImprov *improv);
+	void OnMoveToFailure_(const Vector &goal, MoveToFailureType reason);
+
+#endif
+
 public:
 	void SetRescueGoal(const Vector &rescueGoal) { m_rescueGoal = rescueGoal; }
 
@@ -129,6 +147,14 @@ public:
 	virtual void OnUpdate(CHostageImprov *improv);
 	virtual void OnExit(CHostageImprov *improv);
 	virtual const char *GetName() const { return "Escape:LookAround"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CHostageImprov *improv);
+	void OnUpdate_(CHostageImprov *improv);
+	void OnExit_(CHostageImprov *improv);
+
+#endif
 
 private:
 	CountdownTimer m_timer;
@@ -149,6 +175,14 @@ public:
 	virtual void OnExit(CHostageImprov *improv);
 	virtual const char *GetName() const { return "Escape"; }
 	virtual void OnMoveToFailure(const Vector &goal, MoveToFailureType reason) { m_behavior.OnMoveToFailure(goal, reason); }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CHostageImprov *improv);
+	void OnUpdate_(CHostageImprov *improv);
+	void OnExit_(CHostageImprov *improv);
+
+#endif
 
 public:
 	void ToCover() { m_behavior.SetState(&m_toCoverState); }
@@ -171,6 +205,15 @@ public:
 	virtual void OnUpdate(CHostageImprov *improv);
 	virtual void OnExit(CHostageImprov *improv);
 	virtual const char *GetName() const { return "Retreat"; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CHostageImprov *improv);
+	void OnUpdate_(CHostageImprov *improv);
+	void OnExit_(CHostageImprov *improv);
+
+#endif
+
 };
 
 class HostageFollowState: public HostageState
@@ -183,6 +226,15 @@ public:
 	virtual void OnExit(CHostageImprov *improv);
 	virtual const char *GetName() const { return "Follow"; }
 	virtual void UpdateStationaryAnimation(CHostageImprov *improv);
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CHostageImprov *improv);
+	void OnUpdate_(CHostageImprov *improv);
+	void OnExit_(CHostageImprov *improv);
+	void UpdateStationaryAnimation_(CHostageImprov *improv);
+
+#endif
 
 public:
 	void SetLeader(CBaseEntity *leader) { m_leader = leader; }
@@ -209,7 +261,15 @@ public:
 	virtual void OnUpdate(CHostageImprov *improv);
 	virtual void OnExit(CHostageImprov *improv);
 	virtual const char *GetName() const { return "Animate"; }
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEnter_(CHostageImprov *improv);
+	void OnUpdate_(CHostageImprov *improv);
+	void OnExit_(CHostageImprov *improv);
+
+#endif
+
 public:
 	struct SeqInfo
 	{
@@ -243,16 +303,16 @@ public:
 	void AddSequence(CHostageImprov *improv, int activity, float holdTime = -1.0f, float rate = 1.0f);
 
 	bool IsBusy() const { return (m_sequenceCount > 0); }
-	NOXREF bool IsPlaying(CHostageImprov *improv, const char *seqName) const;
+	bool IsPlaying(CHostageImprov *improv, const char *seqName) const;
 	int GetCurrentSequenceID() { return m_currentSequence; }
 	PerformanceType GetPerformance() const { return m_performance; }
 	void SetPerformance(PerformanceType performance) { m_performance = performance; }
 	void StartSequence(CHostageImprov *improv, const SeqInfo *seqInfo);
 	bool IsDoneHolding();
-	
+
 private:
 	enum { MAX_SEQUENCES = 8 };
-	struct SeqInfo m_sequence[ MAX_SEQUENCES ];
+	struct SeqInfo m_sequence[MAX_SEQUENCES];
 	int m_sequenceCount;
 	int m_currentSequence;
 	enum PerformanceType m_performance;

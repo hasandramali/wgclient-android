@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 edict_t *g_pBodyQueueHead;
@@ -7,6 +9,8 @@ float g_flWeaponCheat;
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 DLL_DECALLIST gDecals[] =
 {
 	{ "{shot1", 0 },		// DECAL_GUNSHOT1
@@ -65,6 +69,10 @@ TYPEDESCRIPTION gGlobalEntitySaveData[] =
 	DEFINE_FIELD(globalentity_t, state, FIELD_INTEGER)
 };
 
+#endif // HOOK_GAMEDLL
+
+char g_szMapBriefingText[512];
+
 class CDecal: public CBaseEntity
 {
 public:
@@ -76,7 +84,7 @@ public:
 	void EXPORT TriggerDecal(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 };
 
-LINK_ENTITY_TO_CLASS(infodecal, CDecal);
+LINK_ENTITY_TO_CLASS(infodecal, CDecal, CCSDecal)
 
 void CDecal::Spawn()
 {
@@ -115,12 +123,12 @@ void CDecal::TriggerDecal(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 		WRITE_COORD(pev->origin.x);
 		WRITE_COORD(pev->origin.y);
 		WRITE_COORD(pev->origin.z);
-		WRITE_SHORT((int)pev->skin);
+		WRITE_SHORT(int(pev->skin));
 		entityIndex = (short)ENTINDEX(trace.pHit);
 		WRITE_SHORT(entityIndex);
 		if (entityIndex)
 		{
-			WRITE_SHORT((int)VARS(trace.pHit)->modelindex);
+			WRITE_SHORT(int(VARS(trace.pHit)->modelindex));
 		}
 	MESSAGE_END();
 
@@ -163,14 +171,13 @@ void CDecal::KeyValue(KeyValueData *pkvd)
 }
 
 // Body queue class here.... It's really just CBaseEntity
-
 class CCorpse: public CBaseEntity
 {
 public:
 	virtual int ObjectCaps() { return FCAP_DONT_SAVE; }
 };
 
-LINK_ENTITY_TO_CLASS(bodyque, CCorpse);
+LINK_ENTITY_TO_CLASS(bodyque, CCorpse, CCSCorpse)
 
 static void InitBodyQue()
 {
@@ -179,7 +186,6 @@ static void InitBodyQue()
 
 // make a body que entry for the given ent so the ent can be respawned elsewhere
 // GLOBALS ASSUMED SET:  g_eoBodyQueueHeadstion
-
 void CopyToBodyQue(entvars_t *pev)
 {
 #if 0
@@ -248,7 +254,6 @@ globalentity_t *CGlobalState::Find(string_t globalname)
 }
 
 // This is available all the time now on impulse 104, remove later
-
 void CGlobalState::DumpGlobals()
 {
 	static char *estates[] = { "Off", "On", "Dead" };
@@ -268,7 +273,7 @@ void CGlobalState::EntityAdd(string_t globalname, string_t mapName, GLOBALESTATE
 {
 	assert(!Find(globalname));
 
-	globalentity_t *pNewEntity = (globalentity_t *)calloc(sizeof(globalentity_t), 1);
+	globalentity_t *pNewEntity = (globalentity_t *)Q_calloc(sizeof(globalentity_t), 1);
 	assert(pNewEntity != NULL);
 
 	pNewEntity->pNext = m_pList;
@@ -284,7 +289,7 @@ void CGlobalState::EntitySetState(string_t globalname, GLOBALESTATE state)
 {
 	globalentity_t *pEnt = Find(globalname);
 
-	if (pEnt)
+	if (pEnt != NULL)
 	{
 		pEnt->state = state;
 	}
@@ -314,7 +319,7 @@ int CGlobalState::Save(CSave &save)
 	int i;
 	globalentity_t *pEntity;
 
-	if (!save.WriteFields("GLOBAL", this, m_SaveData, ARRAYSIZE(m_SaveData)))
+	if (!save.WriteFields("GLOBAL", this, IMPL(m_SaveData), ARRAYSIZE(IMPL(m_SaveData))))
 	{
 		return 0;
 	}
@@ -340,7 +345,7 @@ int CGlobalState::Restore(CRestore &restore)
 
 	ClearStates();
 
-	if (!restore.ReadFields("GLOBAL", this, m_SaveData, ARRAYSIZE(m_SaveData)))
+	if (!restore.ReadFields("GLOBAL", this, IMPL(m_SaveData), ARRAYSIZE(IMPL(m_SaveData))))
 	{
 		return 0;
 	}
@@ -382,7 +387,7 @@ void CGlobalState::ClearStates()
 	{
 		globalentity_t *pNext = pFree->pNext;
 
-		free(pFree);
+		Q_free(pFree);
 		pFree = pNext;
 	}
 
@@ -409,13 +414,49 @@ void EXT_FUNC ResetGlobalState()
 	gInitHUD = TRUE;
 }
 
-LINK_ENTITY_TO_CLASS(worldspawn, CWorld);
+LINK_ENTITY_TO_CLASS(worldspawn, CWorld, CCSWorld)
 
-void CWorld::Spawn()
+void CWorld::__MAKE_VHOOK(Spawn)()
 {
-	EmptyEntityHashTable();
-	g_fGameOver = FALSE;
+#ifdef REGAMEDLL_FIXES
+	static char szMapBriefingFile[64] = "";
 
+	EmptyEntityHashTable();
+	Precache();
+
+	g_flWeaponCheat = CVAR_GET_FLOAT("sv_cheats");
+	g_szMapBriefingText[0] = '\0';
+	Q_sprintf(szMapBriefingFile, "maps/%s.txt", STRING(gpGlobals->mapname));
+
+	int flength = 0;
+	char *pFile = (char *)LOAD_FILE_FOR_ME(szMapBriefingFile, &flength);
+
+	if (pFile && flength)
+	{
+		Q_strncpy(g_szMapBriefingText, pFile, ARRAYSIZE(g_szMapBriefingText) - 2);
+		g_szMapBriefingText[ ARRAYSIZE(g_szMapBriefingText) - 2 ] = '\0';
+
+		PRECACHE_GENERIC(szMapBriefingFile);
+	}
+	else
+	{
+		pFile = (char *)LOAD_FILE_FOR_ME("maps/default.txt", &flength);
+		if (pFile && flength)
+		{
+			Q_strncpy(g_szMapBriefingText, pFile, ARRAYSIZE(g_szMapBriefingText) - 2);
+			g_szMapBriefingText[ ARRAYSIZE(g_szMapBriefingText) - 2 ] = '\0';
+
+			PRECACHE_GENERIC("maps/default.txt");
+		}
+	}
+
+	if (pFile)
+	{
+		FREE_FILE(pFile);
+	}
+
+#else
+	EmptyEntityHashTable();
 	Precache();
 
 	g_flWeaponCheat = CVAR_GET_FLOAT("sv_cheats");
@@ -424,11 +465,9 @@ void CWorld::Spawn()
 	int flength = 0;
 	char *pFile = (char *)LOAD_FILE_FOR_ME(UTIL_VarArgs("maps/%s.txt", STRING(gpGlobals->mapname)), &flength);
 
-	if (pFile && flength != NULL)
+	if (pFile && flength)
 	{
 		Q_strncpy(g_szMapBriefingText, pFile, ARRAYSIZE(g_szMapBriefingText) - 2);
-		g_szMapBriefingText[ ARRAYSIZE(g_szMapBriefingText) - 2 ] = 0;
-      
 		PRECACHE_GENERIC(UTIL_VarArgs("maps/%s.txt", STRING(gpGlobals->mapname)));
 		FREE_FILE(pFile);
 	}
@@ -436,19 +475,17 @@ void CWorld::Spawn()
 	{
 		pFile = (char *)LOAD_FILE_FOR_ME(UTIL_VarArgs("maps/default.txt"), &flength);
 
-		if (pFile != NULL && flength)
+		if (pFile && flength)
 		{
 			Q_strncpy(g_szMapBriefingText, pFile, ARRAYSIZE(g_szMapBriefingText) - 2);
-			g_szMapBriefingText[ ARRAYSIZE(g_szMapBriefingText) - 2 ] = 0;
-
 			PRECACHE_GENERIC(UTIL_VarArgs("maps/default.txt"));
+			FREE_FILE(pFile);
 		}
-
-		FREE_FILE(pFile);
 	}
+#endif
 }
 
-void CWorld::Precache()
+void CWorld::__MAKE_VHOOK(Precache)()
 {
 	g_pLastSpawn = NULL;
 	g_pLastCTSpawn = NULL;
@@ -467,20 +504,25 @@ void CWorld::Precache()
 		delete g_pGameRules;
 	}
 
-	g_pGameRules = (CHalfLifeMultiplay *)InstallGameRules();
+	g_pGameRules = InstallGameRules();
 
+	// NOTE: What is the essence of soundent in CS 1.6? I think this is for NPC monsters - s1lent
+#ifndef REGAMEDLL_FIXES
 	// UNDONE why is there so much Spawn code in the Precache function? I'll just keep it here
 
 	// LATER - do we want a sound ent in deathmatch? (sjb)
 	//pSoundEnt = CBaseEntity::Create("soundent", g_vecZero, g_vecZero, edict());
-	pSoundEnt = GetClassPtr((CSoundEnt *)NULL);
-	pSoundEnt->Spawn();
+	pSoundEnt = GetClassPtr<CCSSoundEnt>((CSoundEnt *)NULL);
 
-	if (!pSoundEnt)
+	if (pSoundEnt == NULL)
 	{
 		ALERT(at_console, "**COULD NOT CREATE SOUNDENT**\n");
 	}
-
+	else
+	{
+		pSoundEnt->Spawn();
+	}
+#endif
 	InitBodyQue();
 
 	// init sentence group playback stuff from sentences.txt.
@@ -512,7 +554,7 @@ void CWorld::Precache()
 	PRECACHE_SOUND("common/bodydrop3.wav");
 	PRECACHE_SOUND("common/bodydrop4.wav");
 
-	g_Language = (int)CVAR_GET_FLOAT("sv_language");
+	g_Language = int(CVAR_GET_FLOAT("sv_language"));
 	if (g_Language == LANGUAGE_GERMAN)
 	{
 		PRECACHE_MODEL("models/germangibs.mdl");
@@ -584,6 +626,7 @@ void CWorld::Precache()
 	for (int i = 0; i < ARRAYSIZE(gDecals); ++i)
 		gDecals[i].index = DECAL_INDEX(gDecals[i].name);
 
+#ifndef REGAMEDLL_FIXES
 	// init the WorldGraph.
 	WorldGraph.InitGraph();
 
@@ -607,6 +650,7 @@ void CWorld::Precache()
 			ALERT(at_console, "\n*Graph Loaded!\n");
 		}
 	}
+#endif
 
 	if (pev->speed > 0)
 		CVAR_SET_FLOAT("sv_zmax", pev->speed);
@@ -629,10 +673,16 @@ void CWorld::Precache()
 		}
 	}
 
-	if (pev->spawnflags & SF_WORLD_DARK)
-		CVAR_SET_FLOAT("v_dark", 1);
-	else
-		CVAR_SET_FLOAT("v_dark", 0);
+#ifdef REGAMEDLL_FIXES
+	if (!IS_DEDICATED_SERVER())
+#endif
+	{
+		// NOTE: cvar v_dark refers for the client side
+		if (pev->spawnflags & SF_WORLD_DARK)
+			CVAR_SET_FLOAT("v_dark", 1);
+		else
+			CVAR_SET_FLOAT("v_dark", 0);
+	}
 
 	if (pev->spawnflags & SF_WORLD_TITLE)
 	{
@@ -643,7 +693,7 @@ void CWorld::Precache()
 		gDisplayTitle = FALSE;
 }
 
-void CWorld::KeyValue(KeyValueData *pkvd)
+void CWorld::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "skyname"))
 	{
@@ -657,7 +707,7 @@ void CWorld::KeyValue(KeyValueData *pkvd)
 	}
 	else if (FStrEq(pkvd->szKeyName, "WaveHeight"))
 	{
-		pev->scale = Q_atof(pkvd->szValue) * 0.125;
+		pev->scale = Q_atof(pkvd->szValue) * 0.125f;
 		CVAR_SET_FLOAT("sv_wateramp", pev->scale);
 		pkvd->fHandled = TRUE;
 	}
@@ -683,7 +733,7 @@ void CWorld::KeyValue(KeyValueData *pkvd)
 	else if (FStrEq(pkvd->szKeyName, "newunit"))
 	{
 		if (Q_atoi(pkvd->szValue))
-			CVAR_SET_FLOAT("sv_newunit", 1.0);
+			CVAR_SET_FLOAT("sv_newunit", 1.0f);
 
 		pkvd->fHandled = TRUE;
 	}

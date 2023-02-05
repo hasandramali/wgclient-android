@@ -1,8 +1,9 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Begin defusing the bomb
-
-void DefuseBombState::OnEnter(CCSBot *me)
+void DefuseBombState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	me->Crouch();
 	me->SetDisposition(CCSBot::SELF_DEFENSE);
@@ -10,13 +11,11 @@ void DefuseBombState::OnEnter(CCSBot *me)
 }
 
 // Defuse the bomb
-
-void DefuseBombState::OnUpdate(CCSBot *me)
+void DefuseBombState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	const Vector *bombPos = me->GetGameState()->GetBombPosition();
-	CCSBotManager *ctrl = TheCSBots();
 
-	if (bombPos == NULL)
+	if (!bombPos)
 	{
 		me->PrintIfWatched("In Defuse state, but don't know where the bomb is!\n");
 		me->Idle();
@@ -32,13 +31,13 @@ void DefuseBombState::OnUpdate(CCSBot *me)
 	if (gpGlobals->time - me->GetStateTimestamp() > 1.0f)
 	{
 		// if we missed starting the defuse, give up
-		if (ctrl->GetBombDefuser() == NULL)
+		if (!TheCSBots()->GetBombDefuser())
 		{
 			me->PrintIfWatched("Failed to start defuse, giving up\n");
 			me->Idle();
 			return;
 		}
-		else if (ctrl->GetBombDefuser() != me)
+		else if (TheCSBots()->GetBombDefuser() != me)
 		{
 			// if someone else got the defuse, give up
 			me->PrintIfWatched("Someone else started defusing, giving up\n");
@@ -48,14 +47,22 @@ void DefuseBombState::OnUpdate(CCSBot *me)
 	}
 
 	// if bomb has been defused, give up
-	if (!ctrl->IsBombPlanted())
+	if (!TheCSBots()->IsBombPlanted())
 	{
+#ifdef REGAMEDLL_ADD
+		if (HasRoundInfinite(SCENARIO_BLOCK_BOMB)) {
+			me->GetGameState()->Reset();
+			me->Hunt();
+			return;
+		}
+#endif
+
 		me->Idle();
 		return;
 	}
 }
 
-void DefuseBombState::OnExit(CCSBot *me)
+void DefuseBombState::__MAKE_VHOOK(OnExit)(CCSBot *me)
 {
 	me->StandUp();
 	me->ResetStuckMonitor();

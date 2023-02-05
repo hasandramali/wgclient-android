@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_xm1014, CXM1014);
+LINK_ENTITY_TO_CLASS(weapon_xm1014, CXM1014, CCSXM1014)
 
-void CXM1014::Spawn()
+void CXM1014::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -15,7 +17,7 @@ void CXM1014::Spawn()
 	FallInit();
 }
 
-void CXM1014::Precache()
+void CXM1014::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_xm1014.mdl");
 	PRECACHE_MODEL("models/w_xm1014.mdl");
@@ -29,7 +31,7 @@ void CXM1014::Precache()
 	m_usFireXM1014 = PRECACHE_EVENT(1, "events/xm1014.sc");
 }
 
-int CXM1014::GetItemInfo(ItemInfo *p)
+int CXM1014::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "buckshot";
@@ -46,12 +48,12 @@ int CXM1014::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CXM1014::Deploy()
+BOOL CXM1014::__MAKE_VHOOK(Deploy)()
 {
 	return DefaultDeploy("models/v_xm1014.mdl", "models/p_xm1014.mdl", XM1014_DRAW, "m249", UseDecrement() != FALSE);
 }
 
-void CXM1014::PrimaryAttack()
+void CXM1014::__MAKE_VHOOK(PrimaryAttack)()
 {
 	Vector vecAiming, vecSrc, vecDir;
 	int flag;
@@ -101,10 +103,10 @@ void CXM1014::PrimaryAttack()
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireXM1014, 0, (float *)&g_vecZero, (float *)&g_vecZero, m_vVecAiming.x, m_vVecAiming.y, 7,
-		(int)(m_vVecAiming.x * 100), m_iClip == 0, FALSE);
+		int(m_vVecAiming.x * 100), m_iClip == 0, FALSE);
 
 	if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 	{
@@ -131,9 +133,9 @@ void CXM1014::PrimaryAttack()
 		m_pPlayer->pev->punchangle.x -= UTIL_SharedRandomLong(m_pPlayer->random_seed + 1, 7, 10);
 }
 
-void CXM1014::Reload()
+void CXM1014::__MAKE_VHOOK(Reload)()
 {
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == XM1014_MAX_CLIP)
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == iMaxClip())
 		return;
 
 	// don't reload until recoil is done
@@ -147,10 +149,8 @@ void CXM1014::Reload()
 		SendWeaponAnim(XM1014_START_RELOAD, UseDecrement() != FALSE);
 
 		m_fInSpecialReload = 1;
-		m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.55f;
-		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.55f;
+		m_flNextSecondaryAttack = m_flTimeWeaponIdle = m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.55f;
 		m_flNextPrimaryAttack = GetNextAttackDelay(0.55);
-		m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.55f;
 	}
 	else if (m_fInSpecialReload == 1)
 	{
@@ -167,19 +167,25 @@ void CXM1014::Reload()
 
 		SendWeaponAnim(XM1014_RELOAD, UseDecrement());
 
-		m_flNextReload = UTIL_WeaponTimeBase() + 0.3f;
-		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.3f;
+		m_flTimeWeaponIdle = m_flNextReload = UTIL_WeaponTimeBase() + 0.3f;
 	}
 	else
 	{
 		++m_iClip;
-		--m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType];
-		--m_pPlayer->ammo_buckshot;
+
+#ifdef REGAMEDLL_ADD
+		if (refill_bpammo_weapons.value < 3.0f)
+#endif
+		{
+			--m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType];
+			--m_pPlayer->ammo_buckshot;
+		}
+
 		m_fInSpecialReload = 1;
 	}
 }
 
-void CXM1014::WeaponIdle()
+void CXM1014::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_5DEGREES);
@@ -197,7 +203,7 @@ void CXM1014::WeaponIdle()
 		}
 		else if (m_fInSpecialReload != 0)
 		{
-			if (m_iClip != XM1014_MAX_CLIP && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+			if (m_iClip != iMaxClip() && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
 			{
 				Reload();
 			}

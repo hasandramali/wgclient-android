@@ -1,7 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Reset the stuck-checker.
-
 void CCSBot::ResetStuckMonitor()
 {
 	if (m_isStuck)
@@ -23,7 +24,6 @@ void CCSBot::ResetStuckMonitor()
 }
 
 // Test if we have become stuck
-
 void CCSBot::StuckCheck()
 {
 	if (m_isStuck)
@@ -97,14 +97,13 @@ void CCSBot::StuckCheck()
 }
 
 // Check if we need to jump due to height change
-
 bool CCSBot::DiscontinuityJump(float ground, bool onlyJumpDown, bool mustJump)
 {
 	// don't try to jump again.
 	if (m_isJumpCrouching)
 		return false;
 
-	float dz = ground - GetFeetZ();
+	float_precision dz = ground - GetFeetZ();
 
 	if (dz > StepHeight && !onlyJumpDown)
 	{
@@ -138,7 +137,6 @@ bool CCSBot::DiscontinuityJump(float ground, bool onlyJumpDown, bool mustJump)
 }
 
 // Find "simple" ground height, treating current nav area as part of the floor
-
 bool CCSBot::GetSimpleGroundHeightWithFloor(const Vector *pos, float *height, Vector *normal)
 {
 	if (GetSimpleGroundHeight(pos, height, normal))
@@ -173,8 +171,8 @@ void CCSBot::MoveTowardsPosition(const Vector *pos)
 
 	// NOTE: We need to do this frequently to catch edges at the right time
 	// TODO: Look ahead *along path* instead of straight line
-	if ((m_lastKnownArea == NULL || !(m_lastKnownArea->GetAttributes() & NAV_NO_JUMP)) &&
-		!IsOnLadder() && !m_isJumpCrouching)
+	if ((m_lastKnownArea == NULL || !(m_lastKnownArea->GetAttributes() & NAV_NO_JUMP))
+		&& !IsOnLadder() && !m_isJumpCrouching)
 	{
 		float ground;
 		Vector aheadRay(pos->x - pev->origin.x, pos->y - pev->origin.y, 0);
@@ -257,7 +255,6 @@ void CCSBot::MoveTowardsPosition(const Vector *pos)
 }
 
 // Move away from position, independant of view angle
-
 NOXREF void CCSBot::MoveAwayFromPosition(const Vector *pos)
 {
 	// compute our current forward and lateral vectors
@@ -287,7 +284,6 @@ NOXREF void CCSBot::MoveAwayFromPosition(const Vector *pos)
 }
 
 // Strafe (sidestep) away from position, independant of view angle
-
 void CCSBot::StrafeAwayFromPosition(const Vector *pos)
 {
 	// compute our current forward and lateral vectors
@@ -309,7 +305,6 @@ void CCSBot::StrafeAwayFromPosition(const Vector *pos)
 }
 
 // For getting un-stuck
-
 void CCSBot::Wiggle()
 {
 	if (IsCrouching())
@@ -352,7 +347,6 @@ void CCSBot::Wiggle()
 }
 
 // Determine approach points from eye position and approach areas of current area
-
 void CCSBot::ComputeApproachPoints()
 {
 	m_approachPointCount = 0;
@@ -406,7 +400,6 @@ void CCSBot::DrawApproachPoints()
 }
 
 // Find the approach point that is nearest to our current path, ahead of us
-
 NOXREF bool CCSBot::FindApproachPointNearestPath(Vector *pos)
 {
 	if (!HasPath())
@@ -418,7 +411,7 @@ NOXREF bool CCSBot::FindApproachPointNearestPath(Vector *pos)
 	if (m_approachPointCount == 0)
 		return false;
 
-	Vector target = Vector(0, 0, 0), close;
+	Vector target(0, 0, 0), close;
 	float targetRangeSq = 0.0f;
 	bool found = false;
 

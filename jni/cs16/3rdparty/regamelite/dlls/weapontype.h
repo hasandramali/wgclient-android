@@ -256,17 +256,23 @@ enum MaxAmmoType
 
 enum AmmoType
 {
-	AMMO_BUCKSHOT,
-	AMMO_9MM,
-	AMMO_556NATO,
-	AMMO_556NATOBOX,
-	AMMO_762NATO,
-	AMMO_45ACP,
-	AMMO_50AE,
+	AMMO_NONE,
 	AMMO_338MAGNUM,
+	AMMO_762NATO,
+	AMMO_556NATOBOX,
+	AMMO_556NATO,
+	AMMO_BUCKSHOT,
+	AMMO_45ACP,
 	AMMO_57MM,
+	AMMO_50AE,
 	AMMO_357SIG,
-	AMMO_MAX_TYPES,
+	AMMO_9MM,
+	AMMO_FLASHBANG,
+	AMMO_HEGRENADE,
+	AMMO_SMOKEGRENADE,
+	AMMO_C4,
+
+	AMMO_MAX_TYPES
 };
 
 enum WeaponClassType
@@ -332,7 +338,8 @@ enum shieldgren_e
 
 enum InventorySlotType
 {
-	PRIMARY_WEAPON_SLOT = 1,
+	NONE_SLOT,
+	PRIMARY_WEAPON_SLOT,
 	PISTOL_SLOT,
 	KNIFE_SLOT,
 	GRENADE_SLOT,
@@ -359,9 +366,18 @@ enum Bullet
 	BULLET_PLAYER_357SIG,
 };
 
+struct WeaponStruct
+{
+	int m_type;
+	int m_price;
+	int m_side;
+	int m_slot;
+	int m_ammoPrice;
+};
+
 struct AutoBuyInfoStruct
 {
-	int m_class;
+	AutoBuyClassType m_class;
 	char *m_command;
 	char *m_classname;
 };
@@ -393,11 +409,22 @@ struct WeaponInfoStruct
 	int buyClipSize;
 	int gunClipSize;
 	int maxRounds;
-	int ammoType;
+	AmmoType ammoType;
 	char *entityName;
+
+	// custom
+	const char *ammoName;
+};
+
+struct WeaponSlotInfo
+{
+	WeaponIdType id;
+	InventorySlotType slot;
+	const char *weaponName;
 };
 
 extern AutoBuyInfoStruct g_autoBuyInfo[35];
+extern WeaponStruct g_weaponStruct[MAX_WEAPONS];
 
 // WeaponType
 WeaponIdType AliasToWeaponID(const char *alias);
@@ -407,7 +434,13 @@ WeaponClassType AliasToWeaponClass(const char *alias);
 WeaponClassType WeaponIDToWeaponClass(int id);
 bool IsPrimaryWeapon(int id);
 bool IsSecondaryWeapon(int id);
-WeaponInfoStruct *GetWeaponInfo(int weaponID);
 bool CanBuyWeaponByMaptype(int playerTeam, WeaponIdType weaponID, bool useAssasinationRestrictions);
+void WeaponInfoReset();
+
+WeaponInfoStruct* GetWeaponInfo(int weaponID);
+WeaponInfoStruct* GetWeaponInfo(const char* weaponName);
+
+WeaponSlotInfo* GetWeaponSlot(WeaponIdType weaponID);
+WeaponSlotInfo* GetWeaponSlot(const char* weaponName);
 
 #endif // WEAPONTYPE_H

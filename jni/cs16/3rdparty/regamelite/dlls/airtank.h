@@ -34,7 +34,6 @@
 
 class CAirtank: public CGrenade
 {
-
 public:
 	virtual void Spawn();
 	virtual void Precache();
@@ -47,8 +46,18 @@ public:
 	void EXPORT TankThink();
 	void EXPORT TankTouch(CBaseEntity *pOther);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Killed_(entvars_t *pevAttacker, int iGib);
+
+#endif
+
 public:
-	static TYPEDESCRIPTION m_SaveData[1];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
 
 private:
 	int m_state;

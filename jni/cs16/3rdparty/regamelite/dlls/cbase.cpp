@@ -1,9 +1,13 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
-static DLL_FUNCTIONS gFunctionTable =
+#ifndef HOOK_GAMEDLL
+
+DLL_FUNCTIONS gFunctionTable =
 {
 	&GameDLLInit,
 	&DispatchSpawn,
@@ -24,7 +28,7 @@ static DLL_FUNCTIONS gFunctionTable =
 	&ClientDisconnect,
 	&ClientKill,
 	&ClientPutInServer,
-	&ClientCommand,
+	&ClientCommand_,
 	&ClientUserInfoChanged,
 	&ServerActivate,
 	&ServerDeactivate,
@@ -38,7 +42,7 @@ static DLL_FUNCTIONS gFunctionTable =
 	&SpectatorConnect,
 	&SpectatorDisconnect,
 	&SpectatorThink,
-	&Sys_Error,
+	&SysEngine_Error,
 	&PM_Move,
 	&PM_Init,
 	&PM_FindTextureType,
@@ -57,9 +61,11 @@ static DLL_FUNCTIONS gFunctionTable =
 	&AllowLagCompensation
 };
 
-static NEW_DLL_FUNCTIONS gNewDLLFunctions =
+NEW_DLL_FUNCTIONS gNewDLLFunctions =
 {
 	&OnFreeEntPrivateData,
+	NULL,
+	NULL,
 	NULL,
 	NULL
 };
@@ -75,7 +81,8 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 };
 
 CMemoryPool hashItemMemPool(sizeof(hash_item_t), 64);
-BOOL gTouchDisabled = FALSE;
+
+#endif // HOOK_GAMEDLL
 
 int CaseInsensitiveHash(const char *string, int iBounds)
 {
@@ -121,7 +128,7 @@ void EmptyEntityHashTable()
 	}
 }
 
-void AddEntityHashValue(entvars_t *pev, const char *value, hash_types_e fieldType)
+void EXT_FUNC AddEntityHashValue(entvars_t *pev, const char *value, hash_types_e fieldType)
 {
 	int count;
 	hash_item_t *item, *next, *temp, *newp;
@@ -194,7 +201,7 @@ void AddEntityHashValue(entvars_t *pev, const char *value, hash_types_e fieldTyp
 	}
 }
 
-void RemoveEntityHashValue(entvars_t *pev, const char *value, hash_types_e fieldType)
+void EXT_FUNC RemoveEntityHashValue(entvars_t *pev, const char *value, hash_types_e fieldType)
 {
 	int hash;
 	hash_item_t *item;
@@ -279,10 +286,10 @@ void printEntities()
 	}
 }
 
-edict_t *CREATE_NAMED_ENTITY(string_t iClass)
+NOINLINE edict_t *EXT_FUNC CREATE_NAMED_ENTITY(string_t iClass)
 {
 	edict_t *named = g_engfuncs.pfnCreateNamedEntity(iClass);
-	if (named != NULL)
+	if (named)
 	{
 		AddEntityHashValue(&named->v, STRING(iClass), CLASSNAME);
 	}
@@ -290,11 +297,11 @@ edict_t *CREATE_NAMED_ENTITY(string_t iClass)
 	return named;
 }
 
-void REMOVE_ENTITY(edict_t *e)
+void REMOVE_ENTITY(edict_t *pEntity)
 {
-	if (e != NULL)
+	if (pEntity)
 	{
-		(*g_engfuncs.pfnRemoveEntity)(e);
+		g_engfuncs.pfnRemoveEntity(pEntity);
 	}
 }
 
@@ -323,16 +330,16 @@ void loopPerformance()
 	for (i = 0; i < 100; ++i)
 	{
 		CBaseEntity *pSpot;
-		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "info_player_start"); pSpot != NULL; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "info_player_start"))
+		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "info_player_start"); pSpot; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "info_player_start"))
 			;
 
-		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "info_player_deathmatch"); pSpot != NULL; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "info_player_deathmatch"))
+		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "info_player_deathmatch"); pSpot; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "info_player_deathmatch"))
 			;
 
-		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "player"); pSpot != NULL; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "player"))
+		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "player"); pSpot; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "player"))
 			;
 
-		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "bodyque"); pSpot != NULL; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "bodyque"))
+		for (pSpot = UTIL_FindEntityByString_Old(NULL, "classname", "bodyque"); pSpot; pSpot = UTIL_FindEntityByString_Old(pSpot, "classname", "bodyque"))
 			;
 	}
 
@@ -345,16 +352,16 @@ void loopPerformance()
 	for (i = 0; i < 100; ++i)
 	{
 		CBaseEntity *pSpot;
-		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "info_player_start"); pSpot != NULL; pSpot = UTIL_FindEntityByString(pSpot, "classname", "info_player_start"))
+		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "info_player_start"); pSpot; pSpot = UTIL_FindEntityByString(pSpot, "classname", "info_player_start"))
 			;
 
-		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "info_player_deathmatch"); pSpot != NULL; pSpot = UTIL_FindEntityByString(pSpot, "classname", "info_player_deathmatch"))
+		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "info_player_deathmatch"); pSpot; pSpot = UTIL_FindEntityByString(pSpot, "classname", "info_player_deathmatch"))
 			;
 
-		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "player"); pSpot != NULL; pSpot = UTIL_FindEntityByString(pSpot, "classname", "player"))
+		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "player"); pSpot; pSpot = UTIL_FindEntityByString(pSpot, "classname", "player"))
 			;
 
-		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "bodyque"); pSpot != NULL; pSpot = UTIL_FindEntityByString(pSpot, "classname", "bodyque"))
+		for (pSpot = UTIL_FindEntityByString(NULL, "classname", "bodyque"); pSpot; pSpot = UTIL_FindEntityByString(pSpot, "classname", "bodyque"))
 			;
 	}
 
@@ -406,7 +413,7 @@ int EXT_FUNC DispatchSpawn(edict_t *pent)
 {
 	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pent);
 
-	if (pEntity != NULL)
+	if (pEntity)
 	{
 		// Initialize these or entities who don't link to the world won't have anything in here
 		pEntity->pev->absmin = pEntity->pev->origin - Vector(1, 1, 1);
@@ -418,7 +425,7 @@ int EXT_FUNC DispatchSpawn(edict_t *pent)
 		// that would touch too much code for me to do that right now.
 		pEntity = (CBaseEntity *)GET_PRIVATE(pent);
 
-		if (pEntity != NULL)
+		if (pEntity)
 		{
 			if (g_pGameRules && !g_pGameRules->IsAllowedToSpawn(pEntity))
 			{
@@ -433,7 +440,7 @@ int EXT_FUNC DispatchSpawn(edict_t *pent)
 		}
 
 		// Handle global stuff here
-		if (pEntity != NULL && pEntity->pev->globalname)
+		if (pEntity && pEntity->pev->globalname)
 		{
 			const globalentity_t *pGlobal = gGlobalState.EntityFromTable(pEntity->pev->globalname);
 
@@ -476,7 +483,6 @@ void EXT_FUNC DispatchKeyValue(edict_t *pentKeyvalue, KeyValueData *pkvd)
 
 	// Get the actualy entity object
 	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pentKeyvalue);
-
 	if (!pEntity)
 		return;
 
@@ -485,12 +491,8 @@ void EXT_FUNC DispatchKeyValue(edict_t *pentKeyvalue, KeyValueData *pkvd)
 
 // HACKHACK -- this is a hack to keep the node graph entity from "touching" things (like triggers)
 // while it builds the graph
-
 void EXT_FUNC DispatchTouch(edict_t *pentTouched, edict_t *pentOther)
 {
-	if (gTouchDisabled)
-		return;
-
 	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pentTouched);
 	CBaseEntity *pOther = (CBaseEntity *)GET_PRIVATE(pentOther);
 
@@ -504,16 +506,14 @@ void EXT_FUNC DispatchUse(edict_t *pentUsed, edict_t *pentOther)
 	CBaseEntity *pOther = (CBaseEntity *)GET_PRIVATE(pentOther);
 
 	if (pEntity && !(pEntity->pev->flags & FL_KILLME))
-	{
 		pEntity->Use(pOther, pOther, USE_TOGGLE, 0);
-	}
 }
 
 void EXT_FUNC DispatchThink(edict_t *pent)
 {
 	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pent);
 
-	if (pEntity != NULL)
+	if (pEntity)
 	{
 		if (pEntity->pev->flags & FL_DORMANT)
 		{
@@ -529,7 +529,7 @@ void EXT_FUNC DispatchBlocked(edict_t *pentBlocked, edict_t *pentOther)
 	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pentBlocked);
 	CBaseEntity *pOther = (CBaseEntity *)GET_PRIVATE(pentOther);
 
-	if (pEntity != NULL)
+	if (pEntity)
 	{
 		pEntity->Blocked(pOther);
 	}
@@ -539,7 +539,7 @@ void EXT_FUNC DispatchSave(edict_t *pent, SAVERESTOREDATA *pSaveData)
 {
 	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pent);
 
-	if (pEntity != NULL && pSaveData != NULL)
+	if (pEntity && pSaveData)
 	{
 		ENTITYTABLE *pTable = &pSaveData->pTable[ pSaveData->currentIndex ];
 
@@ -554,7 +554,7 @@ void EXT_FUNC DispatchSave(edict_t *pent, SAVERESTOREDATA *pSaveData)
 		// These don't use ltime & nextthink as times really, but we'll fudge around it.
 		if (pEntity->pev->movetype == MOVETYPE_PUSH)
 		{
-			float delta = pEntity->pev->nextthink - pEntity->pev->ltime;
+			float_precision delta = pEntity->pev->nextthink - pEntity->pev->ltime;
 			pEntity->pev->ltime = gpGlobals->time;
 			pEntity->pev->nextthink = pEntity->pev->ltime + delta;
 		}
@@ -575,13 +575,12 @@ void EXT_FUNC DispatchSave(edict_t *pent, SAVERESTOREDATA *pSaveData)
 
 // Find the matching global entity.  Spit out an error if the designer made entities of
 // different classes with the same global name
-
 CBaseEntity *FindGlobalEntity(string_t classname, string_t globalname)
 {
 	edict_t *pent = FIND_ENTITY_BY_STRING(NULL, "globalname", STRING(globalname));
 	CBaseEntity *pReturn = CBaseEntity::Instance(pent);
 
-	if (pReturn != NULL)
+	if (pReturn)
 	{
 		if (!FClassnameIs(pReturn->pev, STRING(classname)))
 		{
@@ -628,7 +627,7 @@ int EXT_FUNC DispatchRestore(edict_t *pent, SAVERESTOREDATA *pSaveData, int glob
 			oldOffset = pSaveData->vecLandmarkOffset;
 			CBaseEntity *pNewEntity = FindGlobalEntity(tmpVars.classname, tmpVars.globalname);
 
-			if (pNewEntity != NULL)
+			if (pNewEntity)
 			{
 				// Tell the restore code we're overlaying a global entity from another level
 				// Don't overwrite global fields
@@ -671,17 +670,17 @@ int EXT_FUNC DispatchRestore(edict_t *pent, SAVERESTOREDATA *pSaveData, int glob
 		{
 			pSaveData->vecLandmarkOffset = oldOffset;
 
-			if (pEntity != NULL)
+			if (pEntity)
 			{
 				UTIL_SetOrigin(pEntity->pev, pEntity->pev->origin);
 				pEntity->OverrideReset();
 			}
 		}
-		else if (pEntity != NULL && pEntity->pev->globalname)
+		else if (pEntity && pEntity->pev->globalname)
 		{
 			const globalentity_t *pGlobal = gGlobalState.EntityFromTable(pEntity->pev->globalname);
 
-			if (pGlobal != NULL)
+			if (pGlobal)
 			{
 				// Already dead? delete
 				if (pGlobal->state == GLOBAL_DEAD)
@@ -710,8 +709,7 @@ int EXT_FUNC DispatchRestore(edict_t *pent, SAVERESTOREDATA *pSaveData, int glob
 void EXT_FUNC DispatchObjectCollsionBox(edict_t *pent)
 {
 	CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pent);
-
-	if (pEntity != NULL)
+	if (pEntity)
 	{
 		pEntity->SetObjectCollisionBox();
 	}
@@ -756,7 +754,7 @@ EHANDLE::operator CBaseEntity *()
 
 CBaseEntity *EHANDLE::operator=(CBaseEntity *pEntity)
 {
-	if (pEntity != NULL)
+	if (pEntity)
 	{
 		m_pent = ENT(pEntity->pev);
 		if (m_pent)
@@ -781,13 +779,13 @@ CBaseEntity *EHANDLE::operator->()
 	return (CBaseEntity *)GET_PRIVATE(Get());
 }
 
-int CBaseEntity::TakeHealth(float flHealth, int bitsDamageType)
+BOOL CBaseEntity::__MAKE_VHOOK(TakeHealth)(float flHealth, int bitsDamageType)
 {
 	if (pev->takedamage == DAMAGE_NO)
-		return 0;
+		return FALSE;
 
 	if (pev->health >= pev->max_health)
-		return 0;
+		return FALSE;
 
 	pev->health += flHealth;
 
@@ -796,23 +794,30 @@ int CBaseEntity::TakeHealth(float flHealth, int bitsDamageType)
 		pev->health = pev->max_health;
 	}
 
-	return 1;
+	return TRUE;
 }
 
-int CBaseEntity::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType)
+BOOL CBaseEntity::__MAKE_VHOOK(TakeDamage)(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType)
 {
 	Vector vecTemp;
 
 	if (pev->takedamage == DAMAGE_NO)
-		return 0;
+		return FALSE;
 
 	// UNDONE: some entity types may be immune or resistant to some bitsDamageType
 	// if Attacker == Inflictor, the attack was a melee or other instant-hit attack.
 	// (that is, no actual entity projectile was involved in the attack so use the shooter's origin).
-
-	// an actual missile was involved.
-	vecTemp = pevInflictor->origin - (VecBModelOrigin(pev));
-
+#ifndef REGAMEDLL_FIXES
+	if (pevAttacker == pevInflictor)
+	{
+		vecTemp = pevInflictor->origin - (VecBModelOrigin(pev));
+	}
+	else
+#endif
+	{
+		// an actual missile was involved.
+		vecTemp = pevInflictor->origin - (VecBModelOrigin(pev));
+	}
 
 	// this global is still used for glass and other non-monster killables, along with decals.
 	g_vecAttackDir = vecTemp.Normalize();
@@ -824,7 +829,7 @@ int CBaseEntity::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 		Vector vecDir = pev->origin - (pevInflictor->absmin + pevInflictor->absmax) * 0.5;
 		vecDir = vecDir.Normalize();
 
-		float flForce = flDamage * ((32 * 32 * 72.0) / (pev->size.x * pev->size.y * pev->size.z)) * 5;
+		float_precision flForce = flDamage * ((32 * 32 * 72.0) / (pev->size.x * pev->size.y * pev->size.z)) * 5;
 
 		if (flForce > 1000.0)
 			flForce = 1000.0;
@@ -837,26 +842,25 @@ int CBaseEntity::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 	if (pev->health <= 0)
 	{
 		Killed(pevAttacker, GIB_NORMAL);
-		return 0;
+		return FALSE;
 	}
 
-	return 1;
+	return TRUE;
 }
 
-void CBaseEntity::Killed(entvars_t *pevAttacker, int iGib)
+void CBaseEntity::__MAKE_VHOOK(Killed)(entvars_t *pevAttacker, int iGib)
 {
 	pev->takedamage = DAMAGE_NO;
 	pev->deadflag = DEAD_DEAD;
 	UTIL_Remove(this);
 }
 
-CBaseEntity *CBaseEntity::GetNextTarget()
+CBaseEntity *CBaseEntity::__MAKE_VHOOK(GetNextTarget)()
 {
 	if (FStringNull(pev->target))
 		return NULL;
 
 	edict_t *pTarget = FIND_ENTITY_BY_TARGETNAME(NULL, STRING(pev->target));
-
 	if (FNullEnt(pTarget))
 	{
 		return NULL;
@@ -865,25 +869,22 @@ CBaseEntity *CBaseEntity::GetNextTarget()
 	return Instance(pTarget);
 }
 
-int CBaseEntity::Save(CSave &save)
+int CBaseEntity::__MAKE_VHOOK(Save)(CSave &save)
 {
 	if (save.WriteEntVars("ENTVARS", pev))
 	{
-		return save.WriteFields("BASE", this, m_SaveData, ARRAYSIZE(m_SaveData));
+		return save.WriteFields("BASE", this, IMPL(m_SaveData), ARRAYSIZE(IMPL(m_SaveData)));
 	}
 
 	return 0;
 }
 
-int CBaseEntity::Restore(CRestore &restore)
+int CBaseEntity::__MAKE_VHOOK(Restore)(CRestore &restore)
 {
-	int status;
-
-	status = restore.ReadEntVars("ENTVARS", pev);
-
+	int status = restore.ReadEntVars("ENTVARS", pev);
 	if (status)
 	{
-		status = restore.ReadFields("BASE", this, m_SaveData, ARRAYSIZE(m_SaveData));
+		status = restore.ReadFields("BASE", this, IMPL(m_SaveData), ARRAYSIZE(IMPL(m_SaveData)));
 	}
 
 	if (pev->modelindex != 0 && !FStringNull(pev->model))
@@ -904,24 +905,25 @@ int CBaseEntity::Restore(CRestore &restore)
 	return status;
 }
 
+// Initialize absmin & absmax to the appropriate box
 void SetObjectCollisionBox(entvars_t *pev)
 {
-	if ((pev->solid == SOLID_BSP) && (pev->angles.x || pev->angles.y || pev->angles.z))
+	if (pev->solid == SOLID_BSP && (pev->angles.x || pev->angles.y || pev->angles.z))
 	{
 		// expand for rotation
-		float max, v;
+		float_precision max, v;
 		int i;
 
 		max = 0;
 		for (i = 0; i < 3; ++i)
 		{
-			v = fabs((float)((float *)pev->mins)[i]);
+			v = Q_fabs(float_precision(((float *)pev->mins)[i]));
 			if (v > max)
 			{
 				max = v;
 			}
 
-			v = fabs((float)((float *)pev->maxs)[i]);
+			v = Q_fabs(float_precision(((float *)pev->maxs)[i]));
 			if (v > max)
 			{
 				max = v;
@@ -948,7 +950,7 @@ void SetObjectCollisionBox(entvars_t *pev)
 	pev->absmax.z += 1;
 }
 
-void CBaseEntity::SetObjectCollisionBox()
+void CBaseEntity::__MAKE_VHOOK(SetObjectCollisionBox)()
 {
 	::SetObjectCollisionBox(pev);
 }
@@ -968,18 +970,10 @@ int CBaseEntity::Intersects(CBaseEntity *pOther)
 void CBaseEntity::MakeDormant()
 {
 	pev->flags |= FL_DORMANT;
-
-	// Don't touch
-	pev->solid = SOLID_NOT;
-
-	// Don't move
-	pev->movetype = MOVETYPE_NONE;
-
-	// Don't draw
-	pev->effects |= EF_NODRAW;
-
-	// Don't think
-	pev->nextthink = 0;
+	pev->solid = SOLID_NOT;		// Don't touch
+	pev->movetype = MOVETYPE_NONE;	// Don't move
+	pev->effects |= EF_NODRAW;	// Don't draw
+	pev->nextthink = 0;		// Don't think
 
 	// Relink
 	UTIL_SetOrigin(pev, pev->origin);
@@ -990,7 +984,7 @@ int CBaseEntity::IsDormant()
 	return (pev->flags & FL_DORMANT) == FL_DORMANT;
 }
 
-BOOL CBaseEntity::IsInWorld()
+BOOL CBaseEntity::__MAKE_VHOOK(IsInWorld)()
 {
 	// position
 	if (pev->origin.x >= 4096.0 || pev->origin.y >= 4096.0 || pev->origin.z >= 4096.0)
@@ -1026,31 +1020,7 @@ int CBaseEntity::ShouldToggle(USE_TYPE useType, BOOL currentState)
 	return 1;
 }
 
-BOOL CBaseEntity::ShouldToggle2( USE_TYPE useType )
-{
-	STATE currentState = GetState();
-	if ( useType != USE_TOGGLE && useType != USE_SET )
-	{
-		switch(currentState)
-		{
-		case STATE_ON:
-		case STATE_TURN_ON:
-			if (useType == USE_ON) return FALSE;
-			break;
-		case STATE_OFF:
-		case STATE_TURN_OFF:
-			if (useType == USE_OFF) return FALSE;
-			break;
-		case STATE_IN_USE:
-			break;
-		default:
-			break;
-		}
-	}
-	return TRUE;
-}
-
-int CBaseEntity::DamageDecal(int bitsDamageType)
+int CBaseEntity::__MAKE_VHOOK(DamageDecal)(int bitsDamageType)
 {
 	if (pev->rendermode == kRenderTransAlpha)
 		return -1;
@@ -1063,20 +1033,16 @@ int CBaseEntity::DamageDecal(int bitsDamageType)
 
 // NOTE: szName must be a pointer to constant memory, e.g. "monster_class" because the entity
 // will keep a pointer to it after this call.
-
 CBaseEntity *CBaseEntity::Create(char *szName, const Vector &vecOrigin, const Vector &vecAngles, edict_t *pentOwner)
 {
-	edict_t	*pent;
-	CBaseEntity *pEntity;
-
-	pent = CREATE_NAMED_ENTITY(MAKE_STRING(szName));
+	edict_t	*pent = CREATE_NAMED_ENTITY(MAKE_STRING(szName));
 	if (FNullEnt(pent))
 	{
 		ALERT(at_console, "NULL Ent in Create!\n");
 		return NULL;
 	}
 
-	pEntity = Instance(pent);
+	CBaseEntity *pEntity = Instance(pent);
 
 	pEntity->pev->owner = pentOwner;
 	pEntity->pev->origin = vecOrigin;
@@ -1087,7 +1053,7 @@ CBaseEntity *CBaseEntity::Create(char *szName, const Vector &vecOrigin, const Ve
 	return pEntity;
 }
 
-void OnFreeEntPrivateData(edict_t *pEnt)
+void EXT_FUNC OnFreeEntPrivateData(edict_t *pEnt)
 {
 	CBaseEntity *pEntity = CBaseEntity::Instance(pEnt);
 	if (!pEntity)
@@ -1095,4 +1061,94 @@ void OnFreeEntPrivateData(edict_t *pEnt)
 
 	pEntity->UpdateOnRemove();
 	RemoveEntityHashValue(pEntity->pev, STRING(pEntity->pev->classname), CLASSNAME);
+
+#ifdef REGAMEDLL_API
+	if (pEntity->m_pEntity) {
+		delete pEntity->m_pEntity;
+		pEntity->m_pEntity = nullptr;
+	}
+#endif
+
+#ifdef REGAMEDLL_FIXES
+	if (TheCSBots()) {
+		TheCSBots()->OnFreeEntPrivateData(pEntity);
+	}
+#endif
+}
+
+void StudioDrawHulls( void *pmodel, void *model, edict_t *e );
+void DrawDebugTriangles( void )
+{
+#ifdef _DEBUG
+	edict_t *pEdict = INDEXENT( 2 ); // skip local
+	for ( int i = 1; i < gpGlobals->maxClients; i++, pEdict++ )
+	{
+		if ( pEdict->free )	// Not in use
+			continue;
+
+		void *studiohdr = GET_MODEL_PTR( pEdict );
+
+		void *model = g_physfuncs.pfnGetModel( pEdict->v.modelindex );
+
+		if( !model || !studiohdr ) continue;
+
+		StudioDrawHulls( studiohdr, model, pEdict );
+	}
+#endif
+}
+
+server_physics_api_t g_physfuncs = {};
+physics_interface_t gPhysicsInterface =
+{
+	SV_PHYSICS_INTERFACE_VERSION,
+	NULL, // SV_CreateEntity
+	NULL, // SV_PhysicsEntity
+	NULL, // SV_LoadEntities
+	NULL, // SV_UpdatePlayerBaseVelocity
+	NULL, // SV_AllowSaveGame
+	NULL, // SV_TriggerTouch
+	NULL, // SV_CheckFeatures
+	DrawDebugTriangles, //DrawDebugTriangles,
+	NULL, // DrawNormalTriangles
+	NULL, // DrawOrthoTriangles
+	NULL, // ClipMoveToEntity
+	NULL, // ClipPMoveToEntity
+	NULL, // SV_EndFrame
+	NULL, // pfnCreateEntitiesInTransitionList
+	NULL, // pfnCreateEntitiesInRestoreList
+	NULL, // pfnAllocString
+	NULL, // pfnMakeString
+	NULL, // pfnGetString
+	NULL  // pfnRestoreDecal
+};
+
+extern "C" EXPORT int Server_GetPhysicsInterface( int iVersion, server_physics_api_t *pfuncsFromEngine, physics_interface_t *pFunctionTable )
+{
+	if ( !pFunctionTable || !pfuncsFromEngine || iVersion != SV_PHYSICS_INTERFACE_VERSION )
+	{
+		return FALSE;
+	}
+
+	size_t iExportSize = sizeof( server_physics_api_t );
+	size_t iImportSize = sizeof( physics_interface_t );
+
+	// NOTE: the very old versions NOT have information about current build in any case
+	if( g_iXashEngineBuildNumber <= 1910 )
+	{
+		ALERT( at_console, "old version of Xash3D was detected. Engine features was disabled.\n" );
+
+		// interface sizes for build 1905 and older
+		iExportSize = 28;
+		iImportSize = 24;
+	}
+
+	// copy new physics interface
+	memcpy( &g_physfuncs, pfuncsFromEngine, iExportSize );
+
+	// fill engine callbacks
+	memcpy( pFunctionTable, &gPhysicsInterface, iImportSize );
+
+	g_fPhysicInitialized = TRUE;
+
+	return TRUE;
 }

@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_flashbang, CFlashbang);
+LINK_ENTITY_TO_CLASS(weapon_flashbang, CFlashbang, CCSFlashbang)
 
-void CFlashbang::Spawn()
+void CFlashbang::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -20,7 +22,7 @@ void CFlashbang::Spawn()
 	FallInit();
 }
 
-void CFlashbang::Precache()
+void CFlashbang::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_flashbang.mdl");
 	PRECACHE_MODEL("models/shield/v_shield_flashbang.mdl");
@@ -30,14 +32,18 @@ void CFlashbang::Precache()
 	PRECACHE_SOUND("weapons/pinpull.wav");
 }
 
-int CFlashbang::GetItemInfo(ItemInfo *p)
+int CFlashbang::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
+	auto info = GetWeaponInfo(WEAPON_FLASHBANG);
+
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "Flashbang";
-	p->iMaxAmmo1 = MAX_AMMO_FLASHBANG;
+
+	p->iMaxAmmo1 = info ? info->maxRounds : MAX_AMMO_FLASHBANG;
+	p->iMaxClip = info ? info->gunClipSize : WEAPON_NOCLIP;
+
 	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;
-	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 3;
 	p->iPosition = 2;
 	p->iId = m_iId = WEAPON_FLASHBANG;
@@ -47,7 +53,7 @@ int CFlashbang::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CFlashbang::Deploy()
+BOOL CFlashbang::__MAKE_VHOOK(Deploy)()
 {
 	m_flReleaseThrow = -1.0f;
 	m_fMaxSpeed = FLASHBANG_MAX_SPEED;
@@ -61,7 +67,7 @@ BOOL CFlashbang::Deploy()
 		return DefaultDeploy("models/v_flashbang.mdl", "models/p_flashbang.mdl", FLASHBANG_DRAW, "grenade", UseDecrement() != FALSE);
 }
 
-void CFlashbang::Holster(int skiplocal)
+void CFlashbang::__MAKE_VHOOK(Holster)(int skiplocal)
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 
@@ -75,7 +81,7 @@ void CFlashbang::Holster(int skiplocal)
 	m_flReleaseThrow = -1.0f;
 }
 
-void CFlashbang::PrimaryAttack()
+void CFlashbang::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (m_iWeaponState & WPNSTATE_SHIELD_DRAWN)
 	{
@@ -130,7 +136,7 @@ bool CFlashbang::ShieldSecondaryFire(int iUpAnim, int iDownAnim)
 	return true;
 }
 
-void CFlashbang::SecondaryAttack()
+void CFlashbang::__MAKE_VHOOK(SecondaryAttack)()
 {
 	ShieldSecondaryFire(SHIELDGUN_DRAW, SHIELDGUN_DRAWN_IDLE);
 }
@@ -157,7 +163,7 @@ void CFlashbang::ResetPlayerShieldAnim()
 	}
 }
 
-void CFlashbang::WeaponIdle()
+void CFlashbang::__MAKE_VHOOK(WeaponIdle)()
 {
 	if (m_flReleaseThrow == 0 && m_flStartThrow != 0.0f)
 		m_flReleaseThrow = gpGlobals->time;
@@ -176,7 +182,7 @@ void CFlashbang::WeaponIdle()
 		else
 			angThrow.x = -10 + angThrow.x * ((90 + 10) / 90.0);
 
-		float flVel = (90.0f - angThrow.x) * 6.0f;
+		float_precision flVel = (90.0f - angThrow.x) * 6.0f;
 
 		if (flVel > 750.0f)
 			flVel = 750.0f;
@@ -240,7 +246,12 @@ void CFlashbang::WeaponIdle()
 			}
 			else
 			{
+			#ifdef REGAMEDLL_FIXES
 				iAnim = FLASHBANG_IDLE;
+			#else
+				// TODO: This is a bug?
+				iAnim = *(int *)&flRand;
+			#endif
 				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 75.0f / 30.0f;
 			}
 
@@ -249,7 +260,7 @@ void CFlashbang::WeaponIdle()
 	}
 }
 
-BOOL CFlashbang::CanDeploy()
+BOOL CFlashbang::__MAKE_VHOOK(CanDeploy)()
 {
 	return m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] != 0;
 }

@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Returns true if the radio message is an order to do something
@@ -17,7 +19,6 @@ bool CCSBot::IsRadioCommand(GameEventType event) const
 }
 
 // Respond to radio commands from HUMAN players
-
 void CCSBot::RespondToRadioCommands()
 {
 	// bots use the chatter system to respond to each other
@@ -72,7 +73,6 @@ void CCSBot::RespondToRadioCommands()
 		return;
 	}
 
-	CCSBotManager *ctrl = TheCSBots();
 	CBasePlayer *player = m_radioSubject;
 	if (player == NULL)
 		return;
@@ -140,7 +140,7 @@ void CCSBot::RespondToRadioCommands()
 		}
 		case EVENT_RADIO_GET_OUT_OF_THERE:
 		{
-			if (ctrl->IsBombPlanted())
+			if (TheCSBots()->IsBombPlanted())
 			{
 				EscapeFromBomb();
 				player->InhibitAutoFollow(inhibitAutoFollowDuration);
@@ -152,11 +152,11 @@ void CCSBot::RespondToRadioCommands()
 		{
 			// if this is a defusal scenario, and the bomb is planted,
 			// and a human player cleared a bombsite, check it off our list too
-			if (ctrl->GetScenario() == CCSBotManager::SCENARIO_DEFUSE_BOMB)
+			if (TheCSBots()->GetScenario() == CCSBotManager::SCENARIO_DEFUSE_BOMB)
 			{
-				if (m_iTeam == CT && ctrl->IsBombPlanted())
+				if (m_iTeam == CT && TheCSBots()->IsBombPlanted())
 				{
-					const CCSBotManager::Zone *zone = ctrl->GetClosestZone(player);
+					const CCSBotManager::Zone *zone = TheCSBots()->GetClosestZone(player);
 
 					if (zone != NULL)
 					{
@@ -194,7 +194,6 @@ void CCSBot::RespondToRadioCommands()
 }
 
 // Send voice chatter.  Also sends the entindex.
-
 void CCSBot::StartVoiceFeedback(float duration)
 {
 	m_voiceFeedbackStartTimestamp = gpGlobals->time;
@@ -224,7 +223,6 @@ void CCSBot::EndVoiceFeedback(bool force)
 }
 
 // Decide if we should move to help the player, return true if we will
-
 bool CCSBot::RespondToHelpRequest(CBasePlayer *them, Place place, float maxRange)
 {
 	if (IsRogue())
@@ -239,7 +237,7 @@ bool CCSBot::RespondToHelpRequest(CBasePlayer *them, Place place, float maxRange
 	{
 		// compute actual travel distance
 		PathCost pc(this);
-		float travelDistance = NavAreaTravelDistance(m_lastKnownArea, TheNavAreaGrid.GetNearestNavArea(&them->pev->origin), pc);
+		float_precision travelDistance = NavAreaTravelDistance(m_lastKnownArea, TheNavAreaGrid.GetNearestNavArea(&them->pev->origin), pc);
 		if (travelDistance < 0.0f)
 			return false;
 
@@ -285,7 +283,6 @@ bool CCSBot::RespondToHelpRequest(CBasePlayer *them, Place place, float maxRange
 }
 
 // Send a radio message
-
 void CCSBot::SendRadioMessage(GameEventType event)
 {
 	// make sure this is a radio event
@@ -294,11 +291,10 @@ void CCSBot::SendRadioMessage(GameEventType event)
 		return;
 	}
 
-	CCSBotManager *ctrl = TheCSBots();
 	PrintIfWatched("%3.1f: SendRadioMessage( %s )\n", gpGlobals->time, GameEventName[ event ]);
 
 	// note the time the message was sent
-	ctrl->SetRadioMessageTimestamp(event, m_iTeam);
+	TheCSBots()->SetRadioMessageTimestamp(event, m_iTeam);
 
 	m_lastRadioSentTimestamp = gpGlobals->time;
 

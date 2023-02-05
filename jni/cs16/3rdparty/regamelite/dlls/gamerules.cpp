@@ -1,18 +1,48 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
-CHalfLifeMultiplay *g_pGameRules = NULL;
+#ifndef HOOK_GAMEDLL
 
-BOOL CGameRules::CanHaveAmmo(CBasePlayer *pPlayer, const char *pszAmmoName, int iMaxCarry)
+CGameRules *g_pGameRules = NULL;
+
+#endif
+
+CGameRules::CGameRules()
+	: m_GameDesc()
 {
-	int iAmmoIndex;
+	m_bFreezePeriod = FALSE;
+	m_bBombDropped = FALSE;
+	m_bGameOver = false;
 
-	if (pszAmmoName != NULL)
+	m_GameDesc = new char[sizeof("Counter-Strike")];
+	Q_strcpy(m_GameDesc, AreRunningCZero() ? "Condition Zero" : "Counter-Strike");
+}
+
+CGameRules::~CGameRules()
+{
+	delete[] m_GameDesc;
+	m_GameDesc = nullptr;
+}
+
+// this is the game name that gets seen in the server browser
+const char *CGameRules::GetGameDescription()
+{
+#ifdef REGAMEDLL_ADD
+	return m_GameDesc;
+#else
+	return "Counter-Strike";
+#endif
+}
+
+BOOL CGameRules::__MAKE_VHOOK(CanHaveAmmo)(CBasePlayer *pPlayer, const char *pszAmmoName, int iMaxCarry)
+{
+	if (pszAmmoName)
 	{
-		iAmmoIndex = pPlayer->GetAmmoIndex(pszAmmoName);
-
+		auto iAmmoIndex = pPlayer->GetAmmoIndex(pszAmmoName);
 		if (iAmmoIndex > -1)
 		{
 			if (pPlayer->AmmoInventory(iAmmoIndex) < iMaxCarry)
@@ -26,24 +56,30 @@ BOOL CGameRules::CanHaveAmmo(CBasePlayer *pPlayer, const char *pszAmmoName, int 
 	return FALSE;
 }
 
-edict_t *CGameRules::GetPlayerSpawnSpot(CBasePlayer *pPlayer)
+edict_t *CGameRules::__MAKE_VHOOK(GetPlayerSpawnSpot)(CBasePlayer *pPlayer)
 {
 	// gat valid spawn point
-	edict_t *pentSpawnSpot = EntSelectSpawnPoint(pPlayer);
+	edict_t *pentSpawnSpot = pPlayer->EntSelectSpawnPoint();
 
 	// Move the player to the place it said.
-	pPlayer->pev->origin = VARS(pentSpawnSpot)->origin + Vector(0, 0, 1);
+#ifndef PLAY_GAMEDLL
+	pPlayer->pev->origin = pentSpawnSpot->v.origin + Vector(0, 0, 1);
+#else
+	// TODO: fix test demo
+	pPlayer->pev->origin = pentSpawnSpot->v.origin;
+	pPlayer->pev->origin.z += 1;
+#endif
 
 	pPlayer->pev->v_angle = g_vecZero;
 	pPlayer->pev->velocity = g_vecZero;
-	pPlayer->pev->angles = VARS(pentSpawnSpot)->angles;
+	pPlayer->pev->angles = pentSpawnSpot->v.angles;
 	pPlayer->pev->punchangle = g_vecZero;
 	pPlayer->pev->fixangle = 1;
 
 	return pentSpawnSpot;
 }
 
-BOOL CGameRules::CanHavePlayerItem(CBasePlayer *pPlayer, CBasePlayerItem *pWeapon)
+BOOL CGameRules::__MAKE_VHOOK(CanHavePlayerItem)(CBasePlayer *pPlayer, CBasePlayerItem *pWeapon)
 {
 	// only living players can have items
 	if (pPlayer->pev->deadflag != DEAD_NO)
@@ -51,9 +87,7 @@ BOOL CGameRules::CanHavePlayerItem(CBasePlayer *pPlayer, CBasePlayerItem *pWeapo
 		return FALSE;
 	}
 
-	CCSBotManager *ctrl = TheCSBots();
-
-	if (pPlayer->IsBot() && ctrl != NULL && !ctrl->IsWeaponUseable(pWeapon))
+	if (pPlayer->IsBot() && TheCSBots() != NULL && !TheCSBots()->IsWeaponUseable(pWeapon))
 	{
 		return FALSE;
 	}
@@ -83,9 +117,9 @@ BOOL CGameRules::CanHavePlayerItem(CBasePlayer *pPlayer, CBasePlayerItem *pWeapo
 	return TRUE;
 }
 
-void CGameRules::RefreshSkillData()
+void CGameRules::__MAKE_VHOOK(RefreshSkillData)()
 {
-	int iSkill = (int)CVAR_GET_FLOAT("skill");
+	int iSkill = int(CVAR_GET_FLOAT("skill"));
 
 	if (iSkill < 1)
 		iSkill = 1;
@@ -105,7 +139,9 @@ void CGameRules::RefreshSkillData()
 	gSkillData.healthkitCapacity = 15;
 }
 
-CGameRules *InstallGameRules()
+LINK_HOOK_CHAIN2(CGameRules *, InstallGameRules)
+
+CGameRules *EXT_FUNC __API_HOOK(InstallGameRules)()
 {
 	SERVER_COMMAND("exec game.cfg\n");
 	SERVER_EXECUTE();

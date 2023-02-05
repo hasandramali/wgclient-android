@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_sg550, CSG550);
+LINK_ENTITY_TO_CLASS(weapon_sg550, CSG550, CCSSG550)
 
-void CSG550::Spawn()
+void CSG550::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -15,7 +17,7 @@ void CSG550::Spawn()
 	FallInit();
 }
 
-void CSG550::Precache()
+void CSG550::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_sg550.mdl");
 	PRECACHE_MODEL("models/w_sg550.mdl");
@@ -30,7 +32,7 @@ void CSG550::Precache()
 	m_usFireSG550 = PRECACHE_EVENT(1, "events/sg550.sc");
 }
 
-int CSG550::GetItemInfo(ItemInfo *p)
+int CSG550::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "556Nato";
@@ -47,19 +49,22 @@ int CSG550::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CSG550::Deploy()
+BOOL CSG550::__MAKE_VHOOK(Deploy)()
 {
 	return DefaultDeploy("models/v_sg550.mdl", "models/p_sg550.mdl", SG550_DRAW, "rifle", UseDecrement() != FALSE);
 }
 
-void CSG550::SecondaryAttack()
+void CSG550::__MAKE_VHOOK(SecondaryAttack)()
 {
 	switch (m_pPlayer->m_iFOV)
 	{
 	case 90: m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 40; break;
 	case 40: m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 15; break;
-
+#ifdef REGAMEDLL_FIXES
 	default:
+#else
+	case 15:
+#endif
 		m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 90; break;
 	}
 
@@ -74,7 +79,7 @@ void CSG550::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3;
 }
 
-void CSG550::PrimaryAttack()
+void CSG550::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -150,10 +155,10 @@ void CSG550::SG550Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireSG550, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.x * 100), 5, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.x * 100), 5, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -168,12 +173,12 @@ void CSG550::SG550Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	m_pPlayer->pev->punchangle.y += UTIL_SharedRandomFloat(m_pPlayer->random_seed + 5, -0.75, 0.75);
 }
 
-void CSG550::Reload()
+void CSG550::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_556nato <= 0)
 		return;
 
-	if (DefaultReload(SG550_MAX_CLIP, SG550_RELOAD, SG550_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), SG550_RELOAD, SG550_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -185,7 +190,7 @@ void CSG550::Reload()
 	}
 }
 
-void CSG550::WeaponIdle()
+void CSG550::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
@@ -202,7 +207,7 @@ void CSG550::WeaponIdle()
 	}
 }
 
-float CSG550::GetMaxSpeed()
+float CSG550::__MAKE_VHOOK(GetMaxSpeed)()
 {
 	return (m_pPlayer->m_iFOV == DEFAULT_FOV) ? SG550_MAX_SPEED : SG550_MAX_SPEED_ZOOM;
 }

@@ -1,8 +1,9 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Begin the hunt
-
-void HuntState::OnEnter(CCSBot *me)
+void HuntState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	// lurking death
 	if (me->IsUsingKnife() && me->IsWellPastSafe() && !me->IsHurrying())
@@ -17,8 +18,7 @@ void HuntState::OnEnter(CCSBot *me)
 }
 
 // Hunt down our enemies
-
-void HuntState::OnUpdate(CCSBot *me)
+void HuntState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	// if we've been hunting for a long time, drop into Idle for a moment to
 	// select something else to do
@@ -32,10 +32,8 @@ void HuntState::OnUpdate(CCSBot *me)
 		return;
 	}
 
-	CCSBotManager *ctrl = TheCSBots();
-
 	// scenario logic
-	if (ctrl->GetScenario() == CCSBotManager::SCENARIO_DEFUSE_BOMB)
+	if (TheCSBots()->GetScenario() == CCSBotManager::SCENARIO_DEFUSE_BOMB)
 	{
 		if (me->m_iTeam == TERRORIST)
 		{
@@ -43,7 +41,7 @@ void HuntState::OnUpdate(CCSBot *me)
 			if (me->IsCarryingBomb())
 			{
 				const float safeTime = 3.0f;
-				if (ctrl->IsTimeToPlantBomb() || (me->IsAtBombsite() && gpGlobals->time - me->GetLastSawEnemyTimestamp() > safeTime))
+				if (TheCSBots()->IsTimeToPlantBomb() || (me->IsAtBombsite() && gpGlobals->time - me->GetLastSawEnemyTimestamp() > safeTime))
 				{
 					me->Idle();
 					return;
@@ -73,14 +71,14 @@ void HuntState::OnUpdate(CCSBot *me)
 			{
 				// if we are near the loose bomb and can see it, hide nearby and guard it
 				me->SetTask(CCSBot::GUARD_LOOSE_BOMB);
-				me->Hide(ctrl->GetLooseBombArea());
-				me->GetChatter()->AnnouncePlan("GoingToGuardLooseBomb", ctrl->GetLooseBombArea()->GetPlace());
+				me->Hide(TheCSBots()->GetLooseBombArea());
+				me->GetChatter()->AnnouncePlan("GoingToGuardLooseBomb", TheCSBots()->GetLooseBombArea()->GetPlace());
 				return;
 			}
-			else if (ctrl->IsBombPlanted())
+			else if (TheCSBots()->IsBombPlanted())
 			{
 				// rogues will defuse a bomb, but not guard the defuser
-				if (!me->IsRogue() || !ctrl->GetBombDefuser())
+				if (!me->IsRogue() || !TheCSBots()->GetBombDefuser())
 				{
 					// search for the planted bomb to defuse
 					me->Idle();
@@ -89,7 +87,7 @@ void HuntState::OnUpdate(CCSBot *me)
 			}
 		}
 	}
-	else if (ctrl->GetScenario() == CCSBotManager::SCENARIO_RESCUE_HOSTAGES)
+	else if (TheCSBots()->GetScenario() == CCSBotManager::SCENARIO_RESCUE_HOSTAGES)
 	{
 		if (me->m_iTeam == TERRORIST)
 		{
@@ -147,9 +145,11 @@ void HuntState::OnUpdate(CCSBot *me)
 		int areaCount = 0;
 		const float minSize = 150.0f;
 
-		FOR_EACH_LL (TheNavAreaList, it)
+		NavAreaList::iterator iter;
+
+		for (iter = TheNavAreaList.begin(); iter != TheNavAreaList.end(); ++iter)
 		{
-			CNavArea *area = TheNavAreaList[it];
+			CNavArea *area = (*iter);
 
 			++areaCount;
 
@@ -159,7 +159,7 @@ void HuntState::OnUpdate(CCSBot *me)
 				continue;
 
 			// keep track of the least recently cleared area
-			float age = gpGlobals->time - area->GetClearedTimestamp(me->m_iTeam - 1);
+			float_precision age = gpGlobals->time - area->GetClearedTimestamp(me->m_iTeam - 1);
 			if (age > oldest)
 			{
 				oldest = age;
@@ -171,9 +171,9 @@ void HuntState::OnUpdate(CCSBot *me)
 		int which = RANDOM_LONG(0, areaCount - 1);
 
 		areaCount = 0;
-		FOR_EACH_LL (TheNavAreaList, it2)
+		for (iter = TheNavAreaList.begin(); iter != TheNavAreaList.end(); ++iter)
 		{
-			m_huntArea = TheNavAreaList[it2];
+			m_huntArea = (*iter);
 
 			if (which == areaCount)
 				break;
@@ -190,8 +190,7 @@ void HuntState::OnUpdate(CCSBot *me)
 }
 
 // Done hunting
-
-void HuntState::OnExit(CCSBot *me)
+void HuntState::__MAKE_VHOOK(OnExit)(CCSBot *me)
 {
 	;
 }

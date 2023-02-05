@@ -79,7 +79,6 @@
 #define bits_MEMORY_CUSTOM2				(1 << 30)	// Monster-specific memory
 #define bits_MEMORY_CUSTOM1				(1 << 31)	// Monster-specific memory
 
-//TODO: unused?
 enum
 {
 	AITRIGGER_NONE = 0,
@@ -125,7 +124,7 @@ public:
 public:
 	static void SpawnHeadGib(entvars_t *pevVictim);
 	static void SpawnRandomGibs(entvars_t *pevVictim, int cGibs, int human);
-	NOXREF static void SpawnStickyGibs(entvars_t *pevVictim, Vector vecOrigin, int cGibs);
+	static void SpawnStickyGibs(entvars_t *pevVictim, Vector vecOrigin, int cGibs);
 
 public:
 	int m_bloodColor;

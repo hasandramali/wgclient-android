@@ -1,18 +1,32 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 cvar_t voice_serverdebug = { "voice_serverdebug", "0", 0, 0.0f, NULL };
+
+// Set game rules to allow all clients to talk to each other.
+// Muted players still can't talk to each other.
 cvar_t sv_alltalk = { "sv_alltalk", "0", FCVAR_SERVER, 0.0f, NULL };
 
-CPlayerBitVec g_PlayerModEnable;
-CBitVec< VOICE_MAX_PLAYERS > g_BanMasks[ VOICE_MAX_PLAYERS ];
-CBitVec< VOICE_MAX_PLAYERS > g_SentGameRulesMasks[ VOICE_MAX_PLAYERS ];
-CBitVec< VOICE_MAX_PLAYERS > g_SentBanMasks[ VOICE_MAX_PLAYERS ];
+#endif
+
+// These are stored off as CVoiceGameMgr is created and deleted.
+CPlayerBitVec g_PlayerModEnable;					// Set to 1 for each player if the player wants to use voice in this mod.
+									// (If it's zero, then the server reports that the game rules are saying the player can't hear anyone).
+
+CBitVec< VOICE_MAX_PLAYERS > g_BanMasks[VOICE_MAX_PLAYERS];		// Tells which players don't want to hear each other.
+									// These are indexed as clients and each bit represents a client (so player entity is bit + 1).
+
+CBitVec< VOICE_MAX_PLAYERS > g_SentGameRulesMasks[VOICE_MAX_PLAYERS];	// These store the masks we last sent to each client so we can determine if
+CBitVec< VOICE_MAX_PLAYERS > g_SentBanMasks[VOICE_MAX_PLAYERS];		// we need to resend them.
+
 CPlayerBitVec g_bWantModEnable;
 
-/* <2d3c38> ../game_shared/voice_gamemgr.cpp:68 */
 void VoiceServerDebug(const char *pFmt, ...)
 {
 	char msg[4096];
@@ -28,20 +42,17 @@ void VoiceServerDebug(const char *pFmt, ...)
 	ALERT(at_console, "%s", msg);
 }
 
-/* <2d3cd1> ../game_shared/voice_gamemgr.cpp:89 */
 CVoiceGameMgr::CVoiceGameMgr()
 {
 	m_UpdateInterval = 0;
 	m_nMaxPlayers = 0;
 }
 
-/* <2d3c98> ../game_shared/voice_gamemgr.cpp:96 */
 CVoiceGameMgr::~CVoiceGameMgr()
 {
 	;
 }
 
-/* <2d3d0b> ../game_shared/voice_gamemgr.cpp:101 */
 bool CVoiceGameMgr::Init(IVoiceGameMgrHelper *pHelper, int maxClients)
 {
 	m_pHelper = pHelper;
@@ -62,13 +73,11 @@ bool CVoiceGameMgr::Init(IVoiceGameMgrHelper *pHelper, int maxClients)
 	return true;
 }
 
-/* <2d3d4e> ../game_shared/voice_gamemgr.cpp:123 */
 void CVoiceGameMgr::SetHelper(IVoiceGameMgrHelper *pHelper)
 {
 	m_pHelper = pHelper;
 }
 
-/* <2d4486> ../game_shared/voice_gamemgr.cpp:129 */
 void CVoiceGameMgr::Update(double frametime)
 {
 	// Only update periodically.
@@ -78,7 +87,6 @@ void CVoiceGameMgr::Update(double frametime)
 		UpdateMasks();
 }
 
-/* <2d3d82> ../game_shared/voice_gamemgr.cpp:140 */
 void CVoiceGameMgr::ClientConnected(edict_t *pEdict)
 {
 	int index = ENTINDEX(pEdict) - 1;
@@ -91,8 +99,6 @@ void CVoiceGameMgr::ClientConnected(edict_t *pEdict)
 
 // Called to determine if the Receiver has muted (blocked) the Sender
 // Returns true if the receiver has blocked the sender
-
-/* <2d3ec5> ../game_shared/voice_gamemgr.cpp:152 */
 bool CVoiceGameMgr::PlayerHasBlockedPlayer(CBasePlayer *pReceiver, CBasePlayer *pSender)
 {
 	int iReceiverIndex, iSenderIndex;
@@ -109,7 +115,6 @@ bool CVoiceGameMgr::PlayerHasBlockedPlayer(CBasePlayer *pReceiver, CBasePlayer *
 	return (g_BanMasks[ iReceiverIndex ][ iSenderIndex ] != 0);
 }
 
-/* <2d401a> ../game_shared/voice_gamemgr.cpp:169 */
 bool CVoiceGameMgr::ClientCommand(CBasePlayer *pPlayer, const char *cmd)
 {
 	int playerClientIndex = pPlayer->entindex() - 1;
@@ -125,7 +130,7 @@ bool CVoiceGameMgr::ClientCommand(CBasePlayer *pPlayer, const char *cmd)
 		for (int i = 1; i < CMD_ARGC(); ++i)
 		{
 			uint32 mask = 0;
-			sscanf(CMD_ARGV(i), "%x", &mask);
+			Q_sscanf(CMD_ARGV(i), "%x", &mask);
 
 			if (i <= VOICE_MAX_PLAYERS_DW)
 			{
@@ -153,7 +158,6 @@ bool CVoiceGameMgr::ClientCommand(CBasePlayer *pPlayer, const char *cmd)
 	return false;
 }
 
-/* <2d416b> ../game_shared/voice_gamemgr.cpp:215 */
 void CVoiceGameMgr::UpdateMasks()
 {
 	m_UpdateInterval = 0;
@@ -164,10 +168,14 @@ void CVoiceGameMgr::UpdateMasks()
 	{
 		CBaseEntity *pEnt = UTIL_PlayerByIndex(iClient + 1);
 
-		if (!pEnt)
+		if (!pEnt
+#ifndef REGAMEDLL_FIXES
+			|| !pEnt->IsPlayer()
+#endif
+		)
 			continue;
 
-		CBasePlayer *pPlayer = (CBasePlayer *)pEnt;
+		CBasePlayer *pPlayer = static_cast<CBasePlayer *>(pEnt);
 		CPlayerBitVec gameRulesMask;
 
 		// Request the state of their "VModEnable" cvar.
@@ -203,6 +211,8 @@ void CVoiceGameMgr::UpdateMasks()
 					WRITE_LONG(gameRulesMask.GetDWord(dw));
 					WRITE_LONG(g_BanMasks[ iClient ].GetDWord(dw));
 				}
+				// ServerModEnable +1 to buffer size
+				// WRITE_BYTE(1);
 			MESSAGE_END();
 		}
 

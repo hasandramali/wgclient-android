@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_mp5navy, CMP5N);
+LINK_ENTITY_TO_CLASS(weapon_mp5navy, CMP5N, CCSMP5N)
 
-void CMP5N::Spawn()
+void CMP5N::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CMP5N::Spawn()
 	FallInit();
 }
 
-void CMP5N::Precache()
+void CMP5N::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_mp5.mdl");
 	PRECACHE_MODEL("models/w_mp5.mdl");
@@ -31,7 +33,7 @@ void CMP5N::Precache()
 	m_usFireMP5N = PRECACHE_EVENT(1, "events/mp5n.sc");
 }
 
-int CMP5N::GetItemInfo(ItemInfo *p)
+int CMP5N::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "9mm";
@@ -48,7 +50,7 @@ int CMP5N::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CMP5N::Deploy()
+BOOL CMP5N::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.0f;
 	m_bDelayFire = false;
@@ -57,7 +59,7 @@ BOOL CMP5N::Deploy()
 	return DefaultDeploy("models/v_mp5.mdl", "models/p_mp5.mdl", MP5N_DRAW, "mp5", UseDecrement() != FALSE);
 }
 
-void CMP5N::PrimaryAttack()
+void CMP5N::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -114,10 +116,10 @@ void CMP5N::MP5NFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireMP5N, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
 
 	m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = DIM_GUN_FLASH;
@@ -149,12 +151,12 @@ void CMP5N::MP5NFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CMP5N::Reload()
+void CMP5N::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_9mm <= 0)
 		return;
 
-	if (DefaultReload(MP5N_MAX_CLIP, MP5N_RELOAD, MP5N_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), MP5N_RELOAD, MP5N_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -163,7 +165,7 @@ void CMP5N::Reload()
 	}
 }
 
-void CMP5N::WeaponIdle()
+void CMP5N::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

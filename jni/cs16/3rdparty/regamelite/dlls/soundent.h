@@ -55,15 +55,14 @@
 #define SOUND_NEVER_EXPIRE	-1		// with this set as a sound's ExpireTime, the sound will never expire.
 
 // CSound - an instance of a sound in the world.
-
 class CSound
 {
 public:
 	void Clear();
 	void Reset();
 
-	NOXREF BOOL FIsSound();
-	NOXREF BOOL FIsScent();
+	BOOL FIsSound();
+	BOOL FIsScent();
 
 public:
 	Vector m_vecOrigin;		// sound's location in space
@@ -77,16 +76,22 @@ public:
 // CSoundEnt - a single instance of this entity spawns when
 // the world spawns. The SoundEnt's job is to update the
 // world's Free and Active sound lists.
-
 class CSoundEnt: public CBaseEntity
 {
 public:
-
 	virtual void Spawn();
 	virtual void Precache();
 	virtual int ObjectCaps() { return FCAP_DONT_SAVE; }
 	virtual void Think();
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void Think_();
+
+#endif
+
 public:
 	void Initialize();
 
@@ -94,10 +99,10 @@ public:
 	static void FreeSound(int iSound, int iPrevious);
 
 	// return the head of the active list
-	NOXREF static int ActiveList();
+	static int ActiveList();
 
 	// return the head of the free list
-	NOXREF static int FreeList();
+	static int FreeList();
 
 	// return a pointer for this index in the sound list
 	static CSound *SoundPointerForIndex(int iIndex);

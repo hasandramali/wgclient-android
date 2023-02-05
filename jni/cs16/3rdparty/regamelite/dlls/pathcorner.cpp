@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CPathCorner::m_SaveData[] =
 {
 	DEFINE_FIELD(CPathCorner, m_flWait, FIELD_FLOAT),
@@ -17,11 +21,12 @@ TYPEDESCRIPTION CPathTrack::m_SaveData[] =
 	DEFINE_FIELD(CPathTrack, m_altName, FIELD_STRING),
 };
 
-LINK_ENTITY_TO_CLASS(path_corner, CPathCorner);
+#endif
 
-IMPLEMENT_SAVERESTORE(CPathCorner, CPointEntity);
+LINK_ENTITY_TO_CLASS(path_corner, CPathCorner, CCSPathCorner)
+IMPLEMENT_SAVERESTORE(CPathCorner, CPointEntity)
 
-void CPathCorner::KeyValue(KeyValueData *pkvd)
+void CPathCorner::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "wait"))
 	{
@@ -32,16 +37,15 @@ void CPathCorner::KeyValue(KeyValueData *pkvd)
 		CPointEntity::KeyValue(pkvd);
 }
 
-void CPathCorner::Spawn()
+void CPathCorner::__MAKE_VHOOK(Spawn)()
 {
 	assert(("path_corner without a targetname", !FStringNull(pev->targetname)));
 }
 
-IMPLEMENT_SAVERESTORE(CPathTrack, CBaseEntity);
+IMPLEMENT_SAVERESTORE(CPathTrack, CBaseEntity)
+LINK_ENTITY_TO_CLASS(path_track, CPathTrack, CCSPathTrack)
 
-LINK_ENTITY_TO_CLASS(path_track, CPathTrack);
-
-void CPathTrack::KeyValue(KeyValueData *pkvd)
+void CPathTrack::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "altpath"))
 	{
@@ -52,7 +56,7 @@ void CPathTrack::KeyValue(KeyValueData *pkvd)
 		CPointEntity::KeyValue(pkvd);
 }
 
-void CPathTrack::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CPathTrack::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	int on;
 
@@ -63,10 +67,7 @@ void CPathTrack::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 
 		if (ShouldToggle(useType, on))
 		{
-			if (on)
-				pev->spawnflags |= SF_PATH_ALTERNATE;
-			else
-				pev->spawnflags &= ~SF_PATH_ALTERNATE;
+			pev->spawnflags ^= SF_PATH_ALTERNATE;
 		}
 	}
 	else	// Use toggles between enabled/disabled
@@ -75,10 +76,7 @@ void CPathTrack::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 
 		if (ShouldToggle(useType, on))
 		{
-			if (on)
-				pev->spawnflags |= SF_PATH_DISABLED;
-			else
-				pev->spawnflags &= ~SF_PATH_DISABLED;
+			pev->spawnflags ^= SF_PATH_DISABLED;
 		}
 	}
 }
@@ -121,7 +119,7 @@ void CPathTrack::Link()
 	}
 }
 
-void CPathTrack::Spawn()
+void CPathTrack::__MAKE_VHOOK(Spawn)()
 {
 	pev->solid = SOLID_TRIGGER;
 	UTIL_SetSize(pev, Vector(-8, -8, -8), Vector(8, 8, 8));
@@ -130,7 +128,7 @@ void CPathTrack::Spawn()
 	m_pprevious = NULL;
 }
 
-void CPathTrack::Activate()
+void CPathTrack::__MAKE_VHOOK(Activate)()
 {
 	// Link to next, and back-link
 	if (!FStringNull(pev->targetname))
@@ -163,7 +161,7 @@ void CPathTrack::Project(CPathTrack *pstart, CPathTrack *pend, Vector *origin, f
 
 CPathTrack *CPathTrack::GetNext()
 {
-	if (m_paltpath && (pev->spawnflags & SF_PATH_ALTERNATE) && !(pev->spawnflags & SF_PATH_ALTREVERSE))
+	if (m_paltpath != NULL && (pev->spawnflags & SF_PATH_ALTERNATE) && !(pev->spawnflags & SF_PATH_ALTREVERSE))
 	{
 		return m_paltpath;
 	}
@@ -173,7 +171,7 @@ CPathTrack *CPathTrack::GetNext()
 
 CPathTrack *CPathTrack::GetPrevious()
 {
-	if (m_paltpath && (pev->spawnflags & SF_PATH_ALTERNATE) && (pev->spawnflags & SF_PATH_ALTREVERSE))
+	if (m_paltpath != NULL && (pev->spawnflags & SF_PATH_ALTERNATE) && (pev->spawnflags & SF_PATH_ALTREVERSE))
 	{
 		return m_paltpath;
 	}
@@ -184,14 +182,13 @@ CPathTrack *CPathTrack::GetPrevious()
 void CPathTrack::SetPrevious(CPathTrack *pprev)
 {
 	// Only set previous if this isn't my alternate path
-	if (pprev && !FStrEq(STRING(pprev->pev->targetname), STRING(m_altName)))
+	if (pprev != NULL && !FStrEq(STRING(pprev->pev->targetname), STRING(m_altName)))
 	{
 		m_pprevious = pprev;
 	}
 }
 
 // Assumes this is ALWAYS enabled
-
 CPathTrack *CPathTrack::LookAhead(Vector *origin, float dist, int move)
 {
 	CPathTrack *pcurrent;
@@ -207,7 +204,7 @@ CPathTrack *CPathTrack::LookAhead(Vector *origin, float dist, int move)
 		while (dist > 0)
 		{
 			Vector dir = pcurrent->pev->origin - currentPos;
-			float length = dir.Length();
+			float_precision length = dir.Length();
 
 			if (!length)
 			{
@@ -227,7 +224,7 @@ CPathTrack *CPathTrack::LookAhead(Vector *origin, float dist, int move)
 			// enough left in this path to move
 			else if (length > dist)
 			{
-				*origin = currentPos + (dir * ((float)(dist / length)));
+				*origin = currentPos + (dir * float(dist / length));
 				return pcurrent;
 			}
 			else
@@ -266,7 +263,7 @@ CPathTrack *CPathTrack::LookAhead(Vector *origin, float dist, int move)
 			}
 
 			Vector dir = pcurrent->GetNext()->pev->origin - currentPos;
-			float length = dir.Length();
+			float_precision length = dir.Length();
 
 			if (!length  && !ValidPath(pcurrent->GetNext()->GetNext(), move))
 			{
@@ -280,7 +277,7 @@ CPathTrack *CPathTrack::LookAhead(Vector *origin, float dist, int move)
 			// enough left in this path to move
 			if (length > dist)
 			{
-				*origin = currentPos + (dir * ((float)(dist / length)));
+				*origin = currentPos + (dir * float(dist / length));
 				return pcurrent;
 			}
 			else
@@ -300,7 +297,6 @@ CPathTrack *CPathTrack::LookAhead(Vector *origin, float dist, int move)
 }
 
 // Assumes this is ALWAYS enabled
-
 CPathTrack *CPathTrack::Nearest(Vector origin)
 {
 	int deadCount;

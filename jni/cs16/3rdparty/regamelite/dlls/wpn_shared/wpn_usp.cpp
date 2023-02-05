@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_usp, CUSP);
+LINK_ENTITY_TO_CLASS(weapon_usp, CUSP, CCSUSP)
 
-void CUSP::Spawn()
+void CUSP::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CUSP::Spawn()
 	FallInit();
 }
 
-void CUSP::Precache()
+void CUSP::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_usp.mdl");
 	PRECACHE_MODEL("models/w_usp.mdl");
@@ -36,12 +38,16 @@ void CUSP::Precache()
 	m_usFireUSP = PRECACHE_EVENT(1, "events/usp.sc");
 }
 
-int CUSP::GetItemInfo(ItemInfo *p)
+int CUSP::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
+#ifdef REGAMEDLL_FIXES
 	p->pszAmmo1 = "45acp";
+#else
+	p->pszAmmo1 = "45ACP";
+#endif // REGAMEDLL_FIXES
 	p->iMaxAmmo1 = MAX_AMMO_45ACP;
-	p->pszAmmo2 = 0;
+	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = USP_MAX_CLIP;
 	p->iSlot = 1;
@@ -53,7 +59,7 @@ int CUSP::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CUSP::Deploy()
+BOOL CUSP::__MAKE_VHOOK(Deploy)()
 {
 	m_iWeaponState &= ~WPNSTATE_SHIELD_DRAWN;
 	m_flAccuracy = 0.92f;
@@ -73,7 +79,7 @@ BOOL CUSP::Deploy()
 	return DefaultDeploy("models/v_usp.mdl", "models/p_usp.mdl", USP_UNSIL_DRAW, "onehanded", UseDecrement());
 }
 
-void CUSP::SecondaryAttack()
+void CUSP::__MAKE_VHOOK(SecondaryAttack)()
 {
 	if (ShieldSecondaryFire(USP_SHIELD_UP, USP_SHIELD_DOWN))
 	{
@@ -95,12 +101,11 @@ void CUSP::SecondaryAttack()
 		Q_strcpy(m_pPlayer->m_szAnimExtention, "onehanded");
 	}
 
-	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
-	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 3.0f;
+	m_flNextSecondaryAttack = m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
 	m_flNextPrimaryAttack = GetNextAttackDelay(3.0);
 }
 
-void CUSP::PrimaryAttack()
+void CUSP::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (m_iWeaponState & WPNSTATE_USP_SILENCED)
 	{
@@ -229,31 +234,27 @@ void CUSP::USPFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	ResetPlayerShieldAnim();
 }
 
-void CUSP::Reload()
+void CUSP::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_45acp <= 0)
 		return;
 
-	int iResult;
+	int iAnim;
 	if (m_pPlayer->HasShield())
-	{
-		iResult = DefaultReload(USP_MAX_CLIP, USP_SHIELD_RELOAD, USP_RELOAD_TIME);
-	}
+		iAnim = USP_SHIELD_RELOAD;
 	else if (m_iWeaponState & WPNSTATE_USP_SILENCED)
-	{
-		iResult = DefaultReload(USP_MAX_CLIP, USP_RELOAD, USP_RELOAD_TIME);
-	}
+		iAnim = USP_RELOAD;
 	else
-		iResult = DefaultReload(USP_MAX_CLIP, USP_UNSIL_RELOAD, USP_RELOAD_TIME);
+		iAnim = USP_UNSIL_RELOAD;
 
-	if (iResult)
+	if (DefaultReload(iMaxClip(), iAnim, USP_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 		m_flAccuracy = 0.92f;
 	}
 }
 
-void CUSP::WeaponIdle()
+void CUSP::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

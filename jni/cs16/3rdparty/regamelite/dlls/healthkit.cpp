@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CWallHealth::m_SaveData[] =
 {
 	DEFINE_FIELD(CWallHealth, m_flNextCharge, FIELD_TIME),
@@ -12,9 +16,11 @@ TYPEDESCRIPTION CWallHealth::m_SaveData[] =
 	DEFINE_FIELD(CWallHealth, m_flSoundTime, FIELD_TIME),
 };
 
-LINK_ENTITY_TO_CLASS(item_healthkit, CHealthKit);
+#endif
 
-void CHealthKit::Spawn()
+LINK_ENTITY_TO_CLASS(item_healthkit, CHealthKit, CCSHealthKit)
+
+void CHealthKit::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 	SET_MODEL(ENT(pev), "models/w_medkit.mdl");
@@ -22,14 +28,19 @@ void CHealthKit::Spawn()
 	CItem::Spawn();
 }
 
-void CHealthKit::Precache()
+void CHealthKit::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/w_medkit.mdl");
 	PRECACHE_SOUND("items/smallmedkit1.wav");
 }
 
-BOOL CHealthKit::MyTouch(CBasePlayer *pPlayer)
+BOOL CHealthKit::__MAKE_VHOOK(MyTouch)(CBasePlayer *pPlayer)
 {
+#ifdef REGAMEDLL_ADD
+	if (pPlayer->HasRestrictItem(ITEM_HEALTHKIT, ITEM_TYPE_TOUCHED))
+		return FALSE;
+#endif
+
 	if (pPlayer->TakeHealth(gSkillData.healthkitCapacity, DMG_GENERIC))
 	{
 		MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev);
@@ -49,11 +60,10 @@ BOOL CHealthKit::MyTouch(CBasePlayer *pPlayer)
 	return FALSE;
 }
 
-IMPLEMENT_SAVERESTORE(CWallHealth, CBaseEntity);
+IMPLEMENT_SAVERESTORE(CWallHealth, CBaseEntity)
+LINK_ENTITY_TO_CLASS(func_healthcharger, CWallHealth, CCSWallHealth)
 
-LINK_ENTITY_TO_CLASS(func_healthcharger, CWallHealth);
-
-void CWallHealth::KeyValue(KeyValueData *pkvd)
+void CWallHealth::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "style") || FStrEq(pkvd->szKeyName, "height") || FStrEq(pkvd->szKeyName, "value1") || FStrEq(pkvd->szKeyName, "value2") || FStrEq(pkvd->szKeyName, "value3"))
 	{
@@ -68,7 +78,7 @@ void CWallHealth::KeyValue(KeyValueData *pkvd)
 		CBaseToggle::KeyValue(pkvd);
 }
 
-void CWallHealth::Spawn()
+void CWallHealth::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -81,18 +91,18 @@ void CWallHealth::Spawn()
 
 	SET_MODEL(ENT(pev), STRING(pev->model));
 
-	m_iJuice = (int)gSkillData.healthchargerCapacity;
+	m_iJuice = int(gSkillData.healthchargerCapacity);
 	pev->frame = 0.0f;
 }
 
-void CWallHealth::Precache()
+void CWallHealth::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_SOUND("items/medshot4.wav");
 	PRECACHE_SOUND("items/medshotno1.wav");
 	PRECACHE_SOUND("items/medcharge4.wav");
 }
 
-void CWallHealth::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CWallHealth::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	// Make sure that we have a caller
 	if (!pActivator)

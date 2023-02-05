@@ -32,29 +32,39 @@
 #pragma once
 #endif
 
+#include <list>
+
 class CCareerTask
 {
 public:
-	CCareerTask() {};
+	CCareerTask() {}
 	CCareerTask(const char *taskName, GameEventType event, const char *weaponName, int n, bool mustLive, bool crossRounds, int id, bool isComplete);
+	virtual ~CCareerTask();
 public:
 	virtual void OnEvent(GameEventType event, CBasePlayer *pAttacker, CBasePlayer *pVictim);
 	virtual void Reset();
 	virtual bool IsTaskCompletableThisRound() { return true; }
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEvent_(GameEventType event, CBasePlayer *pAttacker, CBasePlayer *pVictim);
+	void Reset_();
+
+#endif
+
 public:
 	static CCareerTask *NewTask(const char *taskName, GameEventType event, const char *weaponName, int n, bool mustLive, bool crossRounds, int id, bool isComplete);
 
 	void OnWeaponKill(int weaponId, int weaponClassId, bool headshot, bool killerHasShield, CBasePlayer *pAttacker, CBasePlayer *pVictim);
 	void OnWeaponInjury(int weaponId, int weaponClassId, bool attackerHasShield, CBasePlayer *pAttacker);
 
-	bool IsComplete()		{ return m_isComplete;}
-	const char *GetTaskName()	{ return m_name; }
+	bool IsComplete() { return m_isComplete; }
+	const char *GetTaskName() { return m_name; }
 
-	int GetWeaponId()		{ return m_weaponId; }
-	int GetWeaponClassId()		{ return m_weaponClassId; }
+	int GetWeaponId() { return m_weaponId; }
+	int GetWeaponClassId() { return m_weaponClassId; }
 
-	bool IsValidFor(CBasePlayer *pPlayer)	{ return true; }
+	bool IsValidFor(CBasePlayer *pPlayer) { return true; }
 	void SendPartialNotification();
 
 private:
@@ -74,7 +84,8 @@ private:
 	bool m_vip;
 };
 
-typedef CUtlLinkedList<CCareerTask *, int> CareerTaskList;
+typedef std::STD_LIST<CCareerTask *> CareerTaskList;
+typedef CareerTaskList::iterator CareerTaskListIt;
 
 typedef CCareerTask *(*TaskFactoryFunction)(const char *taskName, GameEventType event, const char *weaponName, int eventCount, bool mustLive, bool crossRounds, int nextId, bool isComplete);
 
@@ -86,6 +97,13 @@ public:
 	virtual void OnEvent(GameEventType event, CBasePlayer *pAttacker, CBasePlayer *pVictim);
 	virtual void Reset();
 	virtual bool IsTaskCompletableThisRound() { return m_bombPlantedThisRound && !m_defuseStartedThisRound; }
+
+#ifdef HOOK_GAMEDLL
+
+	void OnEvent_(GameEventType event, CBasePlayer *pAttacker, CBasePlayer *pVictim);
+	void Reset_();
+
+#endif
 
 public:
 	static CCareerTask *NewTask(const char *taskName, GameEventType event, const char *weaponName, int n, bool mustLive, bool crossRounds, int id, bool isComplete);

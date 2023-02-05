@@ -1,14 +1,19 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 #include "game_shared/simple_checksum.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 BotProfileManager *TheBotProfiles = NULL;
 char *BotDifficultyName[] = { "EASY", "NORMAL", "HARD", "EXPERT", NULL };
 
-// Generates a filename-decorated skin name
+#endif
 
+// Generates a filename-decorated skin name
 const char *GetDecoratedSkinName(const char *name, const char *filename)
 {
 	const int BufLen = MAX_PATH + 64;
@@ -26,7 +31,6 @@ const char *BotProfile::GetWeaponPreferenceAsString(int i) const
 }
 
 // Return true if this profile has a primary weapon preference
-
 bool BotProfile::HasPrimaryPreference() const
 {
 	for (int i = 0; i < m_weaponPreferenceCount; ++i)
@@ -45,7 +49,6 @@ bool BotProfile::HasPrimaryPreference() const
 }
 
 // Return true if this profile has a pistol weapon preference
-
 bool BotProfile::HasPistolPreference() const
 {
 	for (int i = 0; i < m_weaponPreferenceCount; ++i)
@@ -58,7 +61,6 @@ bool BotProfile::HasPistolPreference() const
 }
 
 // Return true if this profile is valid for the specified team
-
 bool BotProfile::IsValidForTeam(BotProfileTeamType team) const
 {
 	return (team == BOT_TEAM_ANY || m_teams == BOT_TEAM_ANY || team == m_teams);
@@ -76,7 +78,6 @@ BotProfileManager::BotProfileManager()
 }
 
 // Load the bot profile database
-
 void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 {
 	int dataLength;
@@ -85,7 +86,7 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 
 	if (dataFile == NULL)
 	{
-		if (g_bEnableCSBot)
+		if (g_bIsCzeroGame)
 		{
 			CONSOLE_ECHO("WARNING: Cannot access bot profile database '%s'\n", filename);
 		}
@@ -143,7 +144,7 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 			}
 
 			token = SharedGetToken();
-			if (Q_stricmp("Model", token))
+			if (Q_stricmp(token, "Model") != 0)
 			{
 				CONSOLE_ECHO("Error parsing %s - expected 'Model'\n", filename);
 				FREE_FILE(dataPointer);
@@ -160,7 +161,7 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 			}
 
 			token = SharedGetToken();
-			if (Q_strcmp("=", token))
+			if (Q_strcmp(token, "=") != 0)
 			{
 				CONSOLE_ECHO("Error parsing %s - expected '='\n", filename);
 				FREE_FILE(dataPointer);
@@ -202,7 +203,7 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 			}
 
 			token = SharedGetToken();
-			if (Q_strcmp("End", token))
+			if (Q_strcmp(token, "End") != 0)
 			{
 				CONSOLE_ECHO("Error parsing %s - expected 'End'\n", filename);
 				FREE_FILE(dataPointer);
@@ -239,13 +240,11 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 					*c = '\0';
 
 				// find the given template name
-				FOR_EACH_LL (templateList, it)
+				for (BotProfileList::iterator iter = templateList.begin(); iter != templateList.end(); ++iter)
 				{
-					BotProfile *profile = templateList[it];
-
-					if (!Q_stricmp(profile->GetName(), token))
+					if (!Q_stricmp((*iter)->GetName(), token))
 					{
-						inherit = profile;
+						inherit = (*iter);
 						break;
 					}
 				}
@@ -322,7 +321,7 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 			}
 
 			token = SharedGetToken();
-			if (Q_strcmp("=", token))
+			if (Q_strcmp(token, "=") != 0)
 			{
 				CONSOLE_ECHO("Error parsing %s - expected '='\n", filename);
 				FREE_FILE(dataPointer);
@@ -404,7 +403,7 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 				// subtract off latency due to "think" update rate.
 				// In GameUI, we don't really care.
 				profile->m_reactionTime -= g_flBotFullThinkInterval;
-#endif // GAMEUI_EXPORTS
+#endif
 
 			}
 			else if (!Q_stricmp("AttackDelay", attributeName))
@@ -461,12 +460,12 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 			if (isTemplate)
 			{
 				// add to template list
-				templateList.AddToTail(profile);
+				templateList.push_back(profile);
 			}
 			else
 			{
 				// add profile to the master list
-				m_profileList.AddToTail (profile);
+				m_profileList.push_back(profile);
 			}
 		}
 	}
@@ -474,20 +473,29 @@ void BotProfileManager::Init(const char *filename, unsigned int *checksum)
 	FREE_FILE(dataPointer);
 
 	// free the templates
-	templateList.PurgeAndDeleteElements ();
+	for (BotProfileList::iterator iter = templateList.begin(); iter != templateList.end(); ++iter)
+		delete (*iter);
+
+	templateList.clear();
 }
 
 BotProfileManager::~BotProfileManager()
 {
 	Reset();
-	m_voiceBanks.PurgeAndDeleteElements ();
+
+	for (VoiceBankList::iterator it = m_voiceBanks.begin(); it != m_voiceBanks.end(); ++it)
+		delete[] (*it);
+
+	m_voiceBanks.clear();
 }
 
 // Free all bot profiles
-
 void BotProfileManager::Reset()
 {
-	m_profileList.PurgeAndDeleteElements ();
+	for (BotProfileList::iterator iter = m_profileList.begin(); iter != m_profileList.end(); ++iter)
+		delete (*iter);
+
+	m_profileList.clear();
 
 	for (int i = 0; i < NumCustomSkins; ++i)
 	{
@@ -510,7 +518,6 @@ void BotProfileManager::Reset()
 }
 
 // Returns custom skin name at a particular index
-
 const char *BotProfileManager::GetCustomSkin(int index)
 {
 	if (index < FirstCustomSkin || index > LastCustomSkin)
@@ -522,7 +529,6 @@ const char *BotProfileManager::GetCustomSkin(int index)
 }
 
 // Returns custom skin filename at a particular index
-
 const char *BotProfileManager::GetCustomSkinFname(int index)
 {
 	if (index < FirstCustomSkin || index > LastCustomSkin)
@@ -534,7 +540,6 @@ const char *BotProfileManager::GetCustomSkinFname(int index)
 }
 
 // Returns custom skin modelname at a particular index
-
 const char *BotProfileManager::GetCustomSkinModelname(int index)
 {
 	if (index < FirstCustomSkin || index > LastCustomSkin)
@@ -546,11 +551,10 @@ const char *BotProfileManager::GetCustomSkinModelname(int index)
 }
 
 // Looks up a custom skin index by filename-decorated name (will decorate the name if filename is given)
-
 int BotProfileManager::GetCustomSkinIndex(const char *name, const char *filename)
 {
 	const char *skinName = name;
-	if (filename)
+	if (filename != NULL)
 	{
 		skinName = GetDecoratedSkinName(name, filename);
 	}
@@ -570,56 +574,55 @@ int BotProfileManager::GetCustomSkinIndex(const char *name, const char *filename
 }
 
 // return index of the (custom) bot phrase db, inserting it if needed
-
 int BotProfileManager::FindVoiceBankIndex(const char *filename)
 {
 	int index = 0;
-
-	for (int i = 0; i<m_voiceBanks.Count (); ++i)
+	for (VoiceBankList::const_iterator it = m_voiceBanks.begin(); it != m_voiceBanks.end(); ++it, ++index)
 	{
-		if (!Q_stricmp (filename, m_voiceBanks[i]))
+		if (!Q_stricmp(filename, *it))
 		{
 			return index;
 		}
 	}
 
-	m_voiceBanks.AddToTail (CloneString (filename));
+	m_voiceBanks.push_back(CloneString(filename));
 	return index;
 }
 
 // Return random unused profile that matches the given difficulty level
-
 const BotProfile *BotProfileManager::GetRandomProfile(BotDifficultyType difficulty, BotProfileTeamType team) const
 {
 #ifdef RANDOM_LONG
+	BotProfileList::const_iterator iter;
 
 	// count up valid profiles
-	CUtlVector< const BotProfile * > profiles;
-	FOR_EACH_LL( m_profileList, it )
+	int validCount = 0;
+	for (iter = m_profileList.begin(); iter != m_profileList.end(); ++iter)
 	{
-		const BotProfile *profile = m_profileList[ it ];
+		const BotProfile *profile = (*iter);
 
-		// Match difficulty
-		if ( !profile->IsDifficulty( difficulty ) )
-			continue;
-
-		// Prevent duplicate names
-		if ( UTIL_IsNameTaken( profile->GetName() ) )
-			continue;
-
-		// Match team choice
-		if ( !profile->IsValidForTeam( team ) )
-			continue;
-
-		profiles.AddToTail( profile );
+		if (profile->IsDifficulty(difficulty) && !UTIL_IsNameTaken(profile->GetName()) && profile->IsValidForTeam(team))
+			++validCount;
 	}
 
-	if ( !profiles.Count() )
+	if (validCount == 0)
 		return NULL;
 
 	// select one at random
-	int which = RANDOM_LONG( 0, profiles.Count()-1 );
-	return profiles[which];
+	int which = RANDOM_LONG(0, validCount - 1);
+
+	for (iter = m_profileList.begin(); iter != m_profileList.end(); ++iter)
+	{
+		const BotProfile *profile = (*iter);
+
+		if (profile->IsDifficulty(difficulty) && !UTIL_IsNameTaken(profile->GetName()) && profile->IsValidForTeam(team))
+		{
+			if (which-- == 0)
+				return profile;
+		}
+	}
+
+	return NULL;
 #else
 	// we don't need random profiles when we're not in the game dll
 	return NULL;

@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_deagle, CDEAGLE);
+LINK_ENTITY_TO_CLASS(weapon_deagle, CDEAGLE, CCSDEAGLE)
 
-void CDEAGLE::Spawn()
+void CDEAGLE::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -17,7 +19,7 @@ void CDEAGLE::Spawn()
 	FallInit();
 }
 
-void CDEAGLE::Precache()
+void CDEAGLE::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_deagle.mdl");
 	PRECACHE_MODEL("models/shield/v_shield_deagle.mdl");
@@ -33,7 +35,7 @@ void CDEAGLE::Precache()
 	m_usFireDeagle = PRECACHE_EVENT(1, "events/deagle.sc");
 }
 
-int CDEAGLE::GetItemInfo(ItemInfo *p)
+int CDEAGLE::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "50AE";
@@ -50,7 +52,7 @@ int CDEAGLE::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CDEAGLE::Deploy()
+BOOL CDEAGLE::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.9f;
 	m_fMaxSpeed = DEAGLE_MAX_SPEED;
@@ -63,7 +65,7 @@ BOOL CDEAGLE::Deploy()
 		return DefaultDeploy("models/v_deagle.mdl", "models/p_deagle.mdl", DEAGLE_DRAW, "onehanded", UseDecrement() != FALSE);
 }
 
-void CDEAGLE::PrimaryAttack()
+void CDEAGLE::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -83,7 +85,7 @@ void CDEAGLE::PrimaryAttack()
 	}
 }
 
-void CDEAGLE::SecondaryAttack()
+void CDEAGLE::__MAKE_VHOOK(SecondaryAttack)()
 {
 	ShieldSecondaryFire(SHIELDGUN_UP, SHIELDGUN_DOWN);
 }
@@ -151,10 +153,10 @@ void CDEAGLE::DEAGLEFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireDeagle, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -168,19 +170,19 @@ void CDEAGLE::DEAGLEFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	ResetPlayerShieldAnim();
 }
 
-void CDEAGLE::Reload()
+void CDEAGLE::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_50ae <= 0)
 		return;
 
-	if (DefaultReload(DEAGLE_MAX_CLIP, DEAGLE_RELOAD, DEAGLE_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), DEAGLE_RELOAD, DEAGLE_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 		m_flAccuracy = 0.9f;
 	}
 }
 
-void CDEAGLE::WeaponIdle()
+void CDEAGLE::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

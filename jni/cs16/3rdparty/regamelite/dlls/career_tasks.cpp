@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 CCareerTaskManager *TheCareerTasks = NULL;
 
 const TaskInfo taskInfo[] =
@@ -30,6 +34,8 @@ const TaskInfo taskInfo[] =
 	{ NULL,				EVENT_INVALID,			&CCareerTask::NewTask }
 };
 
+#endif
+
 CCareerTask *CPreventDefuseTask::NewTask(const char *taskName, GameEventType event, const char *weaponName, int n, bool mustLive, bool crossRounds, int id, bool isComplete)
 {
 	CPreventDefuseTask *pNewTask = new CPreventDefuseTask(taskName, event, weaponName, n, mustLive, crossRounds, id, isComplete);
@@ -37,18 +43,17 @@ CCareerTask *CPreventDefuseTask::NewTask(const char *taskName, GameEventType eve
 	pNewTask->m_bombPlantedThisRound = false;
 	pNewTask->m_defuseStartedThisRound = false;
 
-	return (CCareerTask *)pNewTask;
+	return reinterpret_cast<CCareerTask *>(pNewTask);
 }
 
-CPreventDefuseTask::CPreventDefuseTask(const char *taskName, GameEventType event, const char *weaponName, int n, bool mustLive, bool crossRounds, int id, bool isComplete)
+CPreventDefuseTask::CPreventDefuseTask(const char *taskName, GameEventType event, const char *weaponName, int n, bool mustLive, bool crossRounds, int id, bool isComplete):
+	CCareerTask(taskName, event, weaponName, n, mustLive, crossRounds, id, isComplete)
 {
-	CCareerTask(taskName, event, weaponName, n, mustLive, crossRounds, id, isComplete);
-
 	m_bombPlantedThisRound = false;
 	m_defuseStartedThisRound = false;
 }
 
-void CPreventDefuseTask::Reset()
+void CPreventDefuseTask::__MAKE_VHOOK(Reset)()
 {
 	m_bombPlantedThisRound = false;
 	m_defuseStartedThisRound = false;
@@ -56,7 +61,7 @@ void CPreventDefuseTask::Reset()
 	CCareerTask::Reset();
 }
 
-void CPreventDefuseTask::OnEvent(GameEventType event, CBasePlayer *pAttacker, CBasePlayer *pVictim)
+void CPreventDefuseTask::__MAKE_VHOOK(OnEvent)(GameEventType event, CBasePlayer *pAttacker, CBasePlayer *pVictim)
 {
 	if (IsComplete())
 		return;
@@ -119,7 +124,12 @@ CCareerTask::CCareerTask(const char *taskName, GameEventType event, const char *
 	}
 }
 
-void CCareerTask::Reset()
+CCareerTask::~CCareerTask()
+{
+	;
+}
+
+void CCareerTask::__MAKE_VHOOK(Reset)()
 {
 	m_eventsSeen = 0;
 	m_isComplete = false;
@@ -149,32 +159,26 @@ void CCareerTask::SendPartialNotification()
 
 void CCareerTask::OnWeaponKill(int weaponId, int weaponClassId, bool headshot, bool killerHasShield, CBasePlayer *pAttacker, CBasePlayer *pVictim)
 {
-	if( m_isComplete || ( m_event != EVENT_KILL && ( m_event != EVENT_HEADSHOT || !headshot ) ) )
-	{
+	if (m_isComplete || (m_event != EVENT_KILL && (m_event != EVENT_HEADSHOT || !headshot)))
 		return;
-	}
 
 	if (!pVictim || (m_defuser && !pVictim->m_bIsDefusing) || (m_vip && !pVictim->m_bIsVIP))
-	{
 		return;
-	}
 
 	if (m_rescuer)
 	{
 		int hostages_ = 0;
-		CBaseEntity *hostageEntity = NULL;
+		CHostage *hostageEntity = NULL;
 
-		while ((hostageEntity = UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")) != NULL)
+		while ((hostageEntity = (CHostage *)UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")))
 		{
-			if (hostageEntity->pev->takedamage != DAMAGE_YES)
+			if (!hostageEntity->IsAlive())
 				continue;
 
-			CHostage *hostage = static_cast<CHostage *>(hostageEntity);
-
-			if (!hostage->IsFollowingSomeone())
+			if (!hostageEntity->IsFollowingSomeone())
 				continue;
 
-			if (hostage->IsValid() && hostage->m_target == pAttacker)
+			if (hostageEntity->m_target == pVictim)
 				++hostages_;
 		}
 
@@ -192,9 +196,9 @@ void CCareerTask::OnWeaponKill(int weaponId, int weaponClassId, bool headshot, b
 		if (m_weaponId != weaponId)
 			return;
 	}
-	else if (m_weaponClassId)
+	else
 	{
-		if (m_weaponClassId != weaponClassId)
+		if (!m_weaponClassId || m_weaponClassId != weaponClassId)
 			return;
 	}
 
@@ -205,9 +209,7 @@ void CCareerTask::OnWeaponKill(int weaponId, int weaponClassId, bool headshot, b
 void CCareerTask::OnWeaponInjury(int weaponId, int weaponClassId, bool attackerHasShield, CBasePlayer *pAttacker)
 {
 	if (m_isComplete || m_event != EVENT_PLAYER_TOOK_DAMAGE)
-	{
 		return;
-	}
 
 	if (m_weaponId == WEAPON_SHIELDGUN)
 	{
@@ -219,9 +221,9 @@ void CCareerTask::OnWeaponInjury(int weaponId, int weaponClassId, bool attackerH
 		if (m_weaponId != weaponId)
 			return;
 	}
-	else if (m_weaponClassId)
+	else
 	{
-		if (m_weaponClassId != weaponClassId)
+		if (!m_weaponClassId || m_weaponClassId != weaponClassId)
 			return;
 	}
 
@@ -229,7 +231,7 @@ void CCareerTask::OnWeaponInjury(int weaponId, int weaponClassId, bool attackerH
 	SendPartialNotification();
 }
 
-void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer *pAttacker)
+void CCareerTask::__MAKE_VHOOK(OnEvent)(GameEventType event, CBasePlayer *pVictim, CBasePlayer *pAttacker)
 {
 	if (m_isComplete)
 		return;
@@ -242,19 +244,17 @@ void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer
 		if (m_rescuer)
 		{
 			int hostages_ = 0;
-			CBaseEntity *hostageEntity = NULL;
+			CHostage *hostageEntity = NULL;
 
-			while ((hostageEntity = UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")) != NULL)
+			while ((hostageEntity = (CHostage *)UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")))
 			{
-				if (hostageEntity->pev->takedamage != DAMAGE_YES)
+				if (!hostageEntity->IsAlive())
 					continue;
 
-				CHostage *hostage = static_cast<CHostage *>(hostageEntity);
-
-				if (!hostage->IsFollowingSomeone())
+				if (!hostageEntity->IsFollowingSomeone())
 					continue;
 
-				if (hostage->IsValid() && hostage->m_target == pAttacker)
+				if (hostageEntity->m_target == pAttacker)
 					++hostages_;
 			}
 
@@ -264,20 +264,20 @@ void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer
 			}
 		}
 
-		if( m_event != EVENT_KILL || ( !m_weaponId && !m_weaponClassId
-			&& m_event != EVENT_HEADSHOT ) || ( !m_weaponId && !m_weaponClassId
-			&& m_event != EVENT_PLAYER_TOOK_DAMAGE ) || ( !m_weaponId && !m_weaponClassId ) )
+		if ((m_event != EVENT_KILL || (!m_weaponId && !m_weaponClassId))
+			&& (m_event != EVENT_HEADSHOT || (!m_weaponId && !m_weaponClassId))
+			&& (m_event != EVENT_PLAYER_TOOK_DAMAGE || (!m_weaponId && !m_weaponClassId)))
 		{
 			if (m_event == EVENT_ROUND_WIN)
 			{
 				if (!Q_strcmp(m_name, "defendhostages"))
 				{
 					int hostages_ = 0;
-					CBaseEntity *hostageEntity = NULL;
+					CHostage *hostageEntity = NULL;
 
-					while ((hostageEntity = UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")) != NULL)
+					while ((hostageEntity = (CHostage *)UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")))
 					{
-						if (hostageEntity->pev->takedamage != 1.0f && hostageEntity->pev->deadflag != DEAD_DEAD)
+						if (hostageEntity->pev->takedamage != DAMAGE_YES && hostageEntity->pev->deadflag != DEAD_DEAD)
 							++hostages_;
 					}
 
@@ -290,13 +290,11 @@ void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer
 				else if (!Q_strcmp(m_name, "hostagessurvive"))
 				{
 					int hostages_ = 0;
-					CBaseEntity *hostageEntity = NULL;
+					CHostage *hostageEntity = NULL;
 
-					while ((hostageEntity = UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")) != NULL)
+					while ((hostageEntity = (CHostage *)UTIL_FindEntityByClassname(hostageEntity, "hostage_entity")))
 					{
-						CHostage *hostage = (CHostage *)hostageEntity;
-
-						if (hostage && hostage->IsDead())
+						if (hostageEntity && hostageEntity->IsDead())
 							++hostages_;
 					}
 
@@ -339,7 +337,7 @@ void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer
 			WRITE_BYTE(m_id);
 		MESSAGE_END();
 
-		if (TheTutor != NULL)
+		if (TheTutor)
 		{
 			TheTutor->OnEvent(EVENT_CAREER_TASK_DONE);
 		}
@@ -348,7 +346,7 @@ void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer
 
 		if (m_event == EVENT_ROUND_WIN && !Q_strcmp(m_name, "winfast"))
 		{
-			TheCareerTasks->SetFinishedTaskTime((int)TheCareerTasks->GetRoundElapsedTime());
+			TheCareerTasks->SetFinishedTaskTime(int(TheCareerTasks->GetRoundElapsedTime()));
 			UTIL_GetLocalPlayer()->SyncRoundTimer();
 		}
 	}
@@ -380,11 +378,11 @@ void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer
 
 				if (m_event == EVENT_ROUND_WIN && !Q_strcmp(m_name, "winfast"))
 				{
-					TheCareerTasks->SetFinishedTaskTime((int)TheCareerTasks->GetRoundElapsedTime());
+					TheCareerTasks->SetFinishedTaskTime(int(TheCareerTasks->GetRoundElapsedTime()));
 					UTIL_GetLocalPlayer()->SyncRoundTimer();
 				}
 
-				if (TheTutor != NULL)
+				if (TheTutor)
 				{
 					TheTutor->OnEvent(EVENT_CAREER_TASK_DONE);
 				}
@@ -403,7 +401,7 @@ void CCareerTask::OnEvent(GameEventType event, CBasePlayer *pVictim, CBasePlayer
 
 void CCareerTaskManager::Create()
 {
-	if (TheCareerTasks != NULL)
+	if (TheCareerTasks)
 	{
 		TheCareerTasks->Reset();
 		return;
@@ -422,31 +420,29 @@ void CCareerTaskManager::Reset(bool deleteTasks)
 {
 	if (deleteTasks)
 	{
-		m_tasks.PurgeAndDeleteElements ();
+		for (auto task : m_tasks)
+			delete task;
+
+		m_tasks.clear();
 		m_nextId = 0;
 	}
 	else
 	{
-		FOR_EACH_LL (m_tasks, it)
-		{
-			CCareerTask *pTask = m_tasks[it];
-			pTask->Reset();
-		}
+		for (auto task : m_tasks)
+			task->Reset();
 	}
 
 	m_finishedTaskTime  = 0;
 	m_finishedTaskRound = 0;
 	m_shouldLatchRoundEndMessage = false;
 
-	m_roundStartTime = gpGlobals->time + CVAR_GET_FLOAT("mp_freezetime");
+	m_roundStartTime = gpGlobals->time + freezetime.value;
 }
 
 void CCareerTaskManager::SetFinishedTaskTime(int val)
 {
-	CHalfLifeMultiplay *mp = g_pGameRules;
-
 	m_finishedTaskTime = val;
-	m_finishedTaskRound = mp->m_iTotalRoundsPlayed;
+	m_finishedTaskRound = CSGameRules()->m_iTotalRoundsPlayed;
 }
 
 void CCareerTaskManager::AddTask(const char *taskName, const char *weaponName, int eventCount, bool mustLive, bool crossRounds, bool isComplete)
@@ -457,7 +453,7 @@ void CCareerTaskManager::AddTask(const char *taskName, const char *weaponName, i
 	{
 		const TaskInfo *pTaskInfo = &taskInfo[ i ];
 
-		if (pTaskInfo->taskName != NULL)
+		if (pTaskInfo->taskName)
 		{
 			if (!Q_stricmp(pTaskInfo->taskName, taskName))
 			{
@@ -473,7 +469,7 @@ void CCareerTaskManager::AddTask(const char *taskName, const char *weaponName, i
 					isComplete
 				);
 
-				m_tasks.AddToTail (newTask);
+				m_tasks.push_back(newTask);
 
 				if (pTaskInfo->event == EVENT_ROUND_WIN && !Q_strcmp(taskName, "winfast"))
 				{
@@ -510,24 +506,21 @@ void CCareerTaskManager::HandleEvent(GameEventType event, CBasePlayer *pAttacker
 		return;
 	}
 
-	FOR_EACH_LL (m_tasks, it)
-	{
-		m_tasks[it]->OnEvent(event, pAttacker, pVictim);
+	for (auto task : m_tasks) {
+		task->OnEvent(event, pAttacker, pVictim);
 	}
 }
 
 void CCareerTaskManager::HandleWeaponKill(int weaponId, int weaponClassId, bool headshot, bool killerHasShield, CBasePlayer *pAttacker, CBasePlayer *pVictim)
 {
-	FOR_EACH_LL (m_tasks, it)
-	{
-		m_tasks[it]->OnWeaponKill(weaponId, weaponClassId, headshot, killerHasShield, pAttacker, pVictim);
+	for (auto task : m_tasks) {
+		task->OnWeaponKill(weaponId, weaponClassId, headshot, killerHasShield, pAttacker, pVictim);
 	}
 }
 
 void CCareerTaskManager::HandleEnemyKill(bool wasBlind, const char *weaponName, bool headshot, bool killerHasShield, CBasePlayer *pAttacker, CBasePlayer *pVictim)
 {
 	HandleWeaponKill(AliasToWeaponID(weaponName), AliasToWeaponClass(weaponName), headshot, killerHasShield, pAttacker, pVictim);
-
 	HandleEvent(EVENT_KILL, pAttacker, pVictim);
 
 	if (headshot)
@@ -542,9 +535,8 @@ void CCareerTaskManager::HandleEnemyKill(bool wasBlind, const char *weaponName, 
 
 void CCareerTaskManager::HandleWeaponInjury(int weaponId, int weaponClassId, bool attackerHasShield, CBasePlayer *pAttacker)
 {
-	FOR_EACH_LL (m_tasks, it)
-	{
-		m_tasks[it]->OnWeaponInjury(weaponId, weaponClassId, attackerHasShield, pAttacker);
+	for (auto task : m_tasks) {
+		task->OnWeaponInjury(weaponId, weaponClassId, attackerHasShield, pAttacker);
 	}
 }
 
@@ -564,8 +556,7 @@ void CCareerTaskManager::HandleDeath(int team, CBasePlayer *pAttacker)
 
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
-
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
 		if (pPlayer && pPlayer->m_iTeam == enemyTeam && pPlayer->IsAlive())
 			++numEnemies;
 	}
@@ -578,9 +569,8 @@ void CCareerTaskManager::HandleDeath(int team, CBasePlayer *pAttacker)
 
 bool CCareerTaskManager::AreAllTasksComplete()
 {
-	FOR_EACH_LL (m_tasks, it)
-	{
-		if (!m_tasks[it]->IsComplete())
+	for (auto task : m_tasks) {
+		if (!task->IsComplete())
 			return false;
 	}
 
@@ -589,14 +579,13 @@ bool CCareerTaskManager::AreAllTasksComplete()
 
 int CCareerTaskManager::GetNumRemainingTasks()
 {
-	int ret = 0;
-	FOR_EACH_LL (m_tasks, it)
-	{
-		if (!m_tasks[it]->IsComplete ())
-			ret++;
+	int nCount = 0;
+	for (auto task : m_tasks) {
+		if (task->IsComplete())
+			++nCount;
 	}
 
-	return ret;
+	return nCount;
 }
 
 float CCareerTaskManager::GetRoundElapsedTime()

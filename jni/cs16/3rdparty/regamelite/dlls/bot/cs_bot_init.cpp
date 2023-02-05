@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 cvar_t cv_bot_traceview = { "bot_traceview", "0", FCVAR_SERVER, 0.0f, NULL };
 cvar_t cv_bot_stop = { "bot_stop", "0", FCVAR_SERVER, 0.0f, NULL };
 cvar_t cv_bot_show_nav = { "bot_show_nav", "0", FCVAR_SERVER, 0.0f, NULL };
@@ -33,19 +37,24 @@ cvar_t cv_bot_defer_to_human = { "bot_defer_to_human", "0", FCVAR_SERVER, 0.0f, 
 cvar_t cv_bot_chatter = { "bot_chatter", "normal", FCVAR_SERVER, 0.0f, NULL };
 cvar_t cv_bot_profile_db = { "bot_profile_db", "BotProfile.db", FCVAR_SERVER, 0.0f, NULL };
 
+#endif
+
+#ifdef REGAMEDLL_ADD
+cvar_t cv_bot_deathmatch = { "bot_deathmatch", "0", FCVAR_SERVER, 0.0f, NULL };
+cvar_t cv_bot_quota_mode = { "bot_quota_mode", "normal", FCVAR_SERVER, 0.0f, NULL };
+#endif
+
 void InstallBotControl()
 {
 	if (TheBots != NULL)
 	{
 		delete TheBots;
-		TheBots = NULL;
 	}
 
 	TheBots = new CCSBotManager;
 }
 
 // Engine callback for custom server commands
-
 void Bot_ServerCommand()
 {
 	if (TheBots != NULL)
@@ -55,52 +64,56 @@ void Bot_ServerCommand()
 	}
 }
 
-void Bot_RegisterCvars()
+void Bot_RegisterCVars()
 {
-   if (g_bEnableCSBot)
-   {
-      CVAR_REGISTER (&cv_bot_traceview);
-      CVAR_REGISTER (&cv_bot_stop);
-      CVAR_REGISTER (&cv_bot_show_nav);
-      CVAR_REGISTER (&cv_bot_show_danger);
-      CVAR_REGISTER (&cv_bot_nav_edit);
-      CVAR_REGISTER (&cv_bot_nav_zdraw);
-      CVAR_REGISTER (&cv_bot_walk);
-      CVAR_REGISTER (&cv_bot_difficulty);
-      CVAR_REGISTER (&cv_bot_debug);
-      CVAR_REGISTER (&cv_bot_quicksave);
-      CVAR_REGISTER (&cv_bot_quota);
-      CVAR_REGISTER (&cv_bot_quota_match);
-      CVAR_REGISTER (&cv_bot_prefix);
-      CVAR_REGISTER (&cv_bot_allow_rogues);
-      CVAR_REGISTER (&cv_bot_allow_pistols);
-      CVAR_REGISTER (&cv_bot_allow_shotguns);
-      CVAR_REGISTER (&cv_bot_allow_sub_machine_guns);
-      CVAR_REGISTER (&cv_bot_allow_rifles);
-      CVAR_REGISTER (&cv_bot_allow_machine_guns);
-      CVAR_REGISTER (&cv_bot_allow_grenades);
-      CVAR_REGISTER (&cv_bot_allow_snipers);
-      CVAR_REGISTER (&cv_bot_allow_shield);
-      CVAR_REGISTER (&cv_bot_join_team);
-      CVAR_REGISTER (&cv_bot_join_after_player);
-      CVAR_REGISTER (&cv_bot_auto_vacate);
-      CVAR_REGISTER (&cv_bot_zombie);
-      CVAR_REGISTER (&cv_bot_defer_to_human);
-      CVAR_REGISTER (&cv_bot_chatter);
-      CVAR_REGISTER (&cv_bot_profile_db);
-   }
+	if (!AreBotsAllowed())
+		return;
+
+	CVAR_REGISTER(&cv_bot_traceview);
+	CVAR_REGISTER(&cv_bot_stop);
+	CVAR_REGISTER(&cv_bot_show_nav);
+	CVAR_REGISTER(&cv_bot_show_danger);
+	CVAR_REGISTER(&cv_bot_nav_edit);
+	CVAR_REGISTER(&cv_bot_nav_zdraw);
+	CVAR_REGISTER(&cv_bot_walk);
+	CVAR_REGISTER(&cv_bot_difficulty);
+	CVAR_REGISTER(&cv_bot_debug);
+	CVAR_REGISTER(&cv_bot_quicksave);
+	CVAR_REGISTER(&cv_bot_quota);
+	CVAR_REGISTER(&cv_bot_quota_match);
+	CVAR_REGISTER(&cv_bot_prefix);
+	CVAR_REGISTER(&cv_bot_allow_rogues);
+	CVAR_REGISTER(&cv_bot_allow_pistols);
+	CVAR_REGISTER(&cv_bot_allow_shotguns);
+	CVAR_REGISTER(&cv_bot_allow_sub_machine_guns);
+	CVAR_REGISTER(&cv_bot_allow_rifles);
+	CVAR_REGISTER(&cv_bot_allow_machine_guns);
+	CVAR_REGISTER(&cv_bot_allow_grenades);
+	CVAR_REGISTER(&cv_bot_allow_snipers);
+	CVAR_REGISTER(&cv_bot_allow_shield);
+	CVAR_REGISTER(&cv_bot_join_team);
+	CVAR_REGISTER(&cv_bot_join_after_player);
+	CVAR_REGISTER(&cv_bot_auto_vacate);
+	CVAR_REGISTER(&cv_bot_zombie);
+	CVAR_REGISTER(&cv_bot_defer_to_human);
+	CVAR_REGISTER(&cv_bot_chatter);
+	CVAR_REGISTER(&cv_bot_profile_db);
+
+#ifdef REGAMEDLL_ADD
+	CVAR_REGISTER(&cv_bot_deathmatch);
+	CVAR_REGISTER(&cv_bot_quota_mode);
+#endif
+
 }
 
 // Constructor
-
 CCSBot::CCSBot() : m_chatter(this), m_gameState(this)
 {
 	;
 }
 
 // Prepare bot for action
-
-bool CCSBot::Initialize(const BotProfile *profile)
+bool CCSBot::__MAKE_VHOOK(Initialize)(const BotProfile *profile)
 {
 	// extend
 	CBot::Initialize(profile);
@@ -126,7 +139,6 @@ bool CCSBot::Initialize(const BotProfile *profile)
 }
 
 // Reset internal data to initial state
-
 void CCSBot::ResetValues()
 {
 	m_chatter.Reset();
@@ -266,12 +278,14 @@ void CCSBot::ResetValues()
 	m_avoid = NULL;
 	m_enemy = NULL;
 
+#ifdef REGAMEDLL_FIXES
 	for (int i = 0; i < MAX_ENEMY_QUEUE; ++i)
 	{
 		m_enemyQueue[i].player = NULL;
 		m_enemyQueue[i].isReloading = false;
 		m_enemyQueue[i].isProtectedByShield = false;
 	}
+#endif
 
 	// start in idle state
 	StopAttacking();
@@ -280,12 +294,9 @@ void CCSBot::ResetValues()
 
 // Called when bot is placed in map, and when bots are reset after a round ends.
 // NOTE: For some reason, this can be called twice when a bot is added.
-
-void CCSBot::SpawnBot()
+void CCSBot::__MAKE_VHOOK(SpawnBot)()
 {
-	CCSBotManager *ctrl = TheCSBots();
-
-	ctrl->ValidateMapData();
+	TheCSBots()->ValidateMapData();
 	ResetValues();
 
 	Q_strcpy(m_name, STRING(pev->netname));
@@ -293,14 +304,14 @@ void CCSBot::SpawnBot()
 	SetState(&m_buyState);
 	SetTouch(&CCSBot::BotTouch);
 
-	if (!TheNavAreaList.Count () && !ctrl->IsLearningMap())
+	if (TheNavAreaList.empty() && !TheCSBots()->IsLearningMap())
 	{
-		ctrl->SetLearningMapFlag();
+		TheCSBots()->SetLearningMapFlag();
 		StartLearnProcess();
 	}
 }
 
-void CCSBot::RoundRespawn()
+void CCSBot::__MAKE_VHOOK(RoundRespawn)()
 {
 	// do the normal player spawn process
 	CBasePlayer::RoundRespawn();

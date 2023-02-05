@@ -131,6 +131,28 @@ extern cvar_t sk_scientist_heal1;
 extern cvar_t sk_scientist_heal2;
 extern cvar_t sk_scientist_heal3;
 
+#ifdef REGAMEDLL_ADD
+
+extern cvar_t maxmoney;
+extern cvar_t round_infinite;
+extern cvar_t hegrenade_penetration;
+extern cvar_t nadedrops;
+extern cvar_t roundrespawn_time;
+extern cvar_t auto_reload_weapons;
+extern cvar_t refill_bpammo_weapons;
+extern cvar_t freeforall;
+extern cvar_t auto_join_team;
+extern cvar_t max_teamkills;
+extern cvar_t fraglimit;
+extern cvar_t round_restart_delay;
+
+extern cvar_t showtriggers;
+extern cvar_t hostagehurtable;
+extern cvar_t roundover;
+extern cvar_t forcerespawn;
+
+#endif
+
 void GameDLLInit();
 
 #endif // GAME_H

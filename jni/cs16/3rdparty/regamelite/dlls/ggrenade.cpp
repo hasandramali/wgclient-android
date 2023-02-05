@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CGrenade::m_SaveData[] =
 {
 	DEFINE_FIELD(CGrenade, m_fAttenu, FIELD_FLOAT),
@@ -22,7 +26,9 @@ TYPEDESCRIPTION CGrenade::m_SaveData[] =
 	DEFINE_FIELD(CGrenade, m_usEvent, FIELD_INTEGER),
 };
 
-LINK_ENTITY_TO_CLASS(grenade, CGrenade);
+#endif
+
+LINK_ENTITY_TO_CLASS(grenade, CGrenade, CCSGrenade)
 
 void CGrenade::Explode(Vector vecSrc, Vector vecAim)
 {
@@ -32,7 +38,6 @@ void CGrenade::Explode(Vector vecSrc, Vector vecAim)
 }
 
 // UNDONE: temporary scorching for PreAlpha - find a less sleazy permenant solution.
-
 void CGrenade::Explode(TraceResult *pTrace, int bitsDamageType)
 {
 	float flRndSound; // sound randomizer
@@ -48,15 +53,13 @@ void CGrenade::Explode(TraceResult *pTrace, int bitsDamageType)
 	}
 
 	int iContents = UTIL_PointContents(pev->origin);
+
+#ifndef REGAMEDLL_FIXES
 	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3);
+#endif
+	entvars_t *pevOwner = VARS(pev->owner);
 
-	entvars_t *pevOwner;
-	if (pev->owner)
-		pevOwner = VARS(pev->owner);
-	else
-		pevOwner = NULL;
-
-	if (TheBots != NULL)
+	if (TheBots)
 	{
 		TheBots->OnEvent(EVENT_FLASHBANG_GRENADE_EXPLODED, CBaseEntity::Instance(pev->owner), (CBaseEntity *)&pev->origin);
 	}
@@ -97,7 +100,6 @@ void CGrenade::Explode(TraceResult *pTrace, int bitsDamageType)
 void CGrenade::Explode2(TraceResult *pTrace, int bitsDamageType)
 {
 	float flRndSound; // sound randomizer
-	CHalfLifeMultiplay *mp = g_pGameRules;
 
 	pev->model = iStringNull; // invisible
 	pev->solid = SOLID_NOT; // intangible
@@ -105,18 +107,18 @@ void CGrenade::Explode2(TraceResult *pTrace, int bitsDamageType)
 
 	UTIL_ScreenShake(pTrace->vecEndPos, 25, 150, 1, 3000);
 
-	mp->m_bTargetBombed = true;
+	CSGameRules()->m_bTargetBombed = true;
 
-	if (mp->IsCareer())
+	if (CSGameRules()->IsCareer())
 	{
-		if (TheCareerTasks != NULL)
+		if (TheCareerTasks)
 		{
 			TheCareerTasks->LatchRoundEndMessage();
 		}
 	}
 
 	m_bJustBlew = true;
-	mp->CheckWinConditions();
+	CSGameRules()->CheckWinConditions();
 
 	// Pull out of the wall a bit
 	if (pTrace->flFraction != 1.0f)
@@ -168,20 +170,18 @@ void CGrenade::Explode2(TraceResult *pTrace, int bitsDamageType)
 
 	// Sound! for everyone
 	EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/c4_explode1.wav", VOL_NORM, 0.25);
-	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3);
 
-	entvars_t *pevOwner;
-	if (pev->owner)
-		pevOwner = VARS(pev->owner);
-	else
-		pevOwner = NULL;
+#ifndef REGAMEDLL_FIXES
+	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3);
+#endif
+	entvars_t *pevOwner = VARS(pev->owner);
 
 	pev->owner = NULL;
-	RadiusDamage(pev, pevOwner, mp->m_flBombRadius, CLASS_NONE, bitsDamageType);
+	RadiusDamage(pev, pevOwner, CSGameRules()->m_flBombRadius, CLASS_NONE, bitsDamageType);
 
-	if (mp->IsCareer())
+	if (CSGameRules()->IsCareer())
 	{
-		if (TheCareerTasks != NULL)
+		if (TheCareerTasks)
 		{
 			TheCareerTasks->UnlatchRoundEndMessage();
 		}
@@ -263,15 +263,12 @@ void CGrenade::Explode3(TraceResult *pTrace, int bitsDamageType)
 		WRITE_BYTE(TE_EXPLFLAG_NONE);	// flags
 	MESSAGE_END();
 
+#ifndef REGAMEDLL_FIXES
 	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3);
+#endif
+	entvars_t *pevOwner = VARS(pev->owner);
 
-	entvars_t *pevOwner;
-	if (pev->owner)
-		pevOwner = VARS(pev->owner);
-	else
-		pevOwner = NULL;
-
-	if (TheBots != NULL)
+	if (TheBots)
 	{
 		TheBots->OnEvent(EVENT_HE_GRENADE_EXPLODED, CBaseEntity::Instance(pev->owner));
 	}
@@ -320,7 +317,10 @@ NOXREF void CGrenade::SG_Explode(TraceResult *pTrace, int bitsDamageType)
 	}
 
 	int iContents = UTIL_PointContents(pev->origin);
+
+#ifndef REGAMEDLL_FIXES
 	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3);
+#endif
 
 	// can't traceline attack owner if this is set
 	pev->owner = NULL;
@@ -394,7 +394,7 @@ void CGrenade::Smoke3_B()
 		MESSAGE_END();
 	}
 
-	pev->nextthink = gpGlobals->time + 0.15;
+	pev->nextthink = gpGlobals->time + 0.15f;
 	SetThink(&CGrenade::Smoke3_A);
 }
 
@@ -474,18 +474,18 @@ void CGrenade::SG_Smoke()
 	else
 	{
 		Vector origin, angle;
-		float x_old, y_old, R_angle;
+		float_precision x_old, y_old, R_angle;
 
 		UTIL_MakeVectors(pev->angles);
 
 		origin = gpGlobals->v_forward * RANDOM_FLOAT(3, 8);
 
-		flSmokeInterval = RANDOM_FLOAT(1.5, 3.5) * iMaxSmokePuffs;
+		flSmokeInterval = RANDOM_FLOAT(1.5f, 3.5f) * iMaxSmokePuffs;
 
 		R_angle = m_angle / (180.00433335 / M_PI);
 
-		x_old = cos((float)R_angle);
-		y_old = sin((float)R_angle);
+		x_old = Q_cos(float_precision(R_angle));
+		y_old = Q_sin(float_precision(R_angle));
 
 		angle.x = origin.x * x_old - origin.y * y_old;
 		angle.y = origin.x * y_old + origin.y * x_old;
@@ -505,7 +505,7 @@ void CGrenade::SG_Smoke()
 	{
 		pev->effects |= EF_NODRAW;
 
-		if (TheBots != NULL)
+		if (TheBots)
 		{
 			TheBots->RemoveGrenade(this);
 		}
@@ -513,13 +513,12 @@ void CGrenade::SG_Smoke()
 	}
 }
 
-void CGrenade::Killed(entvars_t *pevAttacker, int iGib)
+void CGrenade::__MAKE_VHOOK(Killed)(entvars_t *pevAttacker, int iGib)
 {
 	Detonate();
 }
 
 // Timed grenade, this think is called when time runs out.
-
 void CGrenade::DetonateUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	SetThink(&CGrenade::Detonate);
@@ -528,7 +527,9 @@ void CGrenade::DetonateUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 
 void CGrenade::PreDetonate()
 {
+#ifndef REGAMEDLL_FIXES
 	CSoundEnt::InsertSound(bits_SOUND_DANGER, pev->origin, 400, 0.3);
+#endif
 
 	SetThink(&CGrenade::Detonate);
 	pev->nextthink = gpGlobals->time + 1.0f;
@@ -554,7 +555,7 @@ void CGrenade::SG_Detonate()
 
 	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -40), ignore_monsters, ENT(pev), &tr);
 
-	if (TheBots != NULL)
+	if (TheBots)
 	{
 		TheBots->OnEvent(EVENT_SMOKE_GRENADE_EXPLODED, CBaseEntity::Instance(pev->owner));
 		TheBots->AddGrenade(WEAPON_SMOKEGRENADE, this);
@@ -562,16 +563,14 @@ void CGrenade::SG_Detonate()
 
 	EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/sg_explode.wav", VOL_NORM, ATTN_NORM);
 
-	while ((pentFind = FIND_ENTITY_BY_CLASSNAME(pentFind, "grenade")) != NULL)
+	while ((pentFind = FIND_ENTITY_BY_CLASSNAME(pentFind, "grenade")))
 	{
 		if (FNullEnt(pentFind))
 			break;
 
 		CBaseEntity *pEnt = CBaseEntity::Instance(pentFind);
-
 		if (pEnt)
 		{
-			//float
 			float fDistance = (pEnt->pev->origin - pev->origin).Length();
 
 			if (fDistance != 0.0f && fDistance <= 250.0f)
@@ -618,7 +617,6 @@ void CGrenade::Detonate3()
 }
 
 // Contact grenade, explode when it touches something
-
 void CGrenade::ExplodeTouch(CBaseEntity *pOther)
 {
 	TraceResult tr;
@@ -639,7 +637,9 @@ void CGrenade::DangerSoundThink()
 		return;
 	}
 
+#ifndef REGAMEDLL_FIXES
 	CSoundEnt::InsertSound(bits_SOUND_DANGER, pev->origin + pev->velocity * 0.5, pev->velocity.Length(), 0.2);
+#endif
 	pev->nextthink = gpGlobals->time + 0.2f;
 
 	if (pev->waterlevel != 0)
@@ -668,6 +668,7 @@ void CGrenade::BounceTouch(CBaseEntity *pOther)
 	vecTestVelocity = pev->velocity;
 	vecTestVelocity.z *= 0.7f;
 
+#ifndef REGAMEDLL_FIXES
 	if (!m_fRegisteredSound && vecTestVelocity.Length() <= 60.0f)
 	{
 		// grenade is moving really slow. It's probably very close to where it will ultimately stop moving.
@@ -677,7 +678,7 @@ void CGrenade::BounceTouch(CBaseEntity *pOther)
 		CSoundEnt::InsertSound(bits_SOUND_DANGER, pev->origin, pev->dmg / 0.4f, 0.3);
 		m_fRegisteredSound = TRUE;
 	}
-
+#endif
 	if (pev->flags & FL_ONGROUND)
 	{
 		// add a bit of static friction
@@ -731,7 +732,7 @@ void CGrenade::SlideTouch(CBaseEntity *pOther)
 	}
 }
 
-void CGrenade::BounceSound()
+void CGrenade::__MAKE_VHOOK(BounceSound)()
 {
 	if (pev->dmg > 50.0f)
 	{
@@ -758,10 +759,12 @@ void CGrenade::TumbleThink()
 	StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.1f;
 
+#ifndef REGAMEDLL_FIXES
 	if (pev->dmgtime - 1 < gpGlobals->time)
 	{
 		CSoundEnt::InsertSound(bits_SOUND_DANGER, pev->origin + pev->velocity * (pev->dmgtime - gpGlobals->time), 400, 0.1);
 	}
+#endif
 
 	if (pev->dmgtime <= gpGlobals->time)
 	{
@@ -796,10 +799,12 @@ void CGrenade::SG_TumbleThink()
 	StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.1f;
 
+#ifndef REGAMEDLL_FIXES
 	if (pev->dmgtime - 1 < gpGlobals->time)
 	{
 		CSoundEnt::InsertSound(bits_SOUND_DANGER, pev->origin + pev->velocity * (pev->dmgtime - gpGlobals->time), 400, 0.1);
 	}
+#endif
 
 	if (pev->dmgtime <= gpGlobals->time)
 	{
@@ -816,18 +821,12 @@ void CGrenade::SG_TumbleThink()
 	}
 }
 
-void CGrenade::Spawn()
+void CGrenade::__MAKE_VHOOK(Spawn)()
 {
 	m_iBounceCount = 0;
 	pev->movetype = MOVETYPE_BOUNCE;
 
-	if (pev->classname)
-	{
-		RemoveEntityHashValue(pev, STRING(pev->classname), CLASSNAME);
-	}
-
 	MAKE_STRING_CLASS("grenade", pev);
-	AddEntityHashValue(pev, STRING(pev->classname), CLASSNAME);
 
 	m_bIsC4 = false;
 	pev->solid = SOLID_BBOX;
@@ -841,7 +840,7 @@ void CGrenade::Spawn()
 
 NOXREF CGrenade *CGrenade::ShootContact(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity)
 {
-	CGrenade *pGrenade = GetClassPtr((CGrenade *)NULL);
+	CGrenade *pGrenade = GetClassPtr<CCSGrenade>((CGrenade *)NULL);
 	pGrenade->Spawn();
 
 	// contact grenades arc lower
@@ -869,7 +868,7 @@ NOXREF CGrenade *CGrenade::ShootContact(entvars_t *pevOwner, Vector vecStart, Ve
 
 CGrenade *CGrenade::ShootTimed2(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, float time, int iTeam, unsigned short usEvent)
 {
-	CGrenade *pGrenade = GetClassPtr((CGrenade *)NULL);
+	CGrenade *pGrenade = GetClassPtr<CCSGrenade>((CGrenade *)NULL);
 	pGrenade->Spawn();
 
 	UTIL_SetOrigin(pGrenade->pev, vecStart);
@@ -903,7 +902,7 @@ CGrenade *CGrenade::ShootTimed2(entvars_t *pevOwner, Vector vecStart, Vector vec
 
 CGrenade *CGrenade::ShootTimed(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, float time)
 {
-	CGrenade *pGrenade = GetClassPtr((CGrenade *)NULL);
+	CGrenade *pGrenade = GetClassPtr<CCSGrenade>((CGrenade *)NULL);
 	pGrenade->Spawn();
 
 	UTIL_SetOrigin(pGrenade->pev, vecStart);
@@ -942,12 +941,12 @@ CGrenade *CGrenade::ShootTimed(entvars_t *pevOwner, Vector vecStart, Vector vecV
 	return pGrenade;
 }
 
-void CGrenade::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CGrenade::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	if (!m_bIsC4)
 		return;
 
-	CBasePlayer *player = GetClassPtr((CBasePlayer *)pActivator->pev);
+	CBasePlayer *player = GetClassPtr<CCSPlayer>((CBasePlayer *)pActivator->pev);
 
 	// For CTs to defuse the c4
 	if (player->m_iTeam != CT)
@@ -964,14 +963,14 @@ void CGrenade::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useTy
 	// freeze the player in place while defusing
 	SET_CLIENT_MAXSPEED(player->edict(), 1);
 
-	if (TheBots != NULL)
+	if (TheBots)
 	{
 		TheBots->OnEvent(EVENT_BOMB_DEFUSING, pActivator);
 	}
 
-	if (g_pGameRules->IsCareer())
+	if (CSGameRules()->IsCareer())
 	{
-		if (TheCareerTasks != NULL)
+		if (TheCareerTasks)
 		{
 			TheCareerTasks->HandleEvent(EVENT_BOMB_DEFUSING);
 		}
@@ -1004,7 +1003,7 @@ void CGrenade::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useTy
 			GETPLAYERUSERID(player->edict()),
 			GETPLAYERAUTHID(player->edict()));
 
-		// TODO show messages on clients on event
+		// TODO: show messages on clients on event
 		ClientPrint(player->pev, HUD_PRINTCENTER, "#Defusing_Bomb_Without_Defuse_Kit");
 		EMIT_SOUND(ENT(player->pev), CHAN_ITEM, "weapons/c4_disarm.wav", VOL_NORM, ATTN_NORM);
 
@@ -1021,14 +1020,10 @@ void CGrenade::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useTy
 
 CGrenade *CGrenade::ShootSatchelCharge(entvars_t *pevOwner, Vector vecStart, Vector vecAngles)
 {
-	CGrenade *pGrenade = GetClassPtr((CGrenade *)NULL);
+	CGrenade *pGrenade = GetClassPtr<CCSGrenade>((CGrenade *)NULL);
 	pGrenade->pev->movetype = MOVETYPE_TOSS;
 
-	if (pGrenade->pev->classname)
-		RemoveEntityHashValue(pGrenade->pev, STRING(pGrenade->pev->classname), CLASSNAME);
-
 	MAKE_STRING_CLASS("grenade", pGrenade->pev);
-	AddEntityHashValue(pGrenade->pev, STRING(pGrenade->pev->classname), CLASSNAME);
 
 	pGrenade->pev->solid = SOLID_BBOX;
 
@@ -1049,8 +1044,8 @@ CGrenade *CGrenade::ShootSatchelCharge(entvars_t *pevOwner, Vector vecStart, Vec
 	pGrenade->pev->spawnflags = SF_DETONATE;
 
 	pGrenade->pev->nextthink = gpGlobals->time + 0.1f;
-	pGrenade->m_flC4Blow = gpGlobals->time + g_pGameRules->m_iC4Timer;
-	pGrenade->m_flNextFreqInterval = (g_pGameRules->m_iC4Timer / 4);
+	pGrenade->m_flC4Blow = gpGlobals->time + CSGameRules()->m_iC4Timer;
+	pGrenade->m_flNextFreqInterval = float(CSGameRules()->m_iC4Timer / 4);
 	pGrenade->m_flNextFreq = gpGlobals->time;
 
 	pGrenade->m_iCurWave = 0;
@@ -1065,11 +1060,10 @@ CGrenade *CGrenade::ShootSatchelCharge(entvars_t *pevOwner, Vector vecStart, Vec
 	pGrenade->pev->friction = 0.9f;
 	pGrenade->m_bJustBlew = false;
 
-	CBasePlayer *owner = dynamic_cast<CBasePlayer *>(CBasePlayer::Instance(pevOwner));
-
-	if (owner != NULL && owner->IsPlayer())
+	CBasePlayer *pOwner = CBasePlayer::Instance(pevOwner);
+	if (pOwner && pOwner->IsPlayer())
 	{
-		pGrenade->m_pentCurBombTarget = owner->m_pentCurBombTarget;
+		pGrenade->m_pentCurBombTarget = pOwner->m_pentCurBombTarget;
 	}
 	else
 		pGrenade->m_pentCurBombTarget = NULL;
@@ -1079,7 +1073,7 @@ CGrenade *CGrenade::ShootSatchelCharge(entvars_t *pevOwner, Vector vecStart, Vec
 
 CGrenade *CGrenade::ShootSmokeGrenade(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, float time, unsigned short usEvent)
 {
-	CGrenade *pGrenade = GetClassPtr((CGrenade *)NULL);
+	CGrenade *pGrenade = GetClassPtr<CCSGrenade>((CGrenade *)NULL);
 	pGrenade->Spawn();
 
 	UTIL_SetOrigin(pGrenade->pev, vecStart);
@@ -1122,8 +1116,8 @@ void AnnounceFlashInterval(float interval, float offset)
 		WRITE_BYTE(1);
 		WRITE_STRING("bombticking");
 		WRITE_BYTE(255);
-		WRITE_SHORT((int)interval);	// interval
-		WRITE_SHORT((int)offset);
+		WRITE_SHORT(int(interval));	// interval
+		WRITE_SHORT(int(offset));
 	MESSAGE_END();
 }
 
@@ -1186,7 +1180,7 @@ void CGrenade::C4Think()
 
 		// let the bots hear the bomb beeping
 		// BOTPORT: Emit beep events at same time as client effects
-		if (TheBots != NULL)
+		if (TheBots)
 		{
 			TheBots->OnEvent(EVENT_BOMB_BEEP, this);
 		}
@@ -1211,7 +1205,7 @@ void CGrenade::C4Think()
 	// If the timer has expired ! blow this bomb up!
 	if (gpGlobals->time >= m_flC4Blow)
 	{
-		if (TheBots != NULL)
+		if (TheBots)
 		{
 			TheBots->OnEvent(EVENT_BOMB_EXPLODED);
 		}
@@ -1223,15 +1217,14 @@ void CGrenade::C4Think()
 		if (m_pentCurBombTarget)
 		{
 			CBaseEntity *pBombTarget = CBaseEntity::Instance(m_pentCurBombTarget);
-
 			if (pBombTarget)
 			{
 				pBombTarget->Use(CBaseEntity::Instance(pev->owner), this, USE_TOGGLE, 0);
 			}
 		}
 
-		CBasePlayer *pBombOwner = dynamic_cast<CBasePlayer *>(CBaseEntity::Instance(pev->owner));
-		if (pBombOwner != NULL)
+		CBasePlayer *pBombOwner = CBasePlayer::Instance(pev->owner);
+		if (pBombOwner)
 		{
 			pBombOwner->pev->frags += 3.0f;
 		}
@@ -1239,7 +1232,7 @@ void CGrenade::C4Think()
 		MESSAGE_BEGIN(MSG_ALL, gmsgBombPickup);
 		MESSAGE_END();
 
-		g_pGameRules->m_bBombDropped = false;
+		g_pGameRules->m_bBombDropped = FALSE;
 
 		if (pev->waterlevel != 0)
 			UTIL_Remove(this);
@@ -1248,7 +1241,7 @@ void CGrenade::C4Think()
 	}
 
 	// if the defusing process has started
-	if (m_bStartDefuse && m_pBombDefuser != NULL)
+	if (m_bStartDefuse && m_pBombDefuser)
 	{
 		CBasePlayer *pPlayer = (CBasePlayer *)m_pBombDefuser;
 
@@ -1276,7 +1269,7 @@ void CGrenade::C4Think()
 				m_flDefuseCountDown = 0;
 
 				// tell the bots someone has aborted defusing
-				if (TheBots != NULL)
+				if (TheBots)
 				{
 					TheBots->OnEvent(EVENT_BOMB_DEFUSE_ABORTED);
 				}
@@ -1287,7 +1280,7 @@ void CGrenade::C4Think()
 		{
 			Broadcast("BOMBDEF");
 
-			if (TheBots != NULL)
+			if (TheBots)
 			{
 				TheBots->OnEvent(EVENT_BOMB_DEFUSED, (CBaseEntity *)m_pBombDefuser);
 			}
@@ -1319,16 +1312,16 @@ void CGrenade::C4Think()
 				WRITE_BYTE(0);
 			MESSAGE_END();
 
-			if (g_pGameRules->IsCareer() && !pPlayer->IsBot())
+			if (CSGameRules()->IsCareer() && !pPlayer->IsBot())
 			{
-				if (TheCareerTasks != NULL)
+				if (TheCareerTasks)
 				{
 					TheCareerTasks->HandleEvent(EVENT_BOMB_DEFUSED, pPlayer);
 				}
 			}
 
-			g_pGameRules->m_bBombDefused = true;
-			g_pGameRules->CheckWinConditions();
+			CSGameRules()->m_bBombDefused = true;
+			CSGameRules()->CheckWinConditions();
 
 			// give the defuser credit for defusing the bomb
 			m_pBombDefuser->pev->frags += 3.0f;
@@ -1351,7 +1344,7 @@ void CGrenade::C4Think()
 			m_pBombDefuser = NULL;
 
 			// tell the bots someone has aborted defusing
-			if (TheBots != NULL)
+			if (TheBots)
 			{
 				TheBots->OnEvent(EVENT_BOMB_DEFUSE_ABORTED);
 			}
@@ -1366,24 +1359,21 @@ void CGrenade::C4Touch(CBaseEntity *pOther)
 
 NOXREF void CGrenade::UseSatchelCharges(entvars_t *pevOwner, SATCHELCODE code)
 {
-	edict_t *pentFind;
-	edict_t *pentOwner;
-
 	if (!pevOwner)
 		return;
 
+	edict_t *pentFind = NULL;
 	CBaseEntity *pOwner = CBaseEntity::Instance(pevOwner);
 
-	pentOwner = pOwner->edict();
-
-	pentFind = FIND_ENTITY_BY_CLASSNAME(NULL, "grenade");
-	while (!FNullEnt(pentFind))
+	while ((pentFind = FIND_ENTITY_BY_CLASSNAME(pentFind, "grenade")))
 	{
-		CBaseEntity *pEnt = Instance(pentFind);
+		if (FNullEnt(pentFind))
+			break;
 
-		if (pEnt != NULL)
+		CBaseEntity *pEnt = Instance(pentFind);
+		if (pEnt)
 		{
-			if ((pEnt->pev->spawnflags & SF_DETONATE) && pEnt->pev->owner == pentOwner)
+			if ((pEnt->pev->spawnflags & SF_DETONATE) && pEnt->pev->owner == pOwner->edict())
 			{
 				if (code == SATCHEL_DETONATE)
 					pEnt->Use(pOwner, pOwner, USE_ON, 0);
@@ -1394,8 +1384,7 @@ NOXREF void CGrenade::UseSatchelCharges(entvars_t *pevOwner, SATCHELCODE code)
 				}
 			}
 		}
-		pentFind = FIND_ENTITY_BY_CLASSNAME(pentFind, "grenade");
 	}
 }
 
-IMPLEMENT_SAVERESTORE(CGrenade, CBaseMonster);
+IMPLEMENT_SAVERESTORE(CGrenade, CBaseMonster)

@@ -1,8 +1,11 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
 
 // Global Savedata for Delay
 TYPEDESCRIPTION CBaseDelay::m_SaveData[] =
@@ -35,37 +38,31 @@ TYPEDESCRIPTION CBaseToggle::m_SaveData[] =
 	DEFINE_FIELD(CBaseToggle, m_bitsDamageInflict, FIELD_INTEGER),	// damage type inflicted
 };
 
-// Landmark class
+#endif
 
-void CPointEntity::Spawn()
+// Landmark class
+void CPointEntity::__MAKE_VHOOK(Spawn)()
 {
 	pev->solid = SOLID_NOT;
 }
 
 // Null Entity, remove on startup
-
-void CNullEntity::Spawn()
+void CNullEntity::__MAKE_VHOOK(Spawn)()
 {
 	REMOVE_ENTITY(ENT(pev));
 }
 
-LINK_ENTITY_TO_CLASS(info_null, CNullEntity);
+LINK_ENTITY_TO_CLASS(info_null, CNullEntity, CCSNullEntity)
 
 // These are the new entry points to entities.
+LINK_ENTITY_TO_CLASS(info_player_deathmatch, CBaseDMStart, CCSDMStart)
+LINK_ENTITY_TO_CLASS(info_player_start, CPointEntity, CCSPointEntity)
+LINK_ENTITY_TO_CLASS(info_vip_start, CBaseDMStart, CCSDMStart)
+LINK_ENTITY_TO_CLASS(info_landmark, CPointEntity, CCSPointEntity)
+LINK_ENTITY_TO_CLASS(info_hostage_rescue, CPointEntity, CCSPointEntity)
+LINK_ENTITY_TO_CLASS(info_bomb_target, CPointEntity, CCSPointEntity)
 
-LINK_ENTITY_TO_CLASS(info_player_deathmatch, CBaseDMStart);
-
-LINK_ENTITY_TO_CLASS(info_player_start, CPointEntity);
-
-LINK_ENTITY_TO_CLASS(info_vip_start, CBaseDMStart);
-
-LINK_ENTITY_TO_CLASS(info_landmark, CPointEntity);
-
-LINK_ENTITY_TO_CLASS(info_hostage_rescue, CPointEntity);
-
-LINK_ENTITY_TO_CLASS(info_bomb_target, CPointEntity);
-
-void CBaseDMStart::KeyValue(KeyValueData *pkvd)
+void CBaseDMStart::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "master"))
 	{
@@ -76,7 +73,7 @@ void CBaseDMStart::KeyValue(KeyValueData *pkvd)
 		CPointEntity::KeyValue(pkvd);
 }
 
-BOOL CBaseDMStart::IsTriggered(CBaseEntity *pEntity)
+BOOL CBaseDMStart::__MAKE_VHOOK(IsTriggered)(CBaseEntity *pEntity)
 {
 	BOOL master = UTIL_IsMasterTriggered(pev->netname, pEntity);
 
@@ -84,16 +81,14 @@ BOOL CBaseDMStart::IsTriggered(CBaseEntity *pEntity)
 }
 
 // This updates global tables that need to know about entities being removed
-
 void CBaseEntity::UpdateOnRemove()
 {
-	int i;
-
+#ifndef REGAMEDLL_FIXES
 	if (pev->flags & FL_GRAPHED)
 	{
 		// this entity was a LinkEnt in the world node graph, so we must remove it from
 		// the graph since we are removing it from the world.
-		for (i = 0; i < WorldGraph.m_cLinks; ++i)
+		for (int i = 0; i < WorldGraph.m_cLinks; ++i)
 		{
 			if (WorldGraph.m_pLinkPool[i].m_pLinkEnt == pev)
 			{
@@ -102,6 +97,7 @@ void CBaseEntity::UpdateOnRemove()
 			}
 		}
 	}
+#endif
 
 	if (pev->globalname)
 	{
@@ -110,7 +106,6 @@ void CBaseEntity::UpdateOnRemove()
 }
 
 // Convenient way to delay removing oneself
-
 void CBaseEntity::SUB_Remove()
 {
 	UpdateOnRemove();
@@ -125,15 +120,14 @@ void CBaseEntity::SUB_Remove()
 }
 
 // Convenient way to explicitly do nothing (passed to functions that require a method)
-
 void CBaseEntity::SUB_DoNothing()
 {
 	;
 }
 
-IMPLEMENT_SAVERESTORE(CBaseDelay, CBaseEntity);
+IMPLEMENT_SAVERESTORE(CBaseDelay, CBaseEntity)
 
-void CBaseDelay::KeyValue(KeyValueData *pkvd)
+void CBaseDelay::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "delay"))
 	{
@@ -151,13 +145,12 @@ void CBaseDelay::KeyValue(KeyValueData *pkvd)
 
 // If self.delay is set, a DelayedUse entity will be created that will actually
 // do the SUB_UseTargets after that many seconds have passed.
-
+//
 // Removes all entities with a targetname that match self.killtarget,
 // and removes them, so some events can remove other triggers.
-
+//
 // Search for (string)targetname in all entities that
 // match (string)self.target and call their .use function (if they have one)
-
 void CBaseEntity::SUB_UseTargets(CBaseEntity *pActivator, USE_TYPE useType, float value)
 {
 	// fire targets
@@ -183,7 +176,7 @@ void FireTargets(const char *targetName, CBaseEntity *pActivator, CBaseEntity *p
 		CBaseEntity *pTarget = CBaseEntity::Instance(pentTarget);
 
 		// Don't use dying ents
-		if (pTarget && !(pTarget->pev->flags & FL_KILLME))
+		if (pTarget != NULL && !(pTarget->pev->flags & FL_KILLME))
 		{
 			ALERT(at_aiconsole, "Found: %s, firing (%s)\n", STRING(pTarget->pev->classname), targetName);
 			pTarget->Use(pActivator, pCaller, useType, value);
@@ -191,7 +184,7 @@ void FireTargets(const char *targetName, CBaseEntity *pActivator, CBaseEntity *p
 	}
 }
 
-LINK_ENTITY_TO_CLASS(DelayedUse, CBaseDelay);
+LINK_ENTITY_TO_CLASS(DelayedUse, CBaseDelay, CCSDelay)
 
 void CBaseDelay::SUB_UseTargets(CBaseEntity *pActivator, USE_TYPE useType, float value)
 {
@@ -203,20 +196,15 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity *pActivator, USE_TYPE useType, float
 	if (m_flDelay != 0)
 	{
 		// create a temp object to fire at a later time
-		CBaseDelay *pTemp = GetClassPtr((CBaseDelay *)NULL);
-		if (pTemp->pev->classname)
-		{
-			RemoveEntityHashValue(pTemp->pev, STRING(pTemp->pev->classname), CLASSNAME);
-		}
+		CBaseDelay *pTemp = GetClassPtr<CCSDelay>((CBaseDelay *)NULL);
 
 		MAKE_STRING_CLASS("DelayedUse", pTemp->pev);
-		AddEntityHashValue(pTemp->pev, STRING(pTemp->pev->classname), CLASSNAME);
 
 		pTemp->pev->nextthink = gpGlobals->time + m_flDelay;
 		pTemp->SetThink(&CBaseDelay::DelayThink);
 
 		// Save the useType
-		pTemp->pev->button = (int)useType;
+		pTemp->pev->button = int(useType);
 		pTemp->m_iszKillTarget = m_iszKillTarget;
 
 		// prevent "recursion"
@@ -267,7 +255,6 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity *pActivator, USE_TYPE useType, float
 
 // QuakeEd only writes a single float for angles (bad idea), so up and down are
 // just constant angles.
-
 void SetMovedir(entvars_t *pev)
 {
 	if (pev->angles == Vector(0, -1, 0))
@@ -302,9 +289,9 @@ void CBaseDelay::DelayThink()
 	REMOVE_ENTITY(ENT(pev));
 }
 
-IMPLEMENT_SAVERESTORE(CBaseToggle, CBaseAnimating);
+IMPLEMENT_SAVERESTORE(CBaseToggle, CBaseAnimating)
 
-void CBaseToggle::KeyValue(KeyValueData *pkvd)
+void CBaseToggle::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "lip"))
 	{
@@ -332,7 +319,6 @@ void CBaseToggle::KeyValue(KeyValueData *pkvd)
 
 // calculate pev->velocity and pev->nextthink to reach vecDest from
 // pev->origin traveling at flSpeed
-
 void CBaseToggle::LinearMove(Vector vecDest, float flSpeed)
 {
 	assert(("LinearMove:  no speed is defined!", flSpeed != 0));
@@ -351,18 +337,17 @@ void CBaseToggle::LinearMove(Vector vecDest, float flSpeed)
 	Vector vecDestDelta = vecDest - pev->origin;
 
 	// divide vector length by speed to get time to reach dest
-	float flTravelTime = vecDestDelta.Length() / flSpeed;
+	float_precision flTravelTime = vecDestDelta.Length() / flSpeed;
 
 	// set nextthink to trigger a call to LinearMoveDone when dest is reached
 	pev->nextthink = pev->ltime + flTravelTime;
 	SetThink(&CBaseToggle::LinearMoveDone);
 
 	// scale the destdelta vector by the time spent traveling to get velocity
-	pev->velocity = vecDestDelta * (float)(1 / flTravelTime);
+	pev->velocity = vecDestDelta * float(1 / flTravelTime);
 }
 
 // After moving, set origin to exact final destination, call "move done" function
-
 void CBaseToggle::LinearMoveDone()
 {
 	UTIL_SetOrigin(pev, m_vecFinalDest);
@@ -386,7 +371,6 @@ NOXREF BOOL CBaseToggle::IsLockedByMaster()
 // calculate pev->velocity and pev->nextthink to reach vecDest from
 // pev->origin traveling at flSpeed
 // Just like LinearMove, but rotational.
-
 void CBaseToggle::AngularMove(Vector vecDestAngle, float flSpeed)
 {
 	assert(("AngularMove:  no speed is defined!", flSpeed != 0));
@@ -405,7 +389,7 @@ void CBaseToggle::AngularMove(Vector vecDestAngle, float flSpeed)
 	Vector vecDestDelta = vecDestAngle - pev->angles;
 
 	// divide by speed to get time to reach dest
-	float flTravelTime = vecDestDelta.Length() / flSpeed;
+	float_precision flTravelTime = vecDestDelta.Length() / flSpeed;
 
 	// set nextthink to trigger a call to AngularMoveDone when dest is reached
 	pev->nextthink = pev->ltime + flTravelTime;
@@ -416,7 +400,6 @@ void CBaseToggle::AngularMove(Vector vecDestAngle, float flSpeed)
 }
 
 // After rotating, set angle to exact final angle, call "move done" function
-
 void CBaseToggle::AngularMoveDone()
 {
 	pev->angles = m_vecFinalAngle;
@@ -471,7 +454,6 @@ float CBaseToggle::AxisDelta(int flags, const Vector &angle1, const Vector &angl
 }
 
 // returns TRUE if the passed entity is visible to caller, even if not infront ()
-
 NOXREF BOOL FEntIsVisible(entvars_t *pev, entvars_t *pevTarget)
 {
 	Vector vecSpot1 = pev->origin + pev->view_ofs;

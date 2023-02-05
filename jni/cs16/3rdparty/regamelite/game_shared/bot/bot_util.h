@@ -49,39 +49,37 @@ enum PriorityType
 };
 
 // Simple class for tracking intervals of game time
-
 class IntervalTimer
 {
 public:
-	IntervalTimer()		{ m_timestamp = -1.0f; }
-	void Reset()		{ m_timestamp = gpGlobals->time; }
-	void Start()		{ m_timestamp = gpGlobals->time; }
-	void Invalidate()	{ m_timestamp = -1.0f; }
+	IntervalTimer() { m_timestamp = -1.0f; }
+	void Reset() { m_timestamp = gpGlobals->time; }
+	void Start() { m_timestamp = gpGlobals->time; }
+	void Invalidate() { m_timestamp = -1.0f; }
 
 	bool HasStarted() const { return (m_timestamp > 0.0f); }
 
 	// if not started, elapsed time is very large
-	float GetElapsedTime() const			{ return (HasStarted()) ? (gpGlobals->time - m_timestamp) : 99999.9f; }
-	bool IsLessThen(float duration) const		{ return (gpGlobals->time - m_timestamp < duration) ? true : false; }
-	bool IsGreaterThen(float duration) const	{ return (gpGlobals->time - m_timestamp > duration) ? true : false; }
+	float GetElapsedTime() const { return (HasStarted()) ? (gpGlobals->time - m_timestamp) : 99999.9f; }
+	bool IsLessThen(float duration) const { return (gpGlobals->time - m_timestamp < duration) ? true : false; }
+	bool IsGreaterThen(float duration) const { return (gpGlobals->time - m_timestamp > duration) ? true : false; }
 
 private:
 	float m_timestamp;
 };
 
 // Simple class for counting down a short interval of time
-
 class CountdownTimer
 {
 public:
-	CountdownTimer()	{ m_timestamp = -1.0f; m_duration = 0.0f; }
-	void Reset()		{ m_timestamp = gpGlobals->time + m_duration; }
+	CountdownTimer() { m_timestamp = -1.0f; m_duration = 0.0f; }
+	void Reset() { m_timestamp = gpGlobals->time + m_duration; }
 
-	void Start(float duration)	{ m_timestamp = gpGlobals->time + duration; m_duration = duration; }
-	bool HasStarted() const		{ return (m_timestamp > 0.0f); }
+	void Start(float duration) { m_timestamp = gpGlobals->time + duration; m_duration = duration; }
+	bool HasStarted() const { return (m_timestamp > 0.0f); }
 
-	void Invalidate()	{ m_timestamp = -1.0f; }
-	bool IsElapsed() const	{ return (gpGlobals->time > m_timestamp); }
+	void Invalidate() { m_timestamp = -1.0f; }
+	bool IsElapsed() const { return (gpGlobals->time > m_timestamp); }
 
 private:
 	float m_duration;
@@ -89,7 +87,6 @@ private:
 };
 
 // Return true if the given entity is valid
-
 inline bool IsEntityValid(CBaseEntity *entity)
 {
 	if (entity == NULL)
@@ -110,7 +107,6 @@ inline bool IsEntityValid(CBaseEntity *entity)
 // Given two line segments: startA to endA, and startB to endB, return true if they intesect
 // and put the intersection point in "result".
 // Note that this computes the intersection of the 2D (x,y) projection of the line segments.
-
 inline bool IsIntersecting2D(const Vector &startA, const Vector &endA, const Vector &startB, const Vector &endB, Vector *result = NULL)
 {
 	float denom = (endA.x - startA.x) * (endB.y - startB.y) - (endA.y - startA.y) * (endB.x - startB.x);
@@ -143,7 +139,7 @@ inline bool IsIntersecting2D(const Vector &startA, const Vector &endA, const Vec
 	}
 
 	// compute intesection point
-	if (result)
+	if (result != NULL)
 	{
 		*result = startA + s * (endA - startA);
 	}
@@ -153,13 +149,12 @@ inline bool IsIntersecting2D(const Vector &startA, const Vector &endA, const Vec
 
 // Iterate over all active players in the game, invoking functor on each.
 // If functor returns false, stop iteration and return false.
-
 template <typename Functor>
 bool ForEachPlayer(Functor &func)
 {
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 		if (!IsEntityValid((CBaseEntity *)player))
 			continue;
 
@@ -171,6 +166,16 @@ bool ForEachPlayer(Functor &func)
 	}
 
 	return true;
+}
+
+// For zombie game
+inline bool IsZombieGame()
+{
+#ifdef TERRORSTRIKE
+	return true;
+#else
+	return false;
+#endif // TERRORSTRIKE
 }
 
 extern cvar_t cv_bot_traceview;
@@ -203,6 +208,11 @@ extern cvar_t cv_bot_defer_to_human;
 extern cvar_t cv_bot_chatter;
 extern cvar_t cv_bot_profile_db;
 
+#ifdef REGAMEDLL_ADD
+extern cvar_t cv_bot_deathmatch;
+extern cvar_t cv_bot_quota_mode;
+#endif
+
 #define IS_ALIVE true
 int UTIL_HumansOnTeam(int teamID, bool isAlive = false);
 
@@ -221,16 +231,16 @@ const char *UTIL_GetBotPrefix();
 void UTIL_ConstructBotNetName(char *name, int nameLength, const BotProfile *profile);
 bool UTIL_IsVisibleToTeam(const Vector &spot, int team, float maxRange = -1.0f);
 CBasePlayer *UTIL_GetLocalPlayer();
-NOXREF Vector UTIL_ComputeOrigin(entvars_t *pevVars);
-NOXREF Vector UTIL_ComputeOrigin(CBaseEntity *pEntity);
-NOXREF Vector UTIL_ComputeOrigin(edict_t *pentEdict);
-NOXREF void UTIL_DrawBeamFromEnt(int iIndex, Vector vecEnd, int iLifetime, byte bRed, byte bGreen, byte bBlue);
+Vector UTIL_ComputeOrigin(entvars_t *pevVars);
+Vector UTIL_ComputeOrigin(CBaseEntity *pEntity);
+Vector UTIL_ComputeOrigin(edict_t *pentEdict);
+void UTIL_DrawBeamFromEnt(int iIndex, Vector vecEnd, int iLifetime, byte bRed, byte bGreen, byte bBlue);
 void UTIL_DrawBeamPoints(Vector vecStart, Vector vecEnd, int iLifetime, byte bRed, byte bGreen, byte bBlue);
 
 // Echos text to the console, and prints it on the client's screen.  This is NOT tied to the developer cvar.
 // If you are adding debugging output in cstrike, use UTIL_DPrintf() (debug.h) instead.
-void CONSOLE_ECHO(char *pszMsg, ...);
-void CONSOLE_ECHO_LOGGED(char *pszMsg, ...);
+void CONSOLE_ECHO(const char *pszMsg, ...);
+void CONSOLE_ECHO_LOGGED(const char *pszMsg, ...);
 
 void BotPrecache();
 void InitBotTrig();

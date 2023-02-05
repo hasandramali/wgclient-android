@@ -53,15 +53,15 @@ void VectorTransform(const vec_t *in1, float *in2, vec_t *out);
 int VectorCompare(const vec_t *v1, const vec_t *v2);
 void VectorMA(const vec_t *veca, float scale, const vec_t *vecb, vec_t *vecc);
 
-float _DotProduct(const vec_t *v1, const vec_t *v2);
+float_precision _DotProduct(const vec_t *v1, const vec_t *v2);
 void _VectorSubtract(vec_t *veca, vec_t *vecb, vec_t *out);
 void _VectorAdd(vec_t *veca, vec_t *vecb, vec_t *out);
 void _VectorCopy(vec_t *in, vec_t *out);
-void _CrossProduct(const vec_t *v1, const vec_t *v2, vec_t *cross);
+void CrossProduct(const vec_t *v1, const vec_t *v2, vec_t *cross);
 
-float Length(const vec_t *v);
+float_precision Length(const vec_t *v);
 float Distance(const vec_t *v1, const vec_t *v2);
-float VectorNormalize(vec_t *v);
+float_precision VectorNormalize(vec_t *v);
 
 void VectorInverse(vec_t *v);
 void VectorScale(const vec_t *in, vec_t scale, vec_t *out);

@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CFuncVehicle::m_SaveData[] =
 {
 	DEFINE_FIELD(CFuncVehicle, m_ppath, FIELD_CLASSPTR),
@@ -19,7 +23,9 @@ TYPEDESCRIPTION CFuncVehicle::m_SaveData[] =
 	DEFINE_FIELD(CFuncVehicle, m_oldSpeed, FIELD_FLOAT),
 };
 
-float Fix2(float angle)
+#endif
+
+float_precision Fix2(float angle)
 {
 	while (angle < 0)
 		angle += 360;
@@ -37,11 +43,10 @@ void FixupAngles2(Vector &v)
 	v.z = Fix2(v.z);
 }
 
-IMPLEMENT_SAVERESTORE(CFuncVehicle, CBaseEntity);
+IMPLEMENT_SAVERESTORE(CFuncVehicle, CBaseEntity)
+LINK_ENTITY_TO_CLASS(func_vehicle, CFuncVehicle, CCSFuncVehicle)
 
-LINK_ENTITY_TO_CLASS(func_vehicle, CFuncVehicle);
-
-void CFuncVehicle::KeyValue(KeyValueData *pkvd)
+void CFuncVehicle::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "length"))
 	{
@@ -70,8 +75,9 @@ void CFuncVehicle::KeyValue(KeyValueData *pkvd)
 	}
 	else if (FStrEq(pkvd->szKeyName, "volume"))
 	{
-		m_flVolume = (float)Q_atoi(pkvd->szValue);
-		m_flVolume *= 0.1;
+		// rounding values to integer
+		m_flVolume = Q_atoi(pkvd->szValue);
+		m_flVolume *= 0.1f;
 
 		pkvd->fHandled = TRUE;
 	}
@@ -106,7 +112,7 @@ void CFuncVehicle::NextThink(float thinkTime, BOOL alwaysThink)
 	pev->nextthink = thinkTime;
 }
 
-void CFuncVehicle::Blocked(CBaseEntity *pOther)
+void CFuncVehicle::__MAKE_VHOOK(Blocked)(CBaseEntity *pOther)
 {
 	entvars_t *pevOther = pOther->pev;
 
@@ -136,7 +142,7 @@ void CFuncVehicle::Blocked(CBaseEntity *pOther)
 	float maxy = Q_max(vBackLeft.y, vBackRight.y);
 
 	float minz = pev->origin.z;
-	float maxz = pev->origin.z + (2 * abs((int)(pev->mins.z - pev->maxs.z)));
+	float maxz = pev->origin.z + (2 * Q_abs(int(pev->mins.z - pev->maxs.z)));
 
 	if (pOther->pev->origin.x < minx
 		|| pOther->pev->origin.x > maxx
@@ -149,7 +155,7 @@ void CFuncVehicle::Blocked(CBaseEntity *pOther)
 	}
 }
 
-void CFuncVehicle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CFuncVehicle::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	float delta = value;
 
@@ -186,11 +192,11 @@ void CFuncVehicle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE u
 			}
 		}
 
-		float flSpeedRatio = delta;
+		float_precision flSpeedRatio = delta;
 
 		if (delta > 0)
 		{
-			flSpeedRatio = (float)(pev->speed / m_speed);
+			flSpeedRatio = float(pev->speed / m_speed);
 
 			if (pev->speed < 0)		flSpeedRatio = m_acceleration * 0.0005 + flSpeedRatio + VEHICLE_SPEED0_ACCELERATION;
 			else if (pev->speed < 10)	flSpeedRatio = m_acceleration * 0.0006 + flSpeedRatio + VEHICLE_SPEED1_ACCELERATION;
@@ -211,14 +217,14 @@ void CFuncVehicle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE u
 		{
 			flSpeedRatio = pev->speed / m_speed;
 
-										// TODO: fix float for test demo
-			if (flSpeedRatio > 0)					flSpeedRatio = (float)flSpeedRatio - 0.0125;
-			else if (flSpeedRatio <= 0 && flSpeedRatio > -0.05)	flSpeedRatio = (float)flSpeedRatio - 0.0075;
-			else if (flSpeedRatio <= 0.05 && flSpeedRatio > -0.1)	flSpeedRatio = (float)flSpeedRatio - 0.01;
-			else if (flSpeedRatio <= 0.15 && flSpeedRatio > -0.15)	flSpeedRatio = (float)flSpeedRatio - 0.0125;
-			else if (flSpeedRatio <= 0.15 && flSpeedRatio > -0.22)	flSpeedRatio = (float)flSpeedRatio - 0.01375;
-			else if (flSpeedRatio <= 0.22 && flSpeedRatio > -0.3)	flSpeedRatio = (float)flSpeedRatio - 0.0175;
-			else if (flSpeedRatio <= 0.3)				flSpeedRatio = (float)flSpeedRatio - 0.0125;
+										// TODO: fix test demo
+			if (flSpeedRatio > 0)					flSpeedRatio = float(flSpeedRatio) - 0.0125;
+			else if (flSpeedRatio <= 0 && flSpeedRatio > -0.05)	flSpeedRatio = float(flSpeedRatio) - 0.0075;
+			else if (flSpeedRatio <= 0.05 && flSpeedRatio > -0.1)	flSpeedRatio = float(flSpeedRatio) - 0.01;
+			else if (flSpeedRatio <= 0.15 && flSpeedRatio > -0.15)	flSpeedRatio = float(flSpeedRatio) - 0.0125;
+			else if (flSpeedRatio <= 0.15 && flSpeedRatio > -0.22)	flSpeedRatio = float(flSpeedRatio) - 0.01375;
+			else if (flSpeedRatio <= 0.22 && flSpeedRatio > -0.3)	flSpeedRatio = float(flSpeedRatio) - 0.0175;
+			else if (flSpeedRatio <= 0.3)				flSpeedRatio = float(flSpeedRatio) - 0.0125;
 		}
 
 		if (flSpeedRatio > 1)
@@ -232,7 +238,7 @@ void CFuncVehicle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE u
 
 		pev->speed = flSpeedRatio * m_speed;
 		Next();
-		m_flAcceleratorDecay = gpGlobals->time + 0.25;
+		m_flAcceleratorDecay = gpGlobals->time + 0.25f;
 
 	}
 	else if (m_flCanTurnNow < gpGlobals->time)
@@ -240,7 +246,7 @@ void CFuncVehicle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE u
 		if (delta == 20)
 		{
 			m_iTurnAngle++;
-			m_flSteeringWheelDecay = gpGlobals->time + 0.075;
+			m_flSteeringWheelDecay = gpGlobals->time + 0.075f;
 
 			if (m_iTurnAngle > 8)
 			{
@@ -250,7 +256,7 @@ void CFuncVehicle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE u
 		else if (delta == 30)
 		{
 			m_iTurnAngle--;
-			m_flSteeringWheelDecay = gpGlobals->time + 0.075;
+			m_flSteeringWheelDecay = gpGlobals->time + 0.075f;
 
 			if (m_iTurnAngle < -8)
 			{
@@ -258,7 +264,7 @@ void CFuncVehicle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE u
 			}
 		}
 
-		m_flCanTurnNow = gpGlobals->time + 0.05;
+		m_flCanTurnNow = gpGlobals->time + 0.05f;
 	}
 }
 
@@ -280,7 +286,7 @@ void CFuncVehicle::UpdateSound()
 	if (!pev->noise)
 		return;
 
-	float flpitch = VEHICLE_STARTPITCH + (abs((int)pev->speed) * (VEHICLE_MAXPITCH - VEHICLE_STARTPITCH) / VEHICLE_MAXSPEED);
+	float flpitch = VEHICLE_STARTPITCH + (Q_abs(int(pev->speed)) * (VEHICLE_MAXPITCH - VEHICLE_STARTPITCH) / VEHICLE_MAXSPEED);
 
 	if (flpitch > 200)
 		flpitch = 200;
@@ -292,7 +298,7 @@ void CFuncVehicle::UpdateSound()
 			EMIT_SOUND_DYN(ENT(pev), CHAN_ITEM, "plats/vehicle_brake1.wav", m_flVolume, ATTN_NORM, 0, 100);
 		}
 
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, (char *)STRING(pev->noise), m_flVolume, ATTN_NORM, 0, (int)flpitch);
+		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, (char *)STRING(pev->noise), m_flVolume, ATTN_NORM, 0, int(flpitch));
 		m_soundPlaying = 1;
 	}
 	else
@@ -308,7 +314,7 @@ void CFuncVehicle::UpdateSound()
 
 void CFuncVehicle::CheckTurning()
 {
-	float maxspeed;
+	float_precision maxspeed;
 	TraceResult tr;
 	bool bTurnIntoWall = false;
 
@@ -347,7 +353,7 @@ void CFuncVehicle::CheckTurning()
 
 	if (pev->speed > 0)
 	{
-		int iCountTurn = abs(m_iTurnAngle);
+		int iCountTurn = Q_abs(m_iTurnAngle);
 
 		if (iCountTurn > 4)
 		{
@@ -409,7 +415,7 @@ void CFuncVehicle::CollisionDetection()
 				}
 			}
 
-			if (DotProduct(gpGlobals->v_forward, tr.vecPlaneNormal * -1.0) < 0.7 && tr.vecPlaneNormal.z < 0.1)
+			if (DotProduct(gpGlobals->v_forward, tr.vecPlaneNormal * -1.0f) < 0.7f && tr.vecPlaneNormal.z < 0.1f)
 			{
 				m_vSurfaceNormal = tr.vecPlaneNormal;
 				m_vSurfaceNormal.z = 0;
@@ -427,14 +433,14 @@ void CFuncVehicle::CollisionDetection()
 		}
 		else
 		{
-			if (DotProduct(gpGlobals->v_forward, tr.vecPlaneNormal * -1.0) < 0.7 && tr.vecPlaneNormal.z < 0.1)
+			if (DotProduct(gpGlobals->v_forward, tr.vecPlaneNormal * -1.0f) < 0.7f && tr.vecPlaneNormal.z < 0.1f)
 			{
 				m_vSurfaceNormal = tr.vecPlaneNormal;
 				m_vSurfaceNormal.z = 0;
 
 				pev->speed *= 0.99;
 			}
-			else if (tr.vecPlaneNormal[2] < 0.65 || tr.fStartSolid)
+			else if (tr.vecPlaneNormal[2] < 0.65f || tr.fStartSolid)
 			{
 				pev->speed *= -1.0;
 			}
@@ -471,7 +477,7 @@ void CFuncVehicle::CollisionDetection()
 			}
 		}
 
-		if (DotProduct(gpGlobals->v_forward, tr.vecPlaneNormal * -1.0) > -0.7 && tr.vecPlaneNormal.z < 0.1)
+		if (DotProduct(gpGlobals->v_forward, tr.vecPlaneNormal * -1.0f) > -0.7f && tr.vecPlaneNormal.z < 0.1f)
 		{
 			m_vSurfaceNormal = tr.vecPlaneNormal;
 			m_vSurfaceNormal.z = 0;
@@ -507,7 +513,7 @@ void CFuncVehicle::TerrainFollowing()
 void CFuncVehicle::Next()
 {
 	Vector vGravityVector, forward, right, up;
-	float time = 0.1;
+	float time = 0.1f;
 
 	vGravityVector = g_vecZero;
 	UTIL_MakeVectors(pev->angles);
@@ -528,7 +534,7 @@ void CFuncVehicle::Next()
 
 	if (m_flSteeringWheelDecay < gpGlobals->time)
 	{
-		m_flSteeringWheelDecay = gpGlobals->time + 0.1;
+		m_flSteeringWheelDecay = gpGlobals->time + 0.1f;
 
 		if (m_iTurnAngle < 0)
 			m_iTurnAngle++;
@@ -539,7 +545,7 @@ void CFuncVehicle::Next()
 
 	if (m_flAcceleratorDecay < gpGlobals->time)
 	{
-		m_flAcceleratorDecay = gpGlobals->time + 0.1;
+		m_flAcceleratorDecay = gpGlobals->time + 0.1f;
 
 		if (pev->speed < 0)
 		{
@@ -577,7 +583,7 @@ void CFuncVehicle::Next()
 		Vector vTargetAngle, vAngle;
 
 		float vx;
-		float vy;
+		float_precision vy;
 
 		m_vVehicleDirection = CrossProduct(m_vSurfaceNormal, gpGlobals->v_forward);
 		m_vVehicleDirection = CrossProduct(m_vSurfaceNormal, m_vVehicleDirection);
@@ -608,8 +614,8 @@ void CFuncVehicle::Next()
 		else if (vy < -10)
 			vy = -10;
 
-		pev->avelocity.y = (int)(vy * 10);
-		pev->avelocity.x = (int)(vx * 10);
+		pev->avelocity.y = int(vy * 10);
+		pev->avelocity.x = int(vx * 10);
 
 		m_flLaunchTime = -1;
 		m_flLastNormalZ = m_vSurfaceNormal.z;
@@ -642,7 +648,7 @@ void CFuncVehicle::Next()
 	if (m_flUpdateSound < gpGlobals->time)
 	{
 		UpdateSound();
-		m_flUpdateSound = gpGlobals->time + 1.0;
+		m_flUpdateSound = gpGlobals->time + 1.0f;
 	}
 
 	if (m_vSurfaceNormal != g_vecZero)
@@ -718,7 +724,7 @@ void CFuncVehicle::SetControls(entvars_t *pevControls)
 	m_controlMaxs = pevControls->maxs + offset;
 }
 
-BOOL CFuncVehicle::OnControls(entvars_t *pevTest)
+BOOL CFuncVehicle::__MAKE_VHOOK(OnControls)(entvars_t *pevTest)
 {
 	Vector offset = pevTest->origin - pev->origin;
 
@@ -779,7 +785,7 @@ void CFuncVehicle::NearestPath()
 {
 	CBaseEntity *pTrack = NULL;
 	CBaseEntity *pNearest = NULL;
-	float dist;
+	float_precision dist;
 	float closest = 1024;
 
 	while ((pTrack = UTIL_FindEntityInSphere(pTrack, pev->origin, 1024)) != NULL)
@@ -822,7 +828,7 @@ void CFuncVehicle::NearestPath()
 	}
 }
 
-void CFuncVehicle::OverrideReset()
+void CFuncVehicle::__MAKE_VHOOK(OverrideReset)()
 {
 	NextThink(pev->ltime + 0.1, FALSE);
 	SetThink(&CFuncVehicle::NearestPath);
@@ -838,12 +844,12 @@ CFuncVehicle *CFuncVehicle::Instance(edict_t *pent)
 	return NULL;
 }
 
-int CFuncVehicle::Classify()
+int CFuncVehicle::__MAKE_VHOOK(Classify)()
 {
 	return CLASS_VEHICLE;
 }
 
-void CFuncVehicle::Spawn()
+void CFuncVehicle::__MAKE_VHOOK(Spawn)()
 {
 	if (pev->speed == 0)
 		m_speed = 165;
@@ -859,7 +865,7 @@ void CFuncVehicle::Spawn()
 	pev->velocity = g_vecZero;
 	pev->avelocity = g_vecZero;
 
-	pev->impulse = (int)m_speed;
+	pev->impulse = int(m_speed);
 	m_acceleration = 5;
 
 	m_dir = 1;
@@ -892,7 +898,7 @@ void CFuncVehicle::Spawn()
 	Precache();
 }
 
-void CFuncVehicle::Restart()
+void CFuncVehicle::__MAKE_VHOOK(Restart)()
 {
 	ALERT(at_console, "M_speed = %f\n", m_speed);
 
@@ -900,7 +906,7 @@ void CFuncVehicle::Restart()
 	pev->velocity = g_vecZero;
 	pev->avelocity = g_vecZero;
 
-	pev->impulse = (int)m_speed;
+	pev->impulse = int(m_speed);
 	m_flTurnStartTime = -1;
 	m_flUpdateSound = -1;
 	m_dir = 1;
@@ -918,7 +924,7 @@ void CFuncVehicle::Restart()
 	SetThink(&CFuncVehicle::Find);
 }
 
-void CFuncVehicle::Precache()
+void CFuncVehicle::__MAKE_VHOOK(Precache)()
 {
 	if (m_flVolume == 0.0f)
 		m_flVolume = 1.0f;
@@ -939,7 +945,7 @@ void CFuncVehicle::Precache()
 	m_usAdjustPitch = PRECACHE_EVENT(1, "events/vehicle.sc");
 }
 
-LINK_ENTITY_TO_CLASS(func_vehiclecontrols, CFuncVehicleControls);
+LINK_ENTITY_TO_CLASS(func_vehiclecontrols, CFuncVehicleControls, CCSFuncVehicleControls)
 
 void CFuncVehicleControls::Find()
 {
@@ -963,7 +969,7 @@ void CFuncVehicleControls::Find()
 	UTIL_Remove(this);
 }
 
-void CFuncVehicleControls::Spawn()
+void CFuncVehicleControls::__MAKE_VHOOK(Spawn)()
 {
 	pev->solid = SOLID_NOT;
 	pev->movetype = MOVETYPE_NONE;

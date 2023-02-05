@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_ak47, CAK47);
+LINK_ENTITY_TO_CLASS(weapon_ak47, CAK47, CCSAK47)
 
-void CAK47::Spawn()
+void CAK47::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CAK47::Spawn()
 	FallInit();
 }
 
-void CAK47::Precache()
+void CAK47::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_ak47.mdl");
 	PRECACHE_MODEL("models/w_ak47.mdl");
@@ -31,7 +33,7 @@ void CAK47::Precache()
 	m_usFireAK47 = PRECACHE_EVENT(1, "events/ak47.sc");
 }
 
-int CAK47::GetItemInfo(ItemInfo *p)
+int CAK47::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "762Nato";
@@ -48,7 +50,7 @@ int CAK47::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CAK47::Deploy()
+BOOL CAK47::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.2f;
 	m_iShotsFired = 0;
@@ -57,12 +59,12 @@ BOOL CAK47::Deploy()
 	return DefaultDeploy("models/v_ak47.mdl", "models/p_ak47.mdl", AK47_DRAW, "ak47", UseDecrement() != FALSE);
 }
 
-void CAK47::SecondaryAttack()
+void CAK47::__MAKE_VHOOK(SecondaryAttack)()
 {
 	;
 }
 
-void CAK47::PrimaryAttack()
+void CAK47::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -123,10 +125,10 @@ void CAK47::AK47Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireAK47, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
 
 	m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
@@ -158,13 +160,15 @@ void CAK47::AK47Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CAK47::Reload()
+void CAK47::__MAKE_VHOOK(Reload)()
 {
+#ifdef REGAMEDLL_FIXES
 	// to prevent reload if not enough ammo
 	if (m_pPlayer->ammo_762nato <= 0)
 		return;
-   
-	if (DefaultReload(AK47_MAX_CLIP, AK47_RELOAD, AK47_RELOAD_TIME))
+#endif
+
+	if (DefaultReload(iMaxClip(), AK47_RELOAD, AK47_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -174,7 +178,7 @@ void CAK47::Reload()
 	}
 }
 
-void CAK47::WeaponIdle()
+void CAK47::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

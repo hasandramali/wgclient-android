@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 char *const g_TutorStateStrings[20] =
 {
 	"#Cstrike_TutorState_Undefined",
@@ -27,6 +31,8 @@ char *const g_TutorStateStrings[20] =
 	"#Cstrike_TutorState_Waiting_For_Start"
 };
 
+#endif
+
 CCSTutorStateSystem::CCSTutorStateSystem()
 {
 	m_currentState = new CCSTutorUndefinedState;
@@ -34,34 +40,28 @@ CCSTutorStateSystem::CCSTutorStateSystem()
 
 CCSTutorStateSystem::~CCSTutorStateSystem()
 {
-	if (m_currentState != NULL)
+	if (m_currentState)
 	{
 		delete m_currentState;
-		m_currentState = NULL;
+		m_currentState = nullptr;
 	}
 }
 
-bool CCSTutorStateSystem::UpdateState(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
+bool CCSTutorStateSystem::__MAKE_VHOOK(UpdateState)(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
-	if (m_currentState == NULL)
+	if (m_currentState == nullptr)
 	{
-		m_currentState = new CCSTutorUndefinedState;
+		m_currentState = new(std::nothrow) CCSTutorUndefinedState;
 	}
 
-	if (m_currentState != NULL)
+	if (m_currentState)
 	{
 		TutorStateType nextStateType = static_cast<TutorStateType>(m_currentState->CheckForStateTransition(event, entity, other));
 
 		if (nextStateType != TUTORSTATE_UNDEFINED)
 		{
-			if (m_currentState != NULL)
-			{
-				delete m_currentState;
-			}
-
-			m_currentState = NULL;
+			delete m_currentState;
 			m_currentState = ConstructNewState(nextStateType);
-
 			return true;
 		}
 	}
@@ -69,9 +69,9 @@ bool CCSTutorStateSystem::UpdateState(GameEventType event, CBaseEntity *entity, 
 	return false;
 }
 
-char *CCSTutorStateSystem::GetCurrentStateString()
+char *CCSTutorStateSystem::__MAKE_VHOOK(GetCurrentStateString)()
 {
-	if (m_currentState != NULL)
+	if (m_currentState)
 	{
 		return m_currentState->GetStateString();
 	}
@@ -79,27 +79,16 @@ char *CCSTutorStateSystem::GetCurrentStateString()
 	return NULL;
 }
 
-CBaseTutorState *CCSTutorStateSystem::ConstructNewState(int stateType)
+CBaseTutorState *CCSTutorStateSystem::__MAKE_VHOOK(ConstructNewState)(int stateType)
 {
-	CBaseTutorState *ret = NULL;
-
-	if (stateType != TUTORSTATE_UNDEFINED)
+	switch (stateType)
 	{
-		if (stateType == TUTORSTATE_BUYTIME)
-		{
-			ret = new CCSTutorBuyMenuState;
-		}
-		else if (stateType == TUTORSTATE_WAITING_FOR_START)
-		{
-			ret = new CCSTutorWaitingForStartState;
-		}
-	}
-	else
-	{
-		ret = new CCSTutorUndefinedState;
+	case TUTORSTATE_BUYTIME:		return new CCSTutorBuyMenuState;
+	case TUTORSTATE_WAITING_FOR_START:	return new CCSTutorWaitingForStartState;
+	case TUTORSTATE_UNDEFINED:		return new CCSTutorUndefinedState;
 	}
 
-	return ret;
+	return NULL;
 }
 
 CCSTutorUndefinedState::CCSTutorUndefinedState()
@@ -112,7 +101,7 @@ CCSTutorUndefinedState::~CCSTutorUndefinedState()
 	;
 }
 
-int CCSTutorUndefinedState::CheckForStateTransition(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
+int CCSTutorUndefinedState::__MAKE_VHOOK(CheckForStateTransition)(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
 	if (event == EVENT_PLAYER_SPAWNED)
 	{
@@ -126,11 +115,10 @@ int CCSTutorUndefinedState::HandlePlayerSpawned(CBaseEntity *entity, CBaseEntity
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer)
 	{
 		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
-
-		if (player != NULL && player->IsPlayer() && player == localPlayer)
+		if (player && player->IsPlayer() && player == localPlayer)
 		{
 			// flags
 			return TUTOR_STATE_FLAG_1;
@@ -140,7 +128,7 @@ int CCSTutorUndefinedState::HandlePlayerSpawned(CBaseEntity *entity, CBaseEntity
 	return 0;
 }
 
-char *CCSTutorUndefinedState::GetStateString()
+char *CCSTutorUndefinedState::__MAKE_VHOOK(GetStateString)()
 {
 	return NULL;
 }
@@ -155,7 +143,7 @@ CCSTutorWaitingForStartState::~CCSTutorWaitingForStartState()
 	;
 }
 
-int CCSTutorWaitingForStartState::CheckForStateTransition(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
+int CCSTutorWaitingForStartState::__MAKE_VHOOK(CheckForStateTransition)(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
 	switch (event)
 	{
@@ -168,7 +156,7 @@ int CCSTutorWaitingForStartState::CheckForStateTransition(GameEventType event, C
 	return 0;
 }
 
-char *CCSTutorWaitingForStartState::GetStateString()
+char *CCSTutorWaitingForStartState::__MAKE_VHOOK(GetStateString)()
 {
 	return g_TutorStateStrings[m_type];
 }
@@ -177,11 +165,10 @@ int CCSTutorWaitingForStartState::HandlePlayerSpawned(CBaseEntity *entity, CBase
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer)
 	{
 		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
-
-		if (player != NULL && player->IsPlayer() && player == localPlayer)
+		if (player && player->IsPlayer() && player == localPlayer)
 		{
 			// flags
 			return TUTOR_STATE_FLAG_1;
@@ -206,7 +193,7 @@ CCSTutorBuyMenuState::~CCSTutorBuyMenuState()
 	;
 }
 
-int CCSTutorBuyMenuState::CheckForStateTransition(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
+int CCSTutorBuyMenuState::__MAKE_VHOOK(CheckForStateTransition)(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
 	if (event == EVENT_ROUND_START)
 	{
@@ -216,7 +203,7 @@ int CCSTutorBuyMenuState::CheckForStateTransition(GameEventType event, CBaseEnti
 	return 0;
 }
 
-char *CCSTutorBuyMenuState::GetStateString()
+char *CCSTutorBuyMenuState::__MAKE_VHOOK(GetStateString)()
 {
 	return g_TutorStateStrings[m_type];
 }

@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_smokegrenade, CSmokeGrenade);
+LINK_ENTITY_TO_CLASS(weapon_smokegrenade, CSmokeGrenade, CCSSmokeGrenade)
 
-void CSmokeGrenade::Spawn()
+void CSmokeGrenade::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -20,7 +22,7 @@ void CSmokeGrenade::Spawn()
 	FallInit();
 }
 
-void CSmokeGrenade::Precache()
+void CSmokeGrenade::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_smokegrenade.mdl");
 	PRECACHE_MODEL("models/shield/v_shield_smokegrenade.mdl");
@@ -31,14 +33,18 @@ void CSmokeGrenade::Precache()
 	m_usCreateSmoke = PRECACHE_EVENT(1, "events/createsmoke.sc");
 }
 
-int CSmokeGrenade::GetItemInfo(ItemInfo *p)
+int CSmokeGrenade::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
+	auto info = GetWeaponInfo(WEAPON_SMOKEGRENADE);
+
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "SmokeGrenade";
-	p->iMaxAmmo1 = MAX_AMMO_SMOKEGRENADE;
+
+	p->iMaxAmmo1 = info ? info->maxRounds : MAX_AMMO_SMOKEGRENADE;
+	p->iMaxClip = info ? info->gunClipSize : WEAPON_NOCLIP;
+
 	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;
-	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 3;
 	p->iPosition = 3;
 	p->iId = m_iId = WEAPON_SMOKEGRENADE;
@@ -48,7 +54,7 @@ int CSmokeGrenade::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CSmokeGrenade::Deploy()
+BOOL CSmokeGrenade::__MAKE_VHOOK(Deploy)()
 {
 	m_iWeaponState &= ~WPNSTATE_SHIELD_DRAWN;
 
@@ -63,7 +69,7 @@ BOOL CSmokeGrenade::Deploy()
 		return DefaultDeploy("models/v_smokegrenade.mdl", "models/p_smokegrenade.mdl", SMOKEGRENADE_DRAW, "grenade", UseDecrement() != FALSE);
 }
 
-void CSmokeGrenade::Holster(int skiplocal)
+void CSmokeGrenade::__MAKE_VHOOK(Holster)(int skiplocal)
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 	
@@ -79,7 +85,7 @@ void CSmokeGrenade::Holster(int skiplocal)
 	m_flReleaseThrow = -1;
 }
 
-void CSmokeGrenade::PrimaryAttack()
+void CSmokeGrenade::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (m_iWeaponState & WPNSTATE_SHIELD_DRAWN)
 		return;
@@ -132,7 +138,7 @@ bool CSmokeGrenade::ShieldSecondaryFire(int iUpAnim, int iDownAnim)
 	return true;
 }
 
-void CSmokeGrenade::SecondaryAttack()
+void CSmokeGrenade::__MAKE_VHOOK(SecondaryAttack)()
 {
 	ShieldSecondaryFire(SHIELDGUN_DRAW, SHIELDGUN_DRAWN_IDLE);
 }
@@ -159,7 +165,7 @@ void CSmokeGrenade::ResetPlayerShieldAnim()
 	}
 }
 
-void CSmokeGrenade::WeaponIdle()
+void CSmokeGrenade::__MAKE_VHOOK(WeaponIdle)()
 {
 	if (m_flReleaseThrow == 0)
 		m_flReleaseThrow = gpGlobals->time;
@@ -178,7 +184,7 @@ void CSmokeGrenade::WeaponIdle()
 		else
 			angThrow.x = -10 + angThrow.x * ((90 + 10) / 90.0);
 
-		float flVel = (90.0f - angThrow.x) * 6.0f;
+		float_precision flVel = (90.0f - angThrow.x) * 6.0f;
 
 		if (flVel > 750.0f)
 			flVel = 750.0f;
@@ -263,7 +269,7 @@ void CSmokeGrenade::WeaponIdle()
 	}
 }
 
-BOOL CSmokeGrenade::CanDeploy()
+BOOL CSmokeGrenade::__MAKE_VHOOK(CanDeploy)()
 {
 	return m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] != 0;
 }

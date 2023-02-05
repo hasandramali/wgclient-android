@@ -1,15 +1,15 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Move to the bomb on the floor and pick it up
-
-void FetchBombState::OnEnter(CCSBot *me)
+void FetchBombState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	me->DestroyPath();
 }
 
 // Move to the bomb on the floor and pick it up
-
-void FetchBombState::OnUpdate(CCSBot *me)
+void FetchBombState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	if (me->IsCarryingBomb())
 	{

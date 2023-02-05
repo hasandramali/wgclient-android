@@ -1,6 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-void HostageEscapeToCoverState::OnEnter(CHostageImprov *improv)
+void HostageEscapeToCoverState::__MAKE_VHOOK(OnEnter)(CHostageImprov *improv)
 {
 	CNavPath path;
 	HostagePathCost pathCost;
@@ -35,7 +37,7 @@ void HostageEscapeToCoverState::OnEnter(CHostageImprov *improv)
 	m_canEscape = true;
 }
 
-void HostageEscapeToCoverState::OnUpdate(CHostageImprov *improv)
+void HostageEscapeToCoverState::__MAKE_VHOOK(OnUpdate)(CHostageImprov *improv)
 {
 	if (!m_canEscape)
 	{
@@ -67,18 +69,18 @@ void HostageEscapeToCoverState::OnUpdate(CHostageImprov *improv)
 	}
 }
 
-void HostageEscapeToCoverState::OnExit(CHostageImprov *improv)
+void HostageEscapeToCoverState::__MAKE_VHOOK(OnExit)(CHostageImprov *improv)
 {
 	;
 }
 
-void HostageEscapeToCoverState::OnMoveToFailure(const Vector &goal, MoveToFailureType reason)
+void HostageEscapeToCoverState::__MAKE_VHOOK(OnMoveToFailure)(const Vector &goal, MoveToFailureType reason)
 {
 	HostageEscapeState *escape = static_cast<HostageEscapeState *>(GetParent());
 	escape->LookAround();
 }
 
-void HostageEscapeLookAroundState::OnEnter(CHostageImprov *improv)
+void HostageEscapeLookAroundState::__MAKE_VHOOK(OnEnter)(CHostageImprov *improv)
 {
 	m_timer.Start(RANDOM_FLOAT(5, 10));
 
@@ -86,7 +88,7 @@ void HostageEscapeLookAroundState::OnEnter(CHostageImprov *improv)
 	improv->FaceOutwards();
 }
 
-void HostageEscapeLookAroundState::OnUpdate(CHostageImprov *improv)
+void HostageEscapeLookAroundState::__MAKE_VHOOK(OnUpdate)(CHostageImprov *improv)
 {
 	improv->UpdateIdleActivity(ACT_IDLE_SNEAKY, ACT_IDLE_SNEAKY_FIDGET);
 
@@ -97,15 +99,14 @@ void HostageEscapeLookAroundState::OnUpdate(CHostageImprov *improv)
 	}
 }
 
-void HostageEscapeLookAroundState::OnExit(CHostageImprov *improv)
+void HostageEscapeLookAroundState::__MAKE_VHOOK(OnExit)(CHostageImprov *improv)
 {
 	improv->ClearFaceTo();
 }
 
-void HostageEscapeState::OnEnter(CHostageImprov *improv)
+void HostageEscapeState::__MAKE_VHOOK(OnEnter)(CHostageImprov *improv)
 {
-	CCSBotManager *ctrl = TheCSBots();
-	const CCSBotManager::Zone *zone = ctrl->GetRandomZone();
+	const CCSBotManager::Zone *zone = TheCSBots()->GetRandomZone();
 
 	if (zone != NULL)
 	{
@@ -118,7 +119,7 @@ void HostageEscapeState::OnEnter(CHostageImprov *improv)
 	m_canEscape = true;
 }
 
-void HostageEscapeState::OnUpdate(CHostageImprov *improv)
+void HostageEscapeState::__MAKE_VHOOK(OnUpdate)(CHostageImprov *improv)
 {
 	if (!m_canEscape || (improv->IsScared() && improv->GetScareIntensity() == CHostageImprov::TERRIFIED))
 	{
@@ -165,7 +166,7 @@ void HostageEscapeState::OnUpdate(CHostageImprov *improv)
 	}
 }
 
-void HostageEscapeState::OnExit(CHostageImprov *improv)
+void HostageEscapeState::__MAKE_VHOOK(OnExit)(CHostageImprov *improv)
 {
 	improv->Run();
 }

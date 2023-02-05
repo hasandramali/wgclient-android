@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 CSGameState::CSGameState(CCSBot *owner)
@@ -28,19 +30,16 @@ CSGameState::CSGameState(CCSBot *owner)
 }
 
 // Reset at round start
-
 void CSGameState::Reset()
 {
 	int i;
-	CCSBotManager *ctrl = TheCSBots();
-
 	m_isRoundOver = false;
 
 	// bomb
 	m_bombState = MOVING;
 	m_lastSawBomber.Invalidate();
 	m_lastSawLooseBomb.Invalidate();
-	m_bombsiteCount = ctrl->GetZoneCount();
+	m_bombsiteCount = TheCSBots()->GetZoneCount();
 
 	m_isPlantedBombPosKnown = false;
 	m_plantedBombsite = UNKNOWN;
@@ -52,7 +51,7 @@ void CSGameState::Reset()
 	}
 
 	// shuffle the bombsite search order
-	// allows T's to plant at random site, and CT's to search in a random order
+	// allows T's to plant at random site, and TEAM_CT's to search in a random order
 	// NOTE: VS6 std::random_shuffle() doesn't work well with an array of two elements (most maps)
 	for (i = 0; i < m_bombsiteCount; ++i)
 	{
@@ -68,18 +67,22 @@ void CSGameState::Reset()
 }
 
 // Update game state based on events we have received
-
 void CSGameState::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
 	switch (event)
 	{
 	case EVENT_BOMB_PLANTED:
+	{
+		// change state - the event is announced to everyone
 		SetBombState(PLANTED);
-		if (m_owner->m_iTeam == TERRORIST && other != NULL)
+
+		// Terrorists always know where the bomb is
+		if (m_owner->m_iTeam == TERRORIST && other)
 		{
 			UpdatePlantedBomb(&other->pev->origin);
 		}
 		break;
+	}
 	case EVENT_BOMB_DEFUSED:
 		SetBombState(DEFUSED);
 		break;
@@ -100,7 +103,6 @@ void CSGameState::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity 
 }
 
 // True if round has been won or lost (but not yet reset)
-
 bool CSGameState::IsRoundOver() const
 {
 	return m_isRoundOver;
@@ -160,7 +162,6 @@ bool CSGameState::IsPlantedBombLocationKnown() const
 }
 
 // Return the zone index of the planted bombsite, or UNKNOWN
-
 int CSGameState::GetPlantedBombsite() const
 {
 	if (m_bombState != PLANTED)
@@ -170,14 +171,12 @@ int CSGameState::GetPlantedBombsite() const
 }
 
 // Return true if we are currently in the bombsite where the bomb is planted
-
 bool CSGameState::IsAtPlantedBombsite() const
 {
 	if (m_bombState != PLANTED)
 		return false;
 
-	CCSBotManager *ctrl = TheCSBots();
-	const CCSBotManager::Zone *zone = ctrl->GetClosestZone(&m_owner->pev->origin);
+	const CCSBotManager::Zone *zone = TheCSBots()->GetClosestZone(&m_owner->pev->origin);
 
 	if (zone != NULL)
 	{
@@ -188,7 +187,6 @@ bool CSGameState::IsAtPlantedBombsite() const
 }
 
 // Return the zone index of the next bombsite to search
-
 int CSGameState::GetNextBombsiteToSearch()
 {
 	if (m_bombsiteCount <= 0)
@@ -218,7 +216,6 @@ int CSGameState::GetNextBombsiteToSearch()
 
 // Returns position of bomb in its various states (moving, loose, planted),
 // or NULL if we don't know where the bomb is
-
 const Vector *CSGameState::GetBombPosition() const
 {
 	switch (m_bombState)
@@ -250,11 +247,9 @@ const Vector *CSGameState::GetBombPosition() const
 }
 
 // We see the planted bomb at 'pos'
-
 void CSGameState::UpdatePlantedBomb(const Vector *pos)
 {
-	CCSBotManager *ctrl = TheCSBots();
-	const CCSBotManager::Zone *zone = ctrl->GetClosestZone(pos);
+	const CCSBotManager::Zone *zone = TheCSBots()->GetClosestZone(pos);
 
 	if (zone == NULL)
 	{
@@ -272,7 +267,6 @@ void CSGameState::UpdatePlantedBomb(const Vector *pos)
 }
 
 // Someone told us where the bomb is planted
-
 void CSGameState::MarkBombsiteAsPlanted(int zoneIndex)
 {
 	m_plantedBombsite = zoneIndex;
@@ -280,7 +274,6 @@ void CSGameState::MarkBombsiteAsPlanted(int zoneIndex)
 }
 
 // Someone told us a bombsite is clear
-
 void CSGameState::ClearBombsite(int zoneIndex)
 {
 	if (zoneIndex >= 0 && zoneIndex < m_bombsiteCount)
@@ -298,16 +291,16 @@ bool CSGameState::IsBombsiteClear(int zoneIndex) const
 void CSGameState::InitializeHostageInfo()
 {
 	m_hostageCount = 0;
-	m_allHostagesRescued = 0;
-	m_haveSomeHostagesBeenTaken = 0;
+	m_allHostagesRescued = false;
+	m_haveSomeHostagesBeenTaken = false;
 
 	CBaseEntity *hostage = NULL;
-	while ((hostage = UTIL_FindEntityByClassname(hostage, "hostage_entity")) != NULL)
+	while ((hostage = UTIL_FindEntityByClassname(hostage, "hostage_entity")))
 	{
 		if (m_hostageCount >= MAX_HOSTAGES)
 			break;
 
-		if (hostage->pev->takedamage != DAMAGE_YES)
+		if (!hostage->IsAlive())
 			continue;
 
 		m_hostage[m_hostageCount].hostage = static_cast<CHostage *>(hostage);
@@ -324,8 +317,7 @@ void CSGameState::InitializeHostageInfo()
 // Otherwise, this is based on our individual memory of the game state.
 // If NULL is returned, we don't think there are any hostages left, or we dont know where they are.
 // NOTE: a T can remember a hostage who has died.  knowPos will be filled in, but NULL will be
-//	returned, since CHostages get deleted when they die.
-
+// returned, since CHostages get deleted when they die.
 CHostage *CSGameState::GetNearestFreeHostage(Vector *knowPos) const
 {
 	if (m_owner == NULL)
@@ -348,7 +340,7 @@ CHostage *CSGameState::GetNearestFreeHostage(Vector *knowPos) const
 		if (m_owner->m_iTeam == CT)
 		{
 			// we know exactly where the hostages are, and if they are alive
-			if (!m_hostage[i].hostage || !m_hostage[i].hostage->IsValid())
+			if (!m_hostage[i].hostage || !m_hostage[i].hostage->IsAlive())
 				continue;
 
 			if (m_hostage[i].hostage->IsFollowingSomeone())
@@ -391,7 +383,6 @@ CHostage *CSGameState::GetNearestFreeHostage(Vector *knowPos) const
 }
 
 // Return the location of a "free" hostage, or NULL if we dont know of any
-
 const Vector *CSGameState::GetRandomFreeHostagePosition()
 {
 	// TODO: use static?
@@ -438,7 +429,6 @@ const Vector *CSGameState::GetRandomFreeHostagePosition()
 
 // If we can see any of the positions where we think a hostage is, validate it
 // Return status of any changes (a hostage died or was moved)
-
 CSGameState::ValidateStatusType CSGameState::ValidateHostagePositions()
 {
 	// limit how often we validate
@@ -449,7 +439,7 @@ CSGameState::ValidateStatusType CSGameState::ValidateHostagePositions()
 	m_validateInterval.Start(validateInterval);
 
 	// check the status of hostages
-	int status = NO_CHANGE;
+	ValidateStatusType status = NO_CHANGE;
 
 	int i;
 	int startValidCount = 0;
@@ -469,7 +459,7 @@ CSGameState::ValidateStatusType CSGameState::ValidateHostagePositions()
 		// if we can see a hostage, update our knowledge of it
 		if (m_owner->IsVisible(&info->hostage->pev->origin, CHECK_FOV))
 		{
-			if (info->hostage->pev->takedamage == DAMAGE_YES)
+			if (info->hostage->IsAlive())
 			{
 				// live hostage
 				// if hostage is being escorted by a CT, we don't "see" it, we see the CT
@@ -506,7 +496,7 @@ CSGameState::ValidateStatusType CSGameState::ValidateHostagePositions()
 		if (m_owner->IsVisible(&info->knownPos, CHECK_FOV))
 		{
 			// we can see where we thought the hostage was - verify it is still there and alive
-			if (info->hostage->pev->takedamage != DAMAGE_YES)
+			if (!info->hostage->IsAlive())
 			{
 				// since we have line of sight to an invalid hostage, it must be dead
 				// discovered that hostage has been killed
@@ -550,12 +540,11 @@ CSGameState::ValidateStatusType CSGameState::ValidateHostagePositions()
 		status |= HOSTAGES_ALL_GONE;
 	}
 
-	return (ValidateStatusType) status;
+	return status;
 }
 
 // Return the nearest visible free hostage
 // Since we can actually see any hostage we return, we know its actual position
-
 CHostage *CSGameState::GetNearestVisibleFreeHostage() const
 {
 	CHostage *close = NULL;
@@ -572,7 +561,7 @@ CHostage *CSGameState::GetNearestVisibleFreeHostage() const
 			continue;
 
 		// if the hostage is dead or rescued, its not free
-		if (info->hostage->pev->takedamage != DAMAGE_YES)
+		if (!info->hostage->IsAlive())
 			continue;
 
 		// if this hostage is following someone, its not free
@@ -597,7 +586,6 @@ CHostage *CSGameState::GetNearestVisibleFreeHostage() const
 }
 
 // Return true if there are no free hostages
-
 bool CSGameState::AreAllHostagesBeingRescued() const
 {
 	// if the hostages have all been rescued, they are not being rescued any longer
@@ -605,7 +593,6 @@ bool CSGameState::AreAllHostagesBeingRescued() const
 		return false;
 
 	bool isAllDead = true;
-
 	for (int i = 0; i < m_hostageCount; ++i)
 	{
 		const HostageInfo *info = &m_hostage[i];
@@ -613,7 +600,7 @@ bool CSGameState::AreAllHostagesBeingRescued() const
 		if (m_owner->m_iTeam == CT)
 		{
 			// CT's have perfect knowledge via their radar
-			if (info->hostage != NULL && info->hostage->IsValid())
+			if (info->hostage && info->hostage->IsAlive())
 			{
 				if (!info->hostage->IsFollowingSomeone())
 					return false;
@@ -639,7 +626,6 @@ bool CSGameState::AreAllHostagesBeingRescued() const
 }
 
 // All hostages have been rescued or are dead
-
 bool CSGameState::AreAllHostagesGone() const
 {
 	if (m_allHostagesRescued)
@@ -653,7 +639,7 @@ bool CSGameState::AreAllHostagesGone() const
 		if (m_owner->m_iTeam == CT)
 		{
 			// CT's have perfect knowledge via their radar
-			if (info->hostage->IsAlive())// == DAMAGE_YES)
+			if (info->hostage->IsAlive())
 				return false;
 		}
 		else
@@ -667,7 +653,6 @@ bool CSGameState::AreAllHostagesGone() const
 }
 
 // Someone told us all the hostages are gone
-
 void CSGameState::AllHostagesGone()
 {
 	for (int i = 0; i < m_hostageCount; ++i)

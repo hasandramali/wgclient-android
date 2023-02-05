@@ -1,6 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
+void CCSBot::__MAKE_VHOOK(OnEvent)(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
 	GetGameState()->OnEvent(event, entity, other);
 	GetChatter()->OnEvent(event, entity, other);
@@ -41,12 +43,12 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 	{
 		if (event == EVENT_PLAYER_DIED)
 		{
-			if (player->m_iTeam == m_iTeam)
+			if (BotRelationship(player) == BOT_TEAMMATE)
 			{
 				CBasePlayer *killer = static_cast<CBasePlayer *>(other);
 
 				// check that attacker is an enemy (for friendly fire, etc)
-				if (killer && killer->IsPlayer())
+				if (killer != NULL && killer->IsPlayer())
 				{
 					// check if we saw our friend die - dont check FOV - assume we're aware of our surroundings in combat
 					// snipers stay put
@@ -74,10 +76,10 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 		case EVENT_PLAYER_DIED:
 		{
 			CBasePlayer *victim = player;
-			CBasePlayer *killer = (other && other->IsPlayer()) ? static_cast<CBasePlayer *>(other) : NULL;
+			CBasePlayer *killer = (other != NULL && other->IsPlayer()) ? static_cast<CBasePlayer *>(other) : NULL;
 
 			// if the human player died in the single player game, tell the team
-			if (g_pGameRules->IsCareer() && !victim->IsBot() && victim->m_iTeam == m_iTeam)
+			if (CSGameRules()->IsCareer() && !victim->IsBot() && BotRelationship(victim) == BOT_TEAMMATE)
 			{
 				GetChatter()->Say("CommanderDown", 20.0f);
 			}
@@ -89,10 +91,10 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 			}
 
 			// react to teammate death
-			if (victim->m_iTeam == m_iTeam)
+			if (BotRelationship(victim) == BOT_TEAMMATE)
 			{
 				// chastise friendly fire from humans
-				if (killer != NULL && !killer->IsBot() && killer->m_iTeam == m_iTeam && killer != this)
+				if (killer != NULL && !killer->IsBot() && BotRelationship(killer) == BOT_TEAMMATE && killer != this)
 				{
 					GetChatter()->KilledFriend();
 				}
@@ -124,7 +126,7 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 			// an enemy was killed
 			else
 			{
-				if (killer != NULL && killer->m_iTeam == m_iTeam)
+				if (killer != NULL && BotRelationship(killer) == BOT_TEAMMATE)
 				{
 					// only chatter about enemy kills if we see them occur, and they were the last one we see
 					if (GetNearbyEnemyCount() <= 1)
@@ -135,7 +137,7 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 						if (IsVisible(&victim->pev->origin, CHECK_FOV))
 						{						
 							// congratulate teammates on their kills
-							if (killer != NULL && killer != this)
+							if (killer != this)
 							{
 								float delay = RANDOM_FLOAT(2.0f, 3.0f);
 								if (killer->IsBot())
@@ -146,7 +148,7 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 								else
 								{
 									// humans get the honorific
-									if (g_pGameRules->IsCareer())
+									if (CSGameRules()->IsCareer())
 										GetChatter()->Say("NiceShotCommander", 3.0f, delay);
 									else
 										GetChatter()->Say("NiceShotSir", 3.0f, delay);
@@ -240,7 +242,7 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 	}
 
 	// Process radio events from our team
-	if (player != NULL && player->m_iTeam == m_iTeam && event > EVENT_START_RADIO_1 && event < EVENT_END_RADIO)
+	if (player != NULL && BotRelationship(player) == BOT_TEAMMATE && event > EVENT_START_RADIO_1 && event < EVENT_END_RADIO)
 	{
 		// TODO: Distinguish between radio commands and responses
 		if (event != EVENT_RADIO_AFFIRMATIVE && event != EVENT_RADIO_NEGATIVE && event != EVENT_RADIO_REPORTING_IN)
@@ -261,9 +263,9 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 		if ((entity->pev->origin - pev->origin).IsLengthGreaterThan(1000.0f))
 			return;
 
-		Vector v = entity->Center();
+		Vector center = entity->Center();
 
-		if (IsVisible(&v))
+		if (IsVisible(&center))
 		{
 			m_task = COLLECT_HOSTAGES;
 			m_taskEntity = NULL;
@@ -271,7 +273,7 @@ void CCSBot::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *othe
 			Run();
 			m_goalEntity = entity;
 
-			MoveTo(&entity->pev->origin, (RouteType)(m_hostageEscortCount == 0));
+			MoveTo(&entity->pev->origin, m_hostageEscortCount == 0 ? SAFEST_ROUTE : FASTEST_ROUTE);
 			PrintIfWatched("I'm fetching a hostage that called out to me\n");
 
 			return;

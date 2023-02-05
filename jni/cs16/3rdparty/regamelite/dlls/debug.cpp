@@ -1,20 +1,26 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 DebugOutputLevel outputLevel[ NUM_LEVELS ] =
 {
-	{ "bot",	DEBUG_BOT },
-	{ "career",	DEBUG_CAREER },
-	{ "tutor",	DEBUG_TUTOR },
-	{ "stats",	DEBUG_STATS },
-	{ "hostage",	DEBUG_HOSTAGE },
-	{ "all",	DEBUG_ALL }
+	{ "bot",     DEBUG_BOT },
+	{ "career",  DEBUG_CAREER },
+	{ "tutor",   DEBUG_TUTOR },
+	{ "stats",   DEBUG_STATS },
+	{ "hostage", DEBUG_HOSTAGE },
+	{ "all",     DEBUG_ALL }
 };
 
 unsigned int theDebugOutputTypes;
 static char theDebugBuffer[ DebugBufferSize ];
+
+#endif
 
 bool IsDeveloper()
 {
@@ -58,28 +64,22 @@ void PrintDebugFlags()
 	theDebugBuffer[0] = '\0';
 	tmp = BufPrintf(theDebugBuffer, remainder, "mp_debug:\n");
 
-	for (int i = 0; i < NUM_LEVELS - 1; ++i)
-	{
-		DebugOutputLevel level = outputLevel[i];
-
+	for (auto level : outputLevel) {
 		tmp = BufPrintf(tmp, remainder, "  %s: %s\n", level.name, (theDebugOutputTypes & level.value) ? "on" : "off");
 	}
+
 	SERVER_PRINT(theDebugBuffer);
 }
 
 void SetDebugFlag(const char *flagStr, bool state)
 {
-	if (flagStr != NULL)
+	if (flagStr)
 	{
-		DebugOutputType flag;
-		for (int i = 0; i < ARRAYSIZE(outputLevel); ++i)
+		for (auto level : outputLevel)
 		{
-			DebugOutputLevel level = outputLevel[ i ];
-
 			if (FStrEq(level.name, flagStr))
 			{
-				flag = level.value;
-
+				DebugOutputType flag = level.value;
 				if (state)
 					theDebugOutputTypes |= flag;
 				else
@@ -96,17 +96,13 @@ void SetDebugFlag(const char *flagStr, bool state)
 
 void PrintDebugFlag(const char *flagStr)
 {
-	if (flagStr != NULL)
+	if (flagStr)
 	{
-		DebugOutputType flag;
-		for (int i = 0; i < ARRAYSIZE(outputLevel); ++i)
+		for (auto level : outputLevel)
 		{
-			DebugOutputLevel level = outputLevel[ i ];
-
 			if (FStrEq(level.name, flagStr))
 			{
-				flag = level.value;
-				SERVER_PRINT(SharedVarArgs("mp_debug: %s is %s\n", flagStr, (flag & theDebugOutputTypes) ? "on" : "off"));
+				SERVER_PRINT(SharedVarArgs("mp_debug: %s is %s\n", flagStr, (level.value & theDebugOutputTypes) ? "on" : "off"));
 				return;
 			}
 		}
@@ -120,18 +116,18 @@ void UTIL_SetDprintfFlags(const char *flagStr)
 	if (!IsDeveloper())
 		return;
 
-	if (flagStr != NULL && flagStr[0] != '\0')
-	{
-		if (flagStr[0] == '+')
-			SetDebugFlag(&flagStr[1], true);
-
-		else if (flagStr[0] == '-')
-			SetDebugFlag(&flagStr[1], false);
-		else
-			PrintDebugFlag(flagStr);
-	}
-	else
+	if (!flagStr || !flagStr[0]) {
 		PrintDebugFlags();
+		return;
+	}
+
+	if (flagStr[0] == '+')
+		SetDebugFlag(&flagStr[1], true);
+
+	else if (flagStr[0] == '-')
+		SetDebugFlag(&flagStr[1], false);
+	else
+		PrintDebugFlag(flagStr);
 }
 
 NOXREF void UTIL_BotDPrintf(char *pszMsg, ...)

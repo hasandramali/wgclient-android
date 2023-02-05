@@ -36,7 +36,6 @@ class CBaseEntity;
 class CNavLadder;
 
 // Improv-specific events
-
 class IImprovEvent
 {
 public:
@@ -85,9 +84,9 @@ public:
 	virtual void StandUp() = 0;																// "un-crouch"
 
 	virtual void TrackPath(const Vector &pathGoal, float deltaT) = 0;											// move along path by following "pathGoal"
-	virtual void StartLadder(const CNavLadder *ladder, NavTraverseType how, const Vector *approachPos, const Vector *departPos) = 0;			// invoked when a ladder is encountered while following a path
+	virtual void StartLadder(const CNavLadder *ladder, enum NavTraverseType how, const Vector *approachPos, const Vector *departPos) = 0;			// invoked when a ladder is encountered while following a path
 
-	virtual bool TraverseLadder(const CNavLadder *ladder, NavTraverseType how, const Vector *approachPos, const Vector *departPos, float deltaT) = 0;	// traverse given ladder
+	virtual bool TraverseLadder(const CNavLadder *ladder, enum NavTraverseType how, const Vector *approachPos, const Vector *departPos, float deltaT) = 0;	// traverse given ladder
 	virtual bool GetSimpleGroundHeightWithFloor(const Vector *pos, float *height, Vector *normal = NULL) = 0;						// find "simple" ground height, treating current nav area as part of the floor
 
 	virtual void Run() = 0;

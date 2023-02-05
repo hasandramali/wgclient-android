@@ -1,14 +1,15 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Face the entity and "use" it
 // NOTE: This state assumes we are standing in range of the entity to be used, with no obstructions.
-
-void UseEntityState::OnEnter(CCSBot *me)
+void UseEntityState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	;
 }
 
-void UseEntityState::OnUpdate(CCSBot *me)
+void UseEntityState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	// in the very rare situation where two or more bots "used" a hostage at the same time,
 	// one bot will fail and needs to time out of this state
@@ -39,7 +40,7 @@ void UseEntityState::OnUpdate(CCSBot *me)
 	}
 }
 
-void UseEntityState::OnExit(CCSBot *me)
+void UseEntityState::__MAKE_VHOOK(OnExit)(CCSBot *me)
 {
 	me->ClearLookAt();
 	me->ResetStuckMonitor();

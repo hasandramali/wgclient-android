@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_sg552, CSG552);
+LINK_ENTITY_TO_CLASS(weapon_sg552, CSG552, CCSSG552)
 
-void CSG552::Spawn()
+void CSG552::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CSG552::Spawn()
 	FallInit();
 }
 
-void CSG552::Precache()
+void CSG552::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_sg552.mdl");
 	PRECACHE_MODEL("models/w_sg552.mdl");
@@ -31,7 +33,7 @@ void CSG552::Precache()
 	m_usFireSG552 = PRECACHE_EVENT(1, "events/sg552.sc");
 }
 
-int CSG552::GetItemInfo(ItemInfo *p)
+int CSG552::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "556Nato";
@@ -48,7 +50,7 @@ int CSG552::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CSG552::Deploy()
+BOOL CSG552::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.2f;
 	m_iShotsFired = 0;
@@ -57,7 +59,7 @@ BOOL CSG552::Deploy()
 	return DefaultDeploy("models/v_sg552.mdl", "models/p_sg552.mdl", SG552_DRAW, "mp5", UseDecrement() != FALSE);
 }
 
-void CSG552::SecondaryAttack()
+void CSG552::__MAKE_VHOOK(SecondaryAttack)()
 {
 	if (m_pPlayer->m_iFOV == DEFAULT_FOV)
 		m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 55;
@@ -67,7 +69,7 @@ void CSG552::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3f;
 }
 
-void CSG552::PrimaryAttack()
+void CSG552::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -135,10 +137,10 @@ void CSG552::SG552Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireSG552, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), 5, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), 5, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -167,12 +169,12 @@ void CSG552::SG552Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CSG552::Reload()
+void CSG552::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_556nato <= 0)
 		return;
 
-	if (DefaultReload(SG552_MAX_CLIP, SG552_RELOAD, SG552_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), SG552_RELOAD, SG552_RELOAD_TIME))
 	{
 		if (m_pPlayer->m_iFOV != DEFAULT_FOV)
 		{
@@ -186,7 +188,7 @@ void CSG552::Reload()
 	}
 }
 
-void CSG552::WeaponIdle()
+void CSG552::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
@@ -200,7 +202,7 @@ void CSG552::WeaponIdle()
 	SendWeaponAnim(SG552_IDLE1, UseDecrement() != FALSE);
 }
 
-float CSG552::GetMaxSpeed()
+float CSG552::__MAKE_VHOOK(GetMaxSpeed)()
 {
 	if (m_pPlayer->m_iFOV == DEFAULT_FOV)
 		return SG552_MAX_SPEED;

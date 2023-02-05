@@ -37,8 +37,8 @@ enum ChooseTeamMenuSlot
 {
 	MENU_SLOT_TEAM_UNDEFINED = -1,
 
-	MENU_SLOT_TERRORIST = 1,
-	MENU_SLOT_CT,
+	MENU_SLOT_TEAM_TERRORIST = 1,
+	MENU_SLOT_TEAM_CT,
 	MENU_SLOT_TEAM_VIP,
 
 	MENU_SLOT_TEAM_RANDOM = 5,
@@ -101,8 +101,10 @@ struct entity_field_alias_t
 	int field;
 };
 
-extern float g_flTimeLimit;
-extern float g_flResetTime;
+C_DLLEXPORT int CountTeams();
+C_DLLEXPORT int CountTeamPlayers(int iTeam);
+
+extern bool g_bServerActive;
 extern bool g_skipCareerInitialSpawn;
 
 extern unsigned short m_usResetDecals;
@@ -110,46 +112,48 @@ extern unsigned short g_iShadowSprite;
 
 int CMD_ARGC_();
 const char *CMD_ARGV_(int i);
-NOXREF void set_suicide_frame(entvars_t *pev);
-void TeamChangeUpdate(CBasePlayer *player, int team_id);
-void BlinkAccount(CBasePlayer *player, int numBlinks);
+void set_suicide_frame(entvars_t *pev);
+void BlinkAccount(CBasePlayer *player, int numBlinks = 2);
 BOOL ClientConnect(edict_t *pEntity, const char *pszName, const char *pszAddress, char *szRejectReason);
 void ClientDisconnect(edict_t *pEntity);
 void respawn(entvars_t *pev, BOOL fCopyCorpse = FALSE);
 void ClientKill(edict_t *pEntity);
 void ShowMenu(CBasePlayer *pPlayer, int bitsValidSlots, int nDisplayTime, BOOL fNeedMore, char *pszText);
+void ShowMenu_(CBasePlayer *pPlayer, int bitsValidSlots, int nDisplayTime, BOOL fNeedMore, char *pszText);
 void ShowVGUIMenu(CBasePlayer *pPlayer, int MenuType, int BitMask, char *szOldMenu);
-NOXREF C_DLLEXPORT int CountTeams();
+void ShowVGUIMenu_(CBasePlayer *pPlayer, int MenuType, int BitMask, char *szOldMenu);
 void ListPlayers(CBasePlayer *current);
-C_DLLEXPORT int CountTeamPlayers(int iTeam);
 void ProcessKickVote(CBasePlayer *pVotingPlayer, CBasePlayer *pKickPlayer);
-TeamName SelectDefaultTeam();
 void CheckStartMoney();
 void ClientPutInServer(edict_t *pEntity);
 int Q_strlen_(const char *str);
-void Host_Say(edict_t *pEntity, int teamonly);
+void Host_Say(edict_t *pEntity, BOOL teamonly);
 void DropSecondary(CBasePlayer *pPlayer);
 void DropPrimary(CBasePlayer *pPlayer);
 bool CanBuyThis(CBasePlayer *pPlayer, int iWeapon);
 void BuyPistol(CBasePlayer *pPlayer, int iSlot);
 void BuyShotgun(CBasePlayer *pPlayer, int iSlot);
 void BuySubMachineGun(CBasePlayer *pPlayer, int iSlot);
-void BuyWeaponByWeaponID(CBasePlayer *pPlayer, WeaponIdType weaponID);
+CBaseEntity *BuyWeaponByWeaponID(CBasePlayer *pPlayer, WeaponIdType weaponID);
+CBaseEntity *BuyWeaponByWeaponID_(CBasePlayer *pPlayer, WeaponIdType weaponID);
 void BuyRifle(CBasePlayer *pPlayer, int iSlot);
 void BuyMachineGun(CBasePlayer *pPlayer, int iSlot);
 void BuyItem(CBasePlayer *pPlayer, int iSlot);
 void HandleMenu_ChooseAppearance(CBasePlayer *player, int slot);
+void HandleMenu_ChooseAppearance_(CBasePlayer *player, int slot);
 BOOL HandleMenu_ChooseTeam(CBasePlayer *player, int slot);
+BOOL HandleMenu_ChooseTeam_(CBasePlayer *player, int slot);
 void Radio1(CBasePlayer *player, int slot);
 void Radio2(CBasePlayer *player, int slot);
 void Radio3(CBasePlayer *player, int slot);
 bool BuyGunAmmo(CBasePlayer *player, CBasePlayerItem *weapon, bool bBlinkMoney);
+bool BuyGunAmmo_(CBasePlayer *player, CBasePlayerItem *weapon, bool bBlinkMoney);
 bool BuyAmmo(CBasePlayer *player, int nSlot, bool bBlinkMoney);
 CBaseEntity *EntityFromUserID(int userID);
-NOXREF int CountPlayersInServer();
+int CountPlayersInServer();
 BOOL HandleBuyAliasCommands(CBasePlayer *pPlayer, const char *pszCommand);
 BOOL HandleRadioAliasCommands(CBasePlayer *pPlayer, const char *pszCommand);
-void ClientCommand(edict_t *pEntity);
+void ClientCommand_(edict_t *pEntity);
 void ClientUserInfoChanged(edict_t *pEntity, char *infobuffer);
 void ServerDeactivate();
 void ServerActivate(edict_t *pEdictList, int edictCount, int clientMax);
@@ -160,7 +164,7 @@ void ParmsChangeLevel();
 void StartFrame();
 void ClientPrecache();
 const char *GetGameDescription();
-void Sys_Error(const char *error_string);
+void SysEngine_Error(const char *error_string);
 void PlayerCustomization(edict_t *pEntity, customization_t *pCust);
 void SpectatorConnect(edict_t *pEntity);
 void SpectatorDisconnect(edict_t *pEntity);
@@ -188,5 +192,16 @@ int GetHullBounds(int hullnumber, float *mins, float *maxs);
 void CreateInstancedBaselines();
 int InconsistentFile(const edict_t *player, const char *filename, char *disconnect_message);
 int AllowLagCompensation();
+
+inline const char *GetTeamName(int team)
+{
+	switch (team)
+	{
+	case CT:	return "CT";
+	case TERRORIST:	return "TERRORIST";
+	case SPECTATOR:	return "SPECTATOR";
+	default:	return "UNASSIGNED";
+	}
+}
 
 #endif // CLIENT_H

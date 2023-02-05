@@ -112,7 +112,18 @@ inline void *GET_PRIVATE(edict_t *pent)
 #define WRITE_LONG			(*g_engfuncs.pfnWriteLong)
 #define WRITE_ANGLE			(*g_engfuncs.pfnWriteAngle)
 #define WRITE_COORD			(*g_engfuncs.pfnWriteCoord)
-#define WRITE_STRING			(*g_engfuncs.pfnWriteString)
+inline void WRITE_STRING( const char *sz )
+{
+	// REMOVE THIS WHEN XASH3D WILL ALLOW WRITING NULL POINTERS
+	if( !sz )
+	{
+		g_engfuncs.pfnWriteString( "" );
+	}
+	else
+	{
+		g_engfuncs.pfnWriteString( sz );
+	}
+}
 #define WRITE_ENTITY			(*g_engfuncs.pfnWriteEntity)
 #define CVAR_REGISTER			(*g_engfuncs.pfnCVarRegister)
 #define CVAR_GET_FLOAT			(*g_engfuncs.pfnCVarGetFloat)
@@ -175,7 +186,7 @@ inline void *GET_PRIVATE(edict_t *pent)
 #define DELTA_FINDFIELD			(*g_engfuncs.pfnDeltaFindField)
 #define DELTA_SETBYINDEX		(*g_engfuncs.pfnDeltaSetFieldByIndex)
 #define DELTA_UNSETBYINDEX		(*g_engfuncs.pfnDeltaUnsetFieldByIndex)
-#define	REMOVE_KEY_VALUE		(*g_engfuncs.pfnInfo_RemoveKey)
+#define REMOVE_KEY_VALUE		(*g_engfuncs.pfnInfo_RemoveKey)
 #define SET_PHYSICS_KEY_VALUE		(*g_engfuncs.pfnSetPhysicsKeyValue)
 #define ENGINE_GETPHYSINFO		(*g_engfuncs.pfnGetPhysicsInfoString)
 #define ENGINE_SETGROUPMASK		(*g_engfuncs.pfnSetGroupMask)
@@ -183,4 +194,4 @@ inline void *GET_PRIVATE(edict_t *pent)
 #define ENGINE_FORCE_UNMODIFIED		(*g_engfuncs.pfnForceUnmodified)
 #define PLAYER_CNX_STATS		(*g_engfuncs.pfnGetPlayerStats)
 
-#endif //ENGINECALLBACK_H
+#endif // ENGINECALLBACK_H

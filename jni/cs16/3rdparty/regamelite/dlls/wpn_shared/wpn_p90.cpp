@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_p90, CP90);
+LINK_ENTITY_TO_CLASS(weapon_p90, CP90, CCSP90)
 
-void CP90::Spawn()
+void CP90::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -17,7 +19,7 @@ void CP90::Spawn()
 	FallInit();
 }
 
-void CP90::Precache()
+void CP90::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_p90.mdl");
 	PRECACHE_MODEL("models/w_p90.mdl");
@@ -32,7 +34,7 @@ void CP90::Precache()
 	m_usFireP90 = PRECACHE_EVENT(1, "events/p90.sc");
 }
 
-int CP90::GetItemInfo(ItemInfo *p)
+int CP90::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "57mm";
@@ -49,7 +51,7 @@ int CP90::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CP90::Deploy()
+BOOL CP90::__MAKE_VHOOK(Deploy)()
 {
 	m_iShotsFired = 0;
 	m_bDelayFire = false;
@@ -60,7 +62,7 @@ BOOL CP90::Deploy()
 	return DefaultDeploy("models/v_p90.mdl", "models/p_p90.mdl", P90_DRAW, "carbine", UseDecrement() != FALSE);
 }
 
-void CP90::PrimaryAttack()
+void CP90::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -123,10 +125,10 @@ void CP90::P90Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireP90, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), 5, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), 5, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -155,12 +157,12 @@ void CP90::P90Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CP90::Reload()
+void CP90::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_57mm <= 0)
 		return;
 
-	if (DefaultReload(P90_MAX_CLIP, P90_RELOAD, P90_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), P90_RELOAD, P90_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -169,7 +171,7 @@ void CP90::Reload()
 	}
 }
 
-void CP90::WeaponIdle()
+void CP90::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
@@ -183,7 +185,7 @@ void CP90::WeaponIdle()
 	SendWeaponAnim(P90_IDLE1, UseDecrement() != FALSE);
 }
 
-float CP90::GetMaxSpeed()
+float CP90::__MAKE_VHOOK(GetMaxSpeed)()
 {
 	return P90_MAX_SPEED;
 }

@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_knife, CKnife);
+LINK_ENTITY_TO_CLASS(weapon_knife, CKnife, CCSKnife)
 
-void CKnife::Spawn()
+void CKnife::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -15,7 +17,7 @@ void CKnife::Spawn()
 	FallInit();
 }
 
-void CKnife::Precache()
+void CKnife::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_knife.mdl");
 	PRECACHE_MODEL("models/shield/v_shield_knife.mdl");
@@ -34,7 +36,7 @@ void CKnife::Precache()
 	m_usKnife = PRECACHE_EVENT(1, "events/knife.sc");
 }
 
-int CKnife::GetItemInfo(ItemInfo *p)
+int CKnife::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = NULL;
@@ -54,7 +56,7 @@ int CKnife::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CKnife::Deploy()
+BOOL CKnife::__MAKE_VHOOK(Deploy)()
 {
 	EMIT_SOUND(m_pPlayer->edict(), CHAN_ITEM, "weapons/knife_deploy1.wav", 0.3, 2.4);
 
@@ -72,7 +74,7 @@ BOOL CKnife::Deploy()
 		return DefaultDeploy("models/v_knife.mdl", "models/p_knife.mdl", KNIFE_DRAW, "knife", UseDecrement() != FALSE);
 }
 
-void CKnife::Holster(int skiplocal)
+void CKnife::__MAKE_VHOOK(Holster)(int skiplocal)
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 }
@@ -85,7 +87,7 @@ NOXREF void CKnife::WeaponAnimation(int iAnimation)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usKnife,
 		0.0, (float *)&g_vecZero, (float *)&g_vecZero,
@@ -128,7 +130,7 @@ void FindHullIntersection(const Vector &vecSrc, TraceResult &tr, float *mins, fl
 
 				if (tmpTrace.flFraction < 1.0f)
 				{
-					float thisDistance = (tmpTrace.vecEndPos - vecSrc).Length();
+					float_precision thisDistance = (tmpTrace.vecEndPos - vecSrc).Length();
 
 					if (thisDistance < distance)
 					{
@@ -141,7 +143,7 @@ void FindHullIntersection(const Vector &vecSrc, TraceResult &tr, float *mins, fl
 	}
 }
 
-void CKnife::PrimaryAttack()
+void CKnife::__MAKE_VHOOK(PrimaryAttack)()
 {
 	Swing(TRUE);
 }
@@ -211,7 +213,7 @@ bool CKnife::ShieldSecondaryFire(int iUpAnim, int iDownAnim)
 	return true;
 }
 
-void CKnife::SecondaryAttack()
+void CKnife::__MAKE_VHOOK(SecondaryAttack)()
 {
 	if (!ShieldSecondaryFire(KNIFE_SHIELD_UP, KNIFE_SHIELD_DOWN))
 	{
@@ -230,7 +232,7 @@ void CKnife::SwingAgain()
 	Swing(FALSE);
 }
 
-void CKnife::WeaponIdle()
+void CKnife::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
@@ -360,7 +362,9 @@ int CKnife::Swing(int fFirst)
 
 		ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
 
-		if (pEntity != NULL)
+#ifndef REGAMEDLL_FIXES
+		if (pEntity != NULL)	// -V595
+#endif
 		{
 			if (pEntity->Classify() != CLASS_NONE && pEntity->Classify() != CLASS_MACHINE)
 			{
@@ -405,7 +409,7 @@ int CKnife::Swing(int fFirst)
 			SetThink(&CKnife::Smack);
 
 			pev->nextthink = UTIL_WeaponTimeBase() + 0.2f;
-			m_pPlayer->m_iWeaponVolume = (int)(flVol * KNIFE_WALLHIT_VOLUME);
+			m_pPlayer->m_iWeaponVolume = int(flVol * KNIFE_WALLHIT_VOLUME);
 
 			ResetPlayerShieldAnim();
 		}
@@ -492,7 +496,7 @@ int CKnife::Stab(int fFirst)
 
 		float flDamage = 65.0f;
 
-		if (pEntity && pEntity->IsPlayer())
+		if (pEntity != NULL && pEntity->IsPlayer())
 		{
 			Vector2D vec2LOS;
 			float flDot;
@@ -518,7 +522,9 @@ int CKnife::Stab(int fFirst)
 		pEntity->TraceAttack(m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, (DMG_NEVERGIB | DMG_BULLET));
 		ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
 
-		if (pEntity != NULL)
+#ifndef REGAMEDLL_FIXES
+		if (pEntity != NULL)	// -V595
+#endif
 		{
 			if (pEntity->Classify() != CLASS_NONE && pEntity->Classify() != CLASS_MACHINE)
 			{
@@ -552,7 +558,7 @@ int CKnife::Stab(int fFirst)
 		{
 			// delay the decal a bit
 			m_trHit = tr;
-			m_pPlayer->m_iWeaponVolume = (int)(flVol * KNIFE_WALLHIT_VOLUME);
+			m_pPlayer->m_iWeaponVolume = int(flVol * KNIFE_WALLHIT_VOLUME);
 
 			SetThink(&CKnife::Smack);
 			pev->nextthink = UTIL_WeaponTimeBase() + 0.2f;

@@ -41,7 +41,6 @@
 // place name strings.  Each nav area then contains an index
 // into that directory, or zero if no place has been assigned to
 // that area.
-
 class PlaceDirectory
 {
 public:
@@ -56,11 +55,14 @@ public:
 	void Load(SteamFile *file);			// load the directory
 
 private:
-	CUtlVector<Place> m_directory;
+	std::vector<Place> m_directory;
 };
 
-char *GetBspFilename(const char *navFilename);
+extern char *MP_COM_GetToken();
+extern char *MP_COM_Parse(char *data);
+
 bool SaveNavigationMap(const char *filename);
+void LoadLocationFile(const char *filename);
 void SanityCheckNavigationMap(const char *mapName);	// Performs a lightweight sanity-check of the specified map's nav mesh
 NavErrorType LoadNavigationMap();
 

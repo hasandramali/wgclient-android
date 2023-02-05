@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_famas, CFamas);
+LINK_ENTITY_TO_CLASS(weapon_famas, CFamas, CCSFamas)
 
-void CFamas::Spawn()
+void CFamas::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CFamas::Spawn()
 	FallInit();
 }
 
-void CFamas::Precache()
+void CFamas::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_famas.mdl");
 	PRECACHE_MODEL("models/w_famas.mdl");
@@ -34,7 +36,7 @@ void CFamas::Precache()
 	m_usFireFamas = PRECACHE_EVENT(1, "events/famas.sc");
 }
 
-int CFamas::GetItemInfo(ItemInfo *p)
+int CFamas::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "556Nato";
@@ -51,7 +53,7 @@ int CFamas::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CFamas::Deploy()
+BOOL CFamas::__MAKE_VHOOK(Deploy)()
 {
 	m_iShotsFired = 0;
 	m_iFamasShotsFired = 0;
@@ -63,7 +65,7 @@ BOOL CFamas::Deploy()
 	return DefaultDeploy("models/v_famas.mdl", "models/p_famas.mdl", FAMAS_DRAW, "carbine", UseDecrement() != FALSE);
 }
 
-void CFamas::SecondaryAttack()
+void CFamas::__MAKE_VHOOK(SecondaryAttack)()
 {
 	if (m_iWeaponState & WPNSTATE_FAMAS_BURST_MODE)
 	{
@@ -79,7 +81,7 @@ void CFamas::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3f;
 }
 
-void CFamas::PrimaryAttack()
+void CFamas::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (m_pPlayer->pev->waterlevel == 3)
 	{
@@ -108,7 +110,6 @@ void CFamas::FamasFire(float flSpread, float flCycleTime, BOOL fUseAutoAim, BOOL
 {
 	Vector vecAiming, vecSrc, vecDir;
 	int flag;
-	//int mask;
 
 	if (bFireBurst)
 	{
@@ -163,10 +164,10 @@ void CFamas::FamasFire(float flSpread, float flCycleTime, BOOL fUseAutoAim, BOOL
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireFamas, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 10000000), (int)(m_pPlayer->pev->punchangle.y * 10000000), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 10000000), int(m_pPlayer->pev->punchangle.y * 10000000), FALSE, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -202,12 +203,12 @@ void CFamas::FamasFire(float flSpread, float flCycleTime, BOOL fUseAutoAim, BOOL
 	}
 }
 
-void CFamas::Reload()
+void CFamas::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_556nato <= 0)
 		return;
 
-	if (DefaultReload(FAMAS_MAX_CLIP, FAMAS_RELOAD, FAMAS_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), FAMAS_RELOAD, FAMAS_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -222,7 +223,7 @@ void CFamas::Reload()
 	}
 }
 
-void CFamas::WeaponIdle()
+void CFamas::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

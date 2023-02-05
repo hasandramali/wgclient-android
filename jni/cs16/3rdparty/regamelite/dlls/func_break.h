@@ -37,7 +37,7 @@
 
 // func breakable
 #define SF_BREAK_TRIGGER_ONLY		1	// may only be broken by trigger
-#define	SF_BREAK_TOUCH			2	// can be 'crashed through' by running player (plate glass)
+#define SF_BREAK_TOUCH			2	// can be 'crashed through' by running player (plate glass)
 #define SF_BREAK_PRESSURE		4	// can be broken by a player standing on it
 #define SF_BREAK_CROWBAR		256	// instant break if hit with crowbar
 
@@ -83,22 +83,37 @@ public:
 	virtual void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	// breakables use an overridden takedamage
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 
 	virtual int DamageDecal(int bitsDamageType);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void Restart_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void TraceAttack_(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	int DamageDecal_(int bitsDamageType);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	void EXPORT BreakTouch(CBaseEntity *pOther);
 	void DamageSound();
 
 	BOOL IsBreakable();
-	NOXREF BOOL SparkWhenHit();
+	BOOL SparkWhenHit();
 
 	void EXPORT Die();
 
-	BOOL Explodable() const		{ return ExplosionMagnitude() > 0; }
-	int ExplosionMagnitude() const	{ return pev->impulse; }
+	BOOL Explodable() const { return ExplosionMagnitude() > 0; }
+	int ExplosionMagnitude() const { return pev->impulse; }
 
 	void ExplosionSetMagnitude(int magnitude) { pev->impulse = magnitude; }
 
@@ -113,7 +128,7 @@ public:
 	static const char *pSoundsConcrete[3];
 	static const char *pSpawnObjects[32];
 
-	static TYPEDESCRIPTION m_SaveData[5];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[5];
 
 public:
 	Materials m_Material;
@@ -133,10 +148,27 @@ public:
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
-	virtual int ObjectCaps() { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION) | FCAP_CONTINUOUS_USE; }
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual int ObjectCaps() { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION) | FCAP_CONTINUOUS_USE | FCAP_MUST_RESET; }
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	virtual void Touch(CBaseEntity *pOther);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef REGAMEDLL_FIXES
+	virtual void Restart();
+#endif
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	void Touch_(CBaseEntity *pOther);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	void Move(CBaseEntity *pMover, int push);
@@ -153,7 +185,7 @@ public:
 	float MaxSpeed() const { return m_maxSpeed; }
 
 public:
-	static TYPEDESCRIPTION m_SaveData[2];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[2];
 	static char *m_soundNames[3];
 
 	int m_lastSound;

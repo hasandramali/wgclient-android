@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_galil, CGalil);
+LINK_ENTITY_TO_CLASS(weapon_galil, CGalil, CCSGalil)
 
-void CGalil::Spawn()
+void CGalil::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -14,7 +16,7 @@ void CGalil::Spawn()
 	FallInit();
 }
 
-void CGalil::Precache()
+void CGalil::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_galil.mdl");
 	PRECACHE_MODEL("models/w_galil.mdl");
@@ -29,7 +31,7 @@ void CGalil::Precache()
 	m_usFireGalil = PRECACHE_EVENT(1, "events/galil.sc");
 }
 
-int CGalil::GetItemInfo(ItemInfo *p)
+int CGalil::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "556Nato";
@@ -46,7 +48,7 @@ int CGalil::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CGalil::Deploy()
+BOOL CGalil::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.2f;
 	m_iShotsFired = 0;
@@ -55,12 +57,12 @@ BOOL CGalil::Deploy()
 	return DefaultDeploy("models/v_galil.mdl", "models/p_galil.mdl", GALIL_DRAW, "ak47", UseDecrement() != FALSE);
 }
 
-void CGalil::SecondaryAttack()
+void CGalil::__MAKE_VHOOK(SecondaryAttack)()
 {
 	;
 }
 
-void CGalil::PrimaryAttack()
+void CGalil::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (m_pPlayer->pev->waterlevel == 3)
 	{
@@ -128,10 +130,10 @@ void CGalil::GalilFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireGalil, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 10000000), (int)(m_pPlayer->pev->punchangle.y * 10000000), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 10000000), int(m_pPlayer->pev->punchangle.y * 10000000), FALSE, FALSE);
 
 	m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
@@ -163,13 +165,15 @@ void CGalil::GalilFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CGalil::Reload()
+void CGalil::__MAKE_VHOOK(Reload)()
 {
+#ifdef REGAMEDLL_FIXES
 	// to prevent reload if not enough ammo
 	if (m_pPlayer->ammo_556nato <= 0)
 		return;
+#endif
 
-	if (DefaultReload(GALIL_MAX_CLIP, GALIL_RELOAD, GALIL_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), GALIL_RELOAD, GALIL_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -179,7 +183,7 @@ void CGalil::Reload()
 	}
 }
 
-void CGalil::WeaponIdle()
+void CGalil::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

@@ -34,19 +34,28 @@
 
 #define MAX_ENTITY_ARRAY	64
 
+#ifndef HOOK_GAMEDLL
+
+#define IMPL(var)\
+	var
+
+#define IMPL_CLASS(baseClass,var)\
+	baseClass::var
+
+#endif
 
 #define IMPLEMENT_SAVERESTORE(derivedClass, baseClass)\
-	int derivedClass::Save(CSave &save)\
+	int derivedClass::__MAKE_VHOOK(Save)(CSave &save)\
 	{\
 		if (!baseClass::Save(save))\
 			return 0;\
-		return save.WriteFields(#derivedClass, this, m_SaveData, ARRAYSIZE(m_SaveData));\
+		return save.WriteFields(#derivedClass, this, IMPL(m_SaveData), ARRAYSIZE(IMPL(m_SaveData)));\
 	}\
-	int derivedClass::Restore(CRestore &restore)\
+	int derivedClass::__MAKE_VHOOK(Restore)(CRestore &restore)\
 	{\
 		if (!baseClass::Restore(restore))\
 			return 0;\
-		return restore.ReadFields(#derivedClass, this, m_SaveData, ARRAYSIZE(m_SaveData));\
+		return restore.ReadFields(#derivedClass, this, IMPL(m_SaveData), ARRAYSIZE(IMPL(m_SaveData)));\
 	}
 
 typedef enum
@@ -118,6 +127,11 @@ public:
 	int WriteEntVars(const char *pname, entvars_t *pev);
 	int WriteFields(const char *pname, void *pBaseData, TYPEDESCRIPTION *pFields, int fieldCount);
 private:
+
+#ifdef HOOK_GAMEDLL
+public:
+#endif
+
 	int DataEmpty(const char *pdata, int size);
 	void BufferField(const char *pname, int size, const char *pdata);
 	void BufferString(char *pdata, int len);
@@ -176,7 +190,7 @@ public:
 	int Restore(CRestore &restore);
 	void DumpGlobals();
 
-	static TYPEDESCRIPTION m_SaveData[1];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
 
 private:
 	globalentity_t *Find(string_t globalname);

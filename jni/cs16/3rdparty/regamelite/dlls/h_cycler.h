@@ -39,36 +39,59 @@ public:
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 	virtual int ObjectCaps() { return (CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE); }
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 
 	// Don't treat as a live target
 	virtual BOOL IsAlive() { return FALSE; }
 	virtual void Think();
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	void Think_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	void GenericCyclerSpawn(char *szModel, Vector vecMin, Vector vecMax);
 
 public:
-	static TYPEDESCRIPTION m_SaveData[1];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
 
 	int m_animate;
 };
 
 // we should get rid of all the other cyclers and replace them with this.
-
 class CGenericCycler: public CCycler
 {
 public:
 	virtual void Spawn();
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
+
 };
 
 // Probe droid imported for tech demo compatibility
-
 class CCyclerProbe: public CCycler
 {
 public:
 	virtual void Spawn();
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
+
 };
 
 class CCyclerSprite: public CBaseEntity
@@ -79,16 +102,28 @@ public:
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 	virtual int ObjectCaps() { return (CBaseEntity::ObjectCaps() | FCAP_DONT_SAVE | FCAP_IMPULSE_USE); }
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	virtual void Think();
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Restart_();
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	void Think_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	void Animate(float frames);
 	inline int ShouldAnimate() { return (m_animate && m_maxFrame > 1.0f); }
 
 public:
-	static TYPEDESCRIPTION m_SaveData[3];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[3];
 
 	int m_animate;
 	float m_lastTime;
@@ -110,13 +145,22 @@ public:
 	virtual void PrimaryAttack();
 	virtual void SecondaryAttack();
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	BOOL Deploy_();
+	void Holster_(int skiplocal = 0);
+	void PrimaryAttack_();
+	void SecondaryAttack_();
+
+#endif
+
 public:
 	int m_iszModel;
 	int m_iModel;
 };
 
 // Flaming Wreakage
-
 class CWreckage: public CBaseMonster
 {
 public:
@@ -126,8 +170,18 @@ public:
 	virtual int Restore(CRestore &restore);
 	virtual void Think();
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Think_();
+
+#endif
+
 public:
-	static TYPEDESCRIPTION m_SaveData[1];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
 
 	int m_flStartTime;
 };

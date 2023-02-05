@@ -1,10 +1,11 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 skilldata_t gSkillData;
 
 // take the name of a cvar, tack a digit for the skill level
 // on, and return the value.of that Cvar
-
 NOXREF float GetSkillCvar(char *pName)
 {
 	int iCount;

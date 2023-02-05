@@ -1,7 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Move towards currently heard noise
-
 void InvestigateNoiseState::AttendCurrentNoise(CCSBot *me)
 {
 	if (!me->IsNoiseHeard() && me->GetNoisePosition())
@@ -22,14 +23,13 @@ void InvestigateNoiseState::AttendCurrentNoise(CCSBot *me)
 	me->ForgetNoise();
 }
 
-void InvestigateNoiseState::OnEnter(CCSBot *me)
+void InvestigateNoiseState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	AttendCurrentNoise(me);
 }
 
 // Use TravelDistance instead of distance...
-
-void InvestigateNoiseState::OnUpdate(CCSBot *me)
+void InvestigateNoiseState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	float newNoiseDist;
 	if (me->ShouldInvestigateNoise(&newNoiseDist))
@@ -106,7 +106,7 @@ void InvestigateNoiseState::OnUpdate(CCSBot *me)
 	}
 }
 
-void InvestigateNoiseState::OnExit(CCSBot *me)
+void InvestigateNoiseState::__MAKE_VHOOK(OnExit)(CCSBot *me)
 {
 	// reset to run mode in case we were sneaking about
 	me->Run();

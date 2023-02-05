@@ -1,6 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-void HostageFollowState::OnEnter(CHostageImprov *improv)
+void HostageFollowState::__MAKE_VHOOK(OnEnter)(CHostageImprov *improv)
 {
 	improv->Chatter(HOSTAGE_CHATTER_START_FOLLOW);
 	improv->Agree();
@@ -21,7 +23,7 @@ void HostageFollowState::OnEnter(CHostageImprov *improv)
 	}
 }
 
-void HostageFollowState::OnUpdate(CHostageImprov *improv)
+void HostageFollowState::__MAKE_VHOOK(OnUpdate)(CHostageImprov *improv)
 {
 	// if we lost our leader, give up
 	if (m_leader == NULL)
@@ -37,12 +39,12 @@ void HostageFollowState::OnUpdate(CHostageImprov *improv)
 		return;
 	}
 
-	float range = (m_leader->pev->origin - improv->GetCentroid()).Length();
+	float_precision range = (m_leader->pev->origin - improv->GetCentroid()).Length();
 
 	const float maxPathLength = 3000.0f;
 	const float giveUpRange = 1000.0f;
 
-	if( range > giveUpRange || ( improv->GetPath()->GetSegmentCount() > 0 && improv->GetPath()->GetLength() > maxPathLength ) )
+	if (range > giveUpRange || (improv->GetPath()->GetSegmentCount() > 0 && improv->GetPath()->GetLength() > maxPathLength))
 	{
 		improv->Idle();
 		return;
@@ -160,7 +162,7 @@ void HostageFollowState::OnUpdate(CHostageImprov *improv)
 
 				if (GetGroundHeight(&sideStepPos, &ground))
 				{
-					if (abs((int)(ground - improv->GetFeet().z)) < 18.0f)
+					if (Q_abs(int(ground - improv->GetFeet().z)) < 18.0f)
 					{
 						const float push = 20.0f;
 						Vector lat = cross * push;
@@ -192,12 +194,12 @@ void HostageFollowState::OnUpdate(CHostageImprov *improv)
 	}
 }
 
-void HostageFollowState::OnExit(CHostageImprov *improv)
+void HostageFollowState::__MAKE_VHOOK(OnExit)(CHostageImprov *improv)
 {
 	improv->Stop();
 }
 
-void HostageFollowState::UpdateStationaryAnimation(CHostageImprov *improv)
+void HostageFollowState::__MAKE_VHOOK(UpdateStationaryAnimation)(CHostageImprov *improv)
 {
 	if (improv->IsScared())
 		improv->UpdateIdleActivity(ACT_FOLLOW_IDLE_SCARED, ACT_RESET);

@@ -1,7 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // This method is the ONLY legal way to change a bot's current state
-
 void CCSBot::SetState(BotState *state)
 {
 	PrintIfWatched("SetState: %s -> %s\n", (m_state != NULL) ? m_state->GetName() : "NULL", state->GetName());
@@ -49,7 +50,6 @@ void CCSBot::Follow(CBasePlayer *player)
 }
 
 // Continue following our leader after finishing what we were doing
-
 void CCSBot::ContinueFollowing()
 {
 	SetTask(FOLLOW);
@@ -58,7 +58,6 @@ void CCSBot::ContinueFollowing()
 }
 
 // Stop following
-
 void CCSBot::StopFollowing()
 {
 	m_isFollowing = false;
@@ -67,14 +66,12 @@ void CCSBot::StopFollowing()
 }
 
 // Begin process of rescuing hostages
-
 void CCSBot::RescueHostages()
 {
 	SetTask(RESCUE_HOSTAGES);
 }
 
 // Use the entity
-
 void CCSBot::UseEntity(CBaseEntity *entity)
 {
 	m_useEntityState.SetEntity(entity);
@@ -84,7 +81,6 @@ void CCSBot::UseEntity(CBaseEntity *entity)
 // DEPRECATED: Use TryToHide() instead.
 // Move to a hiding place.
 // If 'searchFromArea' is non-NULL, hiding spots are looked for from that area first.
-
 void CCSBot::Hide(CNavArea *searchFromArea, float duration, float hideRange, bool holdPosition)
 {
 	DestroyPath();
@@ -143,7 +139,6 @@ void CCSBot::Hide(CNavArea *searchFromArea, float duration, float hideRange, boo
 }
 
 // Move to the given hiding place
-
 void CCSBot::Hide(const Vector *hidingSpot, float duration, bool holdPosition)
 {
 	CNavArea *hideArea = TheNavAreaGrid.GetNearestNavArea(hidingSpot);
@@ -175,7 +170,6 @@ void CCSBot::Hide(const Vector *hidingSpot, float duration, bool holdPosition)
 
 // Try to hide nearby. Return true if hiding, false if can't hide here.
 // If 'searchFromArea' is non-NULL, hiding spots are looked for from that area first.
-
 bool CCSBot::TryToHide(CNavArea *searchFromArea, float duration, float hideRange, bool holdPosition, bool useNearest)
 {
 	CNavArea *source;
@@ -224,7 +218,6 @@ bool CCSBot::TryToHide(CNavArea *searchFromArea, float duration, float hideRange
 }
 
 // Retreat to a nearby hiding spot, away from enemies
-
 bool CCSBot::TryToRetreat()
 {
 	const float maxRange = 1000.0f;
@@ -256,7 +249,6 @@ void CCSBot::Hunt()
 
 // Attack our the given victim
 // NOTE: Attacking does not change our task.
-
 void CCSBot::Attack(CBasePlayer *victim)
 {
 	if (victim == NULL)
@@ -277,12 +269,20 @@ void CCSBot::Attack(CBasePlayer *victim)
 	if (IsAttacking())
 		return;
 
+	// if we are currently hiding, increase our chances of crouching and holding position
 	if (IsAtHidingSpot())
 		m_attackState.SetCrouchAndHold((RANDOM_FLOAT(0, 100) < 60.0f) != 0);
 	else
 		m_attackState.SetCrouchAndHold(false);
 
-	PrintIfWatched("ATTACK BEGIN (reaction time = %g (+ update time), surprise time = %g, attack delay = %g)\n");
+	PrintIfWatched("ATTACK BEGIN (reaction time = %g (+ update time), surprise time = %g, attack delay = %g)\n"
+
+#ifdef REGAMEDLL_FIXES
+		, GetProfile()->GetReactionTime(), m_surpriseDelay, GetProfile()->GetAttackDelay()
+#endif
+
+	);
+
 	m_isAttacking = true;
 	m_attackState.OnEnter(this);
 
@@ -295,7 +295,7 @@ void CCSBot::Attack(CBasePlayer *victim)
 	Vector toEnemy = victim->pev->origin - pev->origin;
 	Vector idealAngle = UTIL_VecToAngles(toEnemy);
 
-	float deltaYaw = abs((int)(m_lookYaw - idealAngle.y));
+	float_precision deltaYaw = float_precision(Q_abs(int64(m_lookYaw - idealAngle.y)));
 
 	while (deltaYaw > 180.0f)
 		deltaYaw -= 360.0f;
@@ -305,7 +305,7 @@ void CCSBot::Attack(CBasePlayer *victim)
 
 	// immediately aim at enemy - accuracy penalty depending on how far we must turn to aim
 	// accuracy is halved if we have to turn 180 degrees
-	float turn = deltaYaw / 180.0f;
+	float turn = deltaYaw * 0.0055555557;/// 180.0f;
 	float accuracy = GetProfile()->GetSkill() / (1.0f + turn);
 
 	SetAimOffset(accuracy);
@@ -316,7 +316,6 @@ void CCSBot::Attack(CBasePlayer *victim)
 }
 
 // Exit the Attack state
-
 void CCSBot::StopAttacking()
 {
 	PrintIfWatched("ATTACK END\n");
@@ -336,7 +335,6 @@ bool CCSBot::IsAttacking() const
 }
 
 // Return true if we are escaping from the bomb
-
 bool CCSBot::IsEscapingFromBomb() const
 {
 	if (m_state == static_cast<const BotState *>(&m_escapeFromBombState))
@@ -346,7 +344,6 @@ bool CCSBot::IsEscapingFromBomb() const
 }
 
 // Return true if we are defusing the bomb
-
 bool CCSBot::IsDefusingBomb() const
 {
 	if (m_state == static_cast<const BotState *>(&m_defuseBombState))
@@ -356,7 +353,6 @@ bool CCSBot::IsDefusingBomb() const
 }
 
 // Return true if we are hiding
-
 bool CCSBot::IsHiding() const
 {
 	if (m_state == static_cast<const BotState *>(&m_hideState))
@@ -366,7 +362,6 @@ bool CCSBot::IsHiding() const
 }
 
 // Return true if we are hiding and at our hiding spot
-
 bool CCSBot::IsAtHidingSpot() const
 {
 	if (!IsHiding())
@@ -376,7 +371,6 @@ bool CCSBot::IsAtHidingSpot() const
 }
 
 // Return true if we are huting
-
 bool CCSBot::IsHunting() const
 {
 	if (m_state == static_cast<const BotState *>(&m_huntState))
@@ -386,7 +380,6 @@ bool CCSBot::IsHunting() const
 }
 
 // Return true if we are in the MoveTo state
-
 bool CCSBot::IsMovingTo() const
 {
 	if (m_state == static_cast<const BotState *>(&m_moveToState))
@@ -396,7 +389,6 @@ bool CCSBot::IsMovingTo() const
 }
 
 // Return true if we are buying
-
 bool CCSBot::IsBuying() const
 {
 	if (m_state == static_cast<const BotState *>(&m_buyState))
@@ -406,7 +398,6 @@ bool CCSBot::IsBuying() const
 }
 
 // Move to potentially distant position
-
 void CCSBot::MoveTo(const Vector *pos, RouteType route)
 {
 	m_moveToState.SetGoalPosition(*pos);
@@ -420,7 +411,6 @@ void CCSBot::PlantBomb()
 }
 
 // Bomb has been dropped - go get it
-
 void CCSBot::FetchBomb()
 {
 	SetState(&m_fetchBombState);
@@ -432,7 +422,6 @@ void CCSBot::DefuseBomb()
 }
 
 // Investigate recent enemy noise
-
 void CCSBot::InvestigateNoise()
 {
 	SetState(&m_investigateNoiseState);

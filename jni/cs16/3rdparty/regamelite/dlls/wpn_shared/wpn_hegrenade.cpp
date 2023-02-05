@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_hegrenade, CHEGrenade);
+LINK_ENTITY_TO_CLASS(weapon_hegrenade, CHEGrenade, CCSHEGrenade)
 
-void CHEGrenade::Spawn()
+void CHEGrenade::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -10,7 +12,7 @@ void CHEGrenade::Spawn()
 	SET_MODEL(edict(), "models/w_hegrenade.mdl");
 
 	pev->dmg = 4;
-	
+
 	m_iDefaultAmmo = HEGRENADE_DEFAULT_GIVE;
 	m_flStartThrow = 0;
 	m_flReleaseThrow = -1.0f;
@@ -20,7 +22,7 @@ void CHEGrenade::Spawn()
 	FallInit();
 }
 
-void CHEGrenade::Precache()
+void CHEGrenade::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_hegrenade.mdl");
 	PRECACHE_MODEL("models/shield/v_shield_hegrenade.mdl");
@@ -33,14 +35,18 @@ void CHEGrenade::Precache()
 	m_usCreateExplosion = PRECACHE_EVENT(1, "events/createexplo.sc");
 }
 
-int CHEGrenade::GetItemInfo(ItemInfo *p)
+int CHEGrenade::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
+	auto info = GetWeaponInfo(WEAPON_HEGRENADE);
+
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "HEGrenade";
-	p->iMaxAmmo1 = MAX_AMMO_HEGRENADE;
+
+	p->iMaxAmmo1 = info ? info->maxRounds : MAX_AMMO_HEGRENADE;
+	p->iMaxClip = info ? info->gunClipSize : WEAPON_NOCLIP;
+
 	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;
-	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 3;
 	p->iPosition = 1;
 	p->iId = m_iId = WEAPON_HEGRENADE;
@@ -50,7 +56,7 @@ int CHEGrenade::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CHEGrenade::Deploy()
+BOOL CHEGrenade::__MAKE_VHOOK(Deploy)()
 {
 	m_flReleaseThrow = -1.0f;
 	m_fMaxSpeed = HEGRENADE_MAX_SPEED;
@@ -64,7 +70,7 @@ BOOL CHEGrenade::Deploy()
 		return DefaultDeploy("models/v_hegrenade.mdl", "models/p_hegrenade.mdl", HEGRENADE_DRAW, "grenade", UseDecrement() != FALSE);
 }
 
-void CHEGrenade::Holster(int skiplocal)
+void CHEGrenade::__MAKE_VHOOK(Holster)(int skiplocal)
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 
@@ -78,7 +84,7 @@ void CHEGrenade::Holster(int skiplocal)
 	m_flReleaseThrow = -1.0f;
 }
 
-void CHEGrenade::PrimaryAttack()
+void CHEGrenade::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (m_iWeaponState & WPNSTATE_SHIELD_DRAWN)
 	{
@@ -131,7 +137,7 @@ bool CHEGrenade::ShieldSecondaryFire(int iUpAnim, int iDownAnim)
 	return true;
 }
 
-void CHEGrenade::SecondaryAttack()
+void CHEGrenade::__MAKE_VHOOK(SecondaryAttack)()
 {
 	ShieldSecondaryFire(SHIELDGUN_DRAW, SHIELDGUN_DRAWN_IDLE);
 }
@@ -158,7 +164,7 @@ void CHEGrenade::ResetPlayerShieldAnim()
 	}
 }
 
-void CHEGrenade::WeaponIdle()
+void CHEGrenade::__MAKE_VHOOK(WeaponIdle)()
 {
 	if (m_flReleaseThrow == 0 && m_flStartThrow != 0.0f)
 		m_flReleaseThrow = gpGlobals->time;
@@ -249,7 +255,7 @@ void CHEGrenade::WeaponIdle()
 	}
 }
 
-BOOL CHEGrenade::CanDeploy()
+BOOL CHEGrenade::__MAKE_VHOOK(CanDeploy)()
 {
 	return m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] != 0;
 }

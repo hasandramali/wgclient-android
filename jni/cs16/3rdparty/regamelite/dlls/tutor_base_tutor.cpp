@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 CBaseTutor *TheTutor = NULL;
@@ -63,22 +65,20 @@ TutorMessageEvent *TutorMessageEvent::GetNext()
 void TutorMessageEvent::AddParameter(char *str)
 {
 	if (str == NULL)
-	{
 		return;
-	}
 
 	TutorMessageEventParam *param = new TutorMessageEventParam;
 
 	param->m_next = NULL;
 	param->m_data = new char[Q_strlen(str) + 1];
 
-	if (param->m_data != NULL)
+	if (param->m_data)
 	{
 		Q_strcpy(param->m_data, str);
 		param->m_data[Q_strlen(str)] = '\0';
 		++m_numParameters;
 
-		if (m_paramList != NULL)
+		if (m_paramList)
 		{
 			TutorMessageEventParam *temp = m_paramList;
 
@@ -97,16 +97,17 @@ char *TutorMessageEvent::GetNextParameter(char *buf, int buflen)
 	TutorMessageEventParam *param = m_paramList;
 
 	if (param == NULL)
-	{
 		return NULL;
-	}
 
 	m_numParameters--;
 	m_paramList = param->m_next;
 
 	Q_strncpy(buf, param->m_data, buflen);
+
+#ifdef REGAMEDLL_FIXES
 	buf[buflen] = '\0';
-   
+#endif
+
 	delete param;
 	return buf;
 }
@@ -126,8 +127,7 @@ CBaseTutor::CBaseTutor()
 CBaseTutor::~CBaseTutor()
 {
 	TutorMessageEvent *event = m_eventList;
-
-	while (event != NULL)
+	while (event)
 	{
 		TutorMessageEvent *temp = event;
 		event = event->GetNext();
@@ -176,8 +176,7 @@ void CBaseTutor::DisplayMessageToPlayer(CBasePlayer *player, int id, const char 
 		for (int arg = 0; arg < numArgs; ++arg)
 		{
 			char *str = event->GetNextParameter(param, sizeof(param));
-
-			if (str != NULL)
+			if (str)
 				WRITE_STRING(str);
 			else
 				WRITE_STRING("");
@@ -186,7 +185,7 @@ void CBaseTutor::DisplayMessageToPlayer(CBasePlayer *player, int id, const char 
 		WRITE_SHORT(id);
 		WRITE_SHORT(player->IsAlive() == FALSE);
 
-		if (definition != NULL)
+		if (definition)
 			WRITE_SHORT(definition->m_type);
 		else
 			WRITE_SHORT(TUTORMESSAGETYPE_DEFAULT);
@@ -194,7 +193,7 @@ void CBaseTutor::DisplayMessageToPlayer(CBasePlayer *player, int id, const char 
 
 	m_deadAirStartTime = -1.0f;
 
-	if (definition != NULL)
+	if (definition)
 	{
 		if (gpGlobals->time - m_roundStartTime > 1.0f)
 		{
@@ -231,13 +230,10 @@ void CBaseTutor::DisplayNewStateDescriptionToPlayer()
 {
 	CBasePlayer *localPlayer = UTIL_GetLocalPlayer();
 
-	if (localPlayer == NULL)
-	{
+	if (!localPlayer)
 		return;
-	}
 
 	char *desc = m_stateSystem->GetCurrentStateString();
-
 	if (!desc)
 	{
 		MESSAGE_BEGIN(MSG_ONE, gmsgTutorState, NULL, localPlayer->pev);
@@ -250,7 +246,7 @@ void CBaseTutor::CloseCurrentWindow()
 {
 	CBasePlayer *localPlayer = (CBasePlayer *)UTIL_GetLocalPlayer();
 
-	if (localPlayer != NULL)
+	if (localPlayer)
 	{
 		MESSAGE_BEGIN(MSG_ONE, gmsgTutorClose, NULL, localPlayer->pev);
 		MESSAGE_END();
@@ -264,17 +260,13 @@ void CBaseTutor::CalculatePathForObjective(CBaseEntity *player)
 	;
 }
 
-bool CBaseTutor::IsEntityInViewOfPlayer(CBaseEntity *entity, CBasePlayer *player)
+bool CBaseTutor::__MAKE_VHOOK(IsEntityInViewOfPlayer)(CBaseEntity *entity, CBasePlayer *player)
 {
-	if (entity == NULL || player == NULL)
-	{
+	if (!entity || !player)
 		return false;
-	}
 
 	if (cv_tutor_view_distance.value < (entity->pev->origin - player->pev->origin).Length())
-	{
 		return false;
-	}
 
 	if (player->FInViewCone(entity))
 	{
@@ -292,17 +284,13 @@ bool CBaseTutor::IsEntityInViewOfPlayer(CBaseEntity *entity, CBasePlayer *player
 	return false;
 }
 
-bool CBaseTutor::IsPlayerLookingAtPosition(Vector *origin, CBasePlayer *player)
+bool CBaseTutor::__MAKE_VHOOK(IsPlayerLookingAtPosition)(Vector *origin, CBasePlayer *player)
 {
-	if (origin == NULL || player == NULL)
-	{
+	if (!origin || !player)
 		return false;
-	}
 
 	if (cv_tutor_look_distance.value < (*origin - player->pev->origin).Length())
-	{
 		return false;
-	}
 
 	if (player->IsLookingAtPosition(origin, cv_tutor_look_angle.value))
 	{
@@ -318,12 +306,10 @@ bool CBaseTutor::IsPlayerLookingAtPosition(Vector *origin, CBasePlayer *player)
 	return false;
 }
 
-bool CBaseTutor::IsPlayerLookingAtEntity(CBaseEntity *entity, CBasePlayer *player)
+bool CBaseTutor::__MAKE_VHOOK(IsPlayerLookingAtEntity)(CBaseEntity *entity, CBasePlayer *player)
 {
-	if (entity == NULL || player == NULL)
-	{
+	if (!entity || !player)
 		return false;
-	}
 
 	UTIL_MakeVectors(player->pev->v_angle);
 
@@ -333,7 +319,7 @@ bool CBaseTutor::IsPlayerLookingAtEntity(CBaseEntity *entity, CBasePlayer *playe
 	TraceResult result;
 	UTIL_TraceLine(srcVec, destVec, dont_ignore_monsters, ignore_glass, ENT(player->pev), &result);
 
-	if (result.pHit != NULL)
+	if (result.pHit)
 	{
 		if (!FNullEnt(result.pHit) && CBaseEntity::Instance(result.pHit) == entity)
 		{
@@ -344,19 +330,15 @@ bool CBaseTutor::IsPlayerLookingAtEntity(CBaseEntity *entity, CBasePlayer *playe
 	return false;
 }
 
-bool CBaseTutor::IsBombsiteInViewOfPlayer(CBaseEntity *entity, CBasePlayer *player)
+bool CBaseTutor::__MAKE_VHOOK(IsBombsiteInViewOfPlayer)(CBaseEntity *entity, CBasePlayer *player)
 {
-	if (entity == NULL || player == NULL)
-	{
+	if (!entity || !player)
 		return false;
-	}
 
-	Vector bombSiteCenter = (entity->pev->absmax + entity->pev->absmin) * 0.5;
+	Vector bombSiteCenter = (entity->pev->absmax + entity->pev->absmin) * 0.5f;
 
 	if (cv_tutor_view_distance.value < (bombSiteCenter - player->pev->origin).Length())
-	{
 		return false;
-	}
 
 	if (player->FInViewCone(entity))
 	{
@@ -374,12 +356,10 @@ bool CBaseTutor::IsBombsiteInViewOfPlayer(CBaseEntity *entity, CBasePlayer *play
 	return false;
 }
 
-bool CBaseTutor::IsEntityInBombsite(CBaseEntity *bombsite, CBaseEntity *entity)
+bool CBaseTutor::__MAKE_VHOOK(IsEntityInBombsite)(CBaseEntity *bombsite, CBaseEntity *entity)
 {
-	if (bombsite == NULL || entity == NULL)
-	{
+	if (!bombsite || !entity)
 		return false;
-	}
 
 	if (entity->pev->origin.x <= bombsite->pev->absmax.x
 		&& entity->pev->origin.y <= bombsite->pev->absmax.y
@@ -397,22 +377,16 @@ bool CBaseTutor::IsEntityInBombsite(CBaseEntity *bombsite, CBaseEntity *entity)
 bool CBaseTutor::DoMessagesHaveSameID(int id1, int id2)
 {
 	if (id1 == id2)
-	{
 		return true;
-	}
 
 	TutorMessage *message1 = GetTutorMessageDefinition(id1);
 	TutorMessage *message2 = GetTutorMessageDefinition(id2);
 
-	if (message1 == NULL || message2 == NULL)
-	{
+	if (!message1 || !message2)
 		return false;
-	}
 
 	if (message1->m_duplicateID && message2->m_duplicateID)
-	{
 		return true;
-	}
 
 	return false;
 }

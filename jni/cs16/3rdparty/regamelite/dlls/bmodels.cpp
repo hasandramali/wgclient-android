@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CFuncRotating::m_SaveData[] =
 {
 	DEFINE_FIELD(CFuncRotating, m_flFanFriction, FIELD_FLOAT),
@@ -24,16 +28,17 @@ TYPEDESCRIPTION CPendulum::m_SaveData[] =
 	DEFINE_FIELD(CPendulum, m_start, FIELD_VECTOR),
 };
 
-// BModelOrigin - calculates origin of a bmodel from absmin/size because all bmodel origins are 0 0 0
+#endif
 
+// BModelOrigin - calculates origin of a bmodel from absmin/size because all bmodel origins are 0 0 0
 Vector VecBModelOrigin(entvars_t *pevBModel)
 {
-	return pevBModel->absmin + (pevBModel->size * 0.5);
+	return pevBModel->absmin + (pevBModel->size * 0.5f);
 }
 
-LINK_ENTITY_TO_CLASS(func_wall, CFuncWall);
+LINK_ENTITY_TO_CLASS(func_wall, CFuncWall, CCSFuncWall)
 
-void CFuncWall::Spawn()
+void CFuncWall::__MAKE_VHOOK(Spawn)()
 {
 	pev->angles = g_vecZero;
 
@@ -47,17 +52,17 @@ void CFuncWall::Spawn()
 	pev->flags |= FL_WORLDBRUSH;
 }
 
-void CFuncWall::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CFuncWall::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
-	if (ShouldToggle(useType, (int)(pev->frame)))
+	if (ShouldToggle(useType, int(pev->frame)))
 	{
 		pev->frame = 1.0 - pev->frame;
 	}
 }
 
-LINK_ENTITY_TO_CLASS(func_wall_toggle, CFuncWallToggle);
+LINK_ENTITY_TO_CLASS(func_wall_toggle, CFuncWallToggle, CCSFuncWallToggle)
 
-void CFuncWallToggle::Spawn()
+void CFuncWallToggle::__MAKE_VHOOK(Spawn)()
 {
 	CFuncWall::Spawn();
 
@@ -91,7 +96,7 @@ BOOL CFuncWallToggle::IsOn()
 	return TRUE;
 }
 
-void CFuncWallToggle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CFuncWallToggle::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	int status = IsOn();
 
@@ -104,9 +109,9 @@ void CFuncWallToggle::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 	}
 }
 
-LINK_ENTITY_TO_CLASS(func_conveyor, CFuncConveyor);
+LINK_ENTITY_TO_CLASS(func_conveyor, CFuncConveyor, CCSFuncConveyor)
 
-void CFuncConveyor::Spawn()
+void CFuncConveyor::__MAKE_VHOOK(Spawn)()
 {
 	SetMovedir(pev);
 	CFuncWall::Spawn();
@@ -131,11 +136,10 @@ void CFuncConveyor::Spawn()
 }
 
 // HACKHACK -- This is ugly, but encode the speed in the rendercolor to avoid adding more data to the network stream
-
 void CFuncConveyor::UpdateSpeed(float speed)
 {
 	// Encode it as an integer with 4 fractional bits
-	int speedCode = (int)(fabs((float)speed) * 16.0);
+	int speedCode = int(Q_fabs(float_precision(speed)) * 16.0);
 
 	if (speed < 0)
 		pev->rendercolor.x = 1;
@@ -146,27 +150,27 @@ void CFuncConveyor::UpdateSpeed(float speed)
 	pev->rendercolor.z = (speedCode & 0xFF);
 }
 
-void CFuncConveyor::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CFuncConveyor::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	pev->speed = -pev->speed;
 	UpdateSpeed(pev->speed);
 }
 
-LINK_ENTITY_TO_CLASS(func_illusionary, CFuncIllusionary);
+LINK_ENTITY_TO_CLASS(func_illusionary, CFuncIllusionary, CCSFuncIllusionary)
 
-void CFuncIllusionary::KeyValue(KeyValueData *pkvd)
+void CFuncIllusionary::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
-	//skin is used for content type
+	// skin is used for content type
 	if (FStrEq(pkvd->szKeyName, "skin"))
 	{
-		pev->skin = (int)Q_atof(pkvd->szValue);
+		pev->skin = Q_atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else
 		CBaseToggle::KeyValue(pkvd);
 }
 
-void CFuncIllusionary::Spawn()
+void CFuncIllusionary::__MAKE_VHOOK(Spawn)()
 {
 	pev->angles = g_vecZero;
 	pev->movetype = MOVETYPE_NONE;
@@ -182,9 +186,9 @@ void CFuncIllusionary::Spawn()
 	// MAKE_STATIC(ENT(pev));
 }
 
-LINK_ENTITY_TO_CLASS(func_monsterclip, CFuncMonsterClip);
+LINK_ENTITY_TO_CLASS(func_monsterclip, CFuncMonsterClip, CCSFuncMonsterClip)
 
-void CFuncMonsterClip::Spawn()
+void CFuncMonsterClip::__MAKE_VHOOK(Spawn)()
 {
 	CFuncWall::Spawn();
 
@@ -196,11 +200,10 @@ void CFuncMonsterClip::Spawn()
 	pev->flags |= FL_MONSTERCLIP;
 }
 
-LINK_ENTITY_TO_CLASS(func_rotating, CFuncRotating);
+LINK_ENTITY_TO_CLASS(func_rotating, CFuncRotating, CCSFuncRotating)
+IMPLEMENT_SAVERESTORE(CFuncRotating, CBaseEntity)
 
-IMPLEMENT_SAVERESTORE(CFuncRotating, CBaseEntity);
-
-void CFuncRotating::KeyValue(KeyValueData *pkvd)
+void CFuncRotating::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "fanfriction"))
 	{
@@ -249,8 +252,7 @@ void CFuncRotating::KeyValue(KeyValueData *pkvd)
 // "dmg"	damage to inflict when blocked (2 default)
 
 // REVERSE will cause the it to rotate in the opposite direction.
-
-void CFuncRotating::Spawn()
+void CFuncRotating::__MAKE_VHOOK(Spawn)()
 {
 	// set final pitch.  Must not be PITCH_NORM, since we
 	// plan on pitch shifting later.
@@ -348,7 +350,7 @@ void CFuncRotating::Spawn()
 	Precache();
 }
 
-void CFuncRotating::Precache()
+void CFuncRotating::__MAKE_VHOOK(Precache)()
 {
 	char *szSoundFile = (char *)STRING(pev->message);
 
@@ -411,7 +413,6 @@ void CFuncRotating::Precache()
 }
 
 // Touch - will hurt others based on how fast the brush is spinning
-
 void CFuncRotating::HurtTouch(CBaseEntity *pOther)
 {
 	entvars_t *pevOther = pOther->pev;
@@ -434,20 +435,20 @@ void CFuncRotating::HurtTouch(CBaseEntity *pOther)
 void CFuncRotating::RampPitchVol(int fUp)
 {
 	Vector vecAVel = pev->avelocity;
-	float vecCur;
-	float vecFinal;
-	float fpct;
+	float_precision vecCur;
+	float_precision vecFinal;
+	float_precision fpct;
 	float fvol;
 	float fpitch;
 	int pitch;
 
 	// get current angular velocity
-	vecCur = abs((int)(vecAVel.x != 0 ? vecAVel.x : (vecAVel.y != 0 ? vecAVel.y : vecAVel.z)));
+	vecCur = Q_abs(int(vecAVel.x != 0 ? vecAVel.x : (vecAVel.y != 0 ? vecAVel.y : vecAVel.z)));
 
 	// get target angular velocity
 	vecFinal = (pev->movedir.x != 0 ? pev->movedir.x : (pev->movedir.y != 0 ? pev->movedir.y : pev->movedir.z));
 	vecFinal *= pev->speed;
-	vecFinal = abs((int)vecFinal);
+	vecFinal = Q_abs(int(vecFinal));
 
 	// calc volume and pitch as % of final vol and pitch
 	fpct = vecCur / vecFinal;
@@ -455,7 +456,7 @@ void CFuncRotating::RampPitchVol(int fUp)
 	//if (fUp)
 	//{
 	//	// spinup volume ramps up from 50% max vol
-	//	fvol = m_flVolume * (0.5 + fpct/2.0);
+	//	fvol = m_flVolume * (0.5 + fpct / 2.0);
 	//}
 	//else
 	{
@@ -465,7 +466,7 @@ void CFuncRotating::RampPitchVol(int fUp)
 
 	fpitch = FANPITCHMIN + (FANPITCHMAX - FANPITCHMIN) * fpct;
 
-	pitch = (int)fpitch;
+	pitch = int(fpitch);
 	if (pitch == PITCH_NORM)
 	{
 		pitch = PITCH_NORM - 1;
@@ -476,7 +477,6 @@ void CFuncRotating::RampPitchVol(int fUp)
 }
 
 // SpinUp - accelerates a non-moving func_rotating up to it's speed
-
 void CFuncRotating::SpinUp()
 {
 	//rotational velocity
@@ -489,9 +489,9 @@ void CFuncRotating::SpinUp()
 	vecAVel = pev->avelocity;
 
 	// if we've met or exceeded target speed, set target speed and stop thinking
-	if (abs((int)vecAVel.x) >= abs((int)(pev->movedir.x * pev->speed))
-		&& abs((int)vecAVel.y) >= abs((int)(pev->movedir.y * pev->speed))
-		&& abs((int)vecAVel.z) >= abs((int)(pev->movedir.z * pev->speed)))
+	if (Q_abs(int(vecAVel.x)) >= Q_abs(int(pev->movedir.x * pev->speed))
+		&& Q_abs(int(vecAVel.y)) >= Q_abs(int(pev->movedir.y * pev->speed))
+		&& Q_abs(int(vecAVel.z)) >= Q_abs(int(pev->movedir.z * pev->speed)))
 	{
 		// set speed in case we overshot
 		pev->avelocity = pev->movedir * pev->speed;
@@ -553,7 +553,6 @@ void CFuncRotating::Rotate()
 }
 
 // Rotating Use - when a rotating brush is triggered
-
 void CFuncRotating::RotatingUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	// is this a brush that should accelerate and decelerate when turned on/off (fan)?
@@ -599,17 +598,15 @@ void CFuncRotating::RotatingUse(CBaseEntity *pActivator, CBaseEntity *pCaller, U
 }
 
 // RotatingBlocked - An entity has blocked the brush
-
-void CFuncRotating::Blocked(CBaseEntity *pOther)
+void CFuncRotating::__MAKE_VHOOK(Blocked)(CBaseEntity *pOther)
 {
 	pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
 }
 
-LINK_ENTITY_TO_CLASS(func_pendulum, CPendulum);
+LINK_ENTITY_TO_CLASS(func_pendulum, CPendulum, CCSPendulum)
+IMPLEMENT_SAVERESTORE(CPendulum, CBaseEntity)
 
-IMPLEMENT_SAVERESTORE(CPendulum, CBaseEntity);
-
-void CPendulum::KeyValue(KeyValueData *pkvd)
+void CPendulum::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "distance"))
 	{
@@ -625,7 +622,7 @@ void CPendulum::KeyValue(KeyValueData *pkvd)
 		CBaseEntity::KeyValue(pkvd);
 }
 
-void CPendulum::Spawn()
+void CPendulum::__MAKE_VHOOK(Spawn)()
 {
 	// set the axis of rotation
 	CBaseToggle::AxisDir(pev);
@@ -646,7 +643,7 @@ void CPendulum::Spawn()
 		pev->speed = 100;
 
 	// Calculate constant acceleration from speed and distance
-	m_accel = (pev->speed * pev->speed) / (2 * fabs((float)m_distance));
+	m_accel = (pev->speed * pev->speed) / (2 * Q_fabs(float_precision(m_distance)));
 	m_maxSpeed = pev->speed;
 	m_start = pev->angles;
 	m_center = pev->angles + (m_distance * 0.5) * pev->movedir;
@@ -673,7 +670,7 @@ void CPendulum::PendulumUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_T
 	{
 		if (pev->spawnflags & SF_PENDULUM_AUTO_RETURN)
 		{
-			float delta;
+			float_precision delta;
 
 			delta = CBaseToggle::AxisDelta(pev->spawnflags, pev->angles, m_start);
 
@@ -709,7 +706,7 @@ void CPendulum::Stop()
 	pev->avelocity = g_vecZero;
 }
 
-void CPendulum::Blocked(CBaseEntity *pOther)
+void CPendulum::__MAKE_VHOOK(Blocked)(CBaseEntity *pOther)
 {
 	m_time = gpGlobals->time;
 }
@@ -765,7 +762,7 @@ void CPendulum::Swing()
 	}
 }
 
-void CPendulum::Touch(CBaseEntity *pOther)
+void CPendulum::__MAKE_VHOOK(Touch)(CBaseEntity *pOther)
 {
 	entvars_t *pevOther = pOther->pev;
 

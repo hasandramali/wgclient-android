@@ -1,11 +1,19 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-CSoundEnt *pSoundEnt;
+/*
+* Globals initialization
+*/
+#ifndef HOOK_GAMEDLL
 
-LINK_ENTITY_TO_CLASS(soundent, CSoundEnt);
+CSoundEnt *pSoundEnt = NULL;
+
+#endif
+
+LINK_ENTITY_TO_CLASS(soundent, CSoundEnt, CCSSoundEnt)
 
 // CSound - Clear - zeros all fields for a sound
-
 void CSound::Clear()
 {
 	m_vecOrigin = g_vecZero;
@@ -18,7 +26,6 @@ void CSound::Clear()
 
 // Reset - clears the volume, origin, and type for a sound,
 // but doesn't expire or unlink it.
-
 void CSound::Reset()
 {
 	m_vecOrigin = g_vecZero;
@@ -28,7 +35,6 @@ void CSound::Reset()
 }
 
 // FIsSound - returns TRUE if the sound is an Audible sound
-
 NOXREF BOOL CSound::FIsSound()
 {
 	if (m_iType & (bits_SOUND_COMBAT | bits_SOUND_WORLD | bits_SOUND_PLAYER | bits_SOUND_DANGER))
@@ -40,7 +46,6 @@ NOXREF BOOL CSound::FIsSound()
 }
 
 // FIsScent - returns TRUE if the sound is actually a scent
-
 NOXREF BOOL CSound::FIsScent()
 {
 	if (m_iType & (bits_SOUND_CARCASS | bits_SOUND_MEAT | bits_SOUND_GARBAGE))
@@ -51,7 +56,7 @@ NOXREF BOOL CSound::FIsScent()
 	return FALSE;
 }
 
-void CSoundEnt::Spawn()
+void CSoundEnt::__MAKE_VHOOK(Spawn)()
 {
 	pev->solid = SOLID_NOT;
 	Initialize();
@@ -62,8 +67,7 @@ void CSoundEnt::Spawn()
 // Think - at interval, the entire active sound list is checked
 // for sounds that have ExpireTimes less than or equal
 // to the current world time, and these sounds are deallocated.
-
-void CSoundEnt::Think()
+void CSoundEnt::__MAKE_VHOOK(Think)()
 {
 	int iSound;
 	int iPreviousSound;
@@ -100,8 +104,7 @@ void CSoundEnt::Think()
 }
 
 // Precache - dummy function
-
-void CSoundEnt::Precache()
+void CSoundEnt::__MAKE_VHOOK(Precache)()
 {
 	;
 }
@@ -109,7 +112,6 @@ void CSoundEnt::Precache()
 // FreeSound - clears the passed active sound and moves it
 // to the top of the free list. TAKE CARE to only call this
 // function for sounds in the Active list
-
 void CSoundEnt::FreeSound(int iSound, int iPrevious)
 {
 	if (!pSoundEnt)
@@ -138,7 +140,6 @@ void CSoundEnt::FreeSound(int iSound, int iPrevious)
 
 // IAllocSound - moves a sound from the Free list to the
 // Active list returns the index of the alloc'd sound
-
 int CSoundEnt::IAllocSound()
 {
 	int iNewSound;
@@ -170,7 +171,6 @@ int CSoundEnt::IAllocSound()
 
 // InsertSound - Allocates a free sound and fills it with
 // sound info.
-
 void CSoundEnt::InsertSound(int iType, const Vector &vecOrigin, int iVolume, float flDuration)
 {
 	int iThisSound;
@@ -197,7 +197,6 @@ void CSoundEnt::InsertSound(int iType, const Vector &vecOrigin, int iVolume, flo
 
 // Initialize - clears all sounds and moves them into the
 // free sound list.
-
 void CSoundEnt::Initialize()
 {
   	int i;
@@ -243,7 +242,6 @@ void CSoundEnt::Initialize()
 
 // ISoundsInList - returns the number of sounds in the desired
 // sound list.
-
 int CSoundEnt::ISoundsInList(int iListType)
 {
 	int i;
@@ -279,7 +277,6 @@ int CSoundEnt::ISoundsInList(int iListType)
 }
 
 // ActiveList - returns the head of the active sound list
-
 NOXREF int CSoundEnt::ActiveList()
 {
 	if (!pSoundEnt)
@@ -291,7 +288,6 @@ NOXREF int CSoundEnt::ActiveList()
 }
 
 // FreeList - returns the head of the free sound list
-
 NOXREF int CSoundEnt::FreeList()
 {
 	if (!pSoundEnt)
@@ -304,7 +300,6 @@ NOXREF int CSoundEnt::FreeList()
 
 // SoundPointerForIndex - returns a pointer to the instance
 // of CSound at index's position in the sound pool.
-
 CSound *CSoundEnt::SoundPointerForIndex(int iIndex)
 {
 	if (!pSoundEnt)
@@ -331,19 +326,18 @@ CSound *CSoundEnt::SoundPointerForIndex(int iIndex)
 // reserved sounds in the soundlist are from 0 to MAXCLIENTS - 1,
 // so this function ensures that a client gets the proper index
 // to his reserved sound in the soundlist.
-
 int CSoundEnt::ClientSoundIndex(edict_t *pClient)
 {
 	int iReturn = ENTINDEX(pClient) - 1;
 
-#if defined(_DEBUG)
+#if defined(_DEBUG) && !defined(HOOK_GAMEDLL)
 
 	if (iReturn < 0 || iReturn > gpGlobals->maxClients)
 	{
 		ALERT(at_console, "** ClientSoundIndex returning a bogus value! **\n");
 	}
 
-#endif // _DEBUG
+#endif
 
 	return iReturn;
 }

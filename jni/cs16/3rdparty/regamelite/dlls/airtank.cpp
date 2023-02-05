@@ -1,19 +1,23 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CAirtank::m_SaveData[] =
 {
 	DEFINE_FIELD(CAirtank, m_state, FIELD_INTEGER)
 };
 
+#endif
 
-LINK_ENTITY_TO_CLASS(item_airtank, CAirtank);
+LINK_ENTITY_TO_CLASS(item_airtank, CAirtank, CCSAirtank)
+IMPLEMENT_SAVERESTORE(CAirtank, CGrenade)
 
-IMPLEMENT_SAVERESTORE(CAirtank, CGrenade);
-
-void CAirtank::Spawn()
+void CAirtank::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -35,13 +39,13 @@ void CAirtank::Spawn()
 	m_state = 1;
 }
 
-void CAirtank::Precache()
+void CAirtank::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/w_oxygen.mdl");
 	PRECACHE_SOUND("doors/aliendoor3.wav");
 }
 
-void CAirtank::Killed(entvars_t *pevAttacker, int iGib)
+void CAirtank::__MAKE_VHOOK(Killed)(entvars_t *pevAttacker, int iGib)
 {
 	pev->owner = ENT(pevAttacker);
 

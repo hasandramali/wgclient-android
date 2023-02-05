@@ -56,7 +56,6 @@
 #define noiseRunning		noise3
 
 // This is just a solid wall if not inhibited
-
 class CFuncWall: public CBaseEntity
 {
 public:
@@ -65,6 +64,14 @@ public:
 	// Bmodels don't go across transitions
 	virtual int ObjectCaps() { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 };
 
 class CFuncWallToggle: public CFuncWall
@@ -73,11 +80,17 @@ public:
 	virtual void Spawn();
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	void TurnOff();
 	void TurnOn();
 	BOOL IsOn();
-
 };
 
 class CFuncConveyor: public CFuncWall
@@ -85,24 +98,35 @@ class CFuncConveyor: public CFuncWall
 public:
 	virtual void Spawn();
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	void UpdateSpeed(float speed);
-
 };
 
 // A simple entity that looks solid but lets you walk through it.
-
 class CFuncIllusionary: public CBaseToggle
 {
 public:
 	virtual void Spawn();
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual int ObjectCaps() { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+
+#endif
+
 public:
 	void EXPORT SloshTouch(CBaseEntity *pOther);
-
 };
 
 // Monster only clip brush
@@ -112,7 +136,6 @@ public:
 //
 // otherwise it will be invisible and not solid.  This can be used to keep
 // specific monsters out of certain areas
-
 class CFuncMonsterClip: public CFuncWall
 {
 public:
@@ -120,6 +143,14 @@ public:
 
 	// Clear out func_wall's use function
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value) {}
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 };
 
 class CFuncRotating: public CBaseEntity
@@ -134,6 +165,17 @@ public:
 	virtual int ObjectCaps() { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 	virtual void Blocked(CBaseEntity *pOther);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Blocked_(CBaseEntity *pOther);
+
+#endif
+
 public:
 	void EXPORT SpinUp();
 	void EXPORT SpinDown();
@@ -143,9 +185,8 @@ public:
 	void RampPitchVol(int fUp);
 
 public:
-	static TYPEDESCRIPTION m_SaveData[5];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[5];
 
-public:
 	float m_flFanFriction;
 	float m_flAttenuation;
 	float m_flVolume;
@@ -164,6 +205,17 @@ public:
 	virtual void Touch(CBaseEntity *pOther);
 	virtual void Blocked(CBaseEntity *pOther);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Touch_(CBaseEntity *pOther);
+	void Blocked_(CBaseEntity *pOther);
+
+#endif
+
 public:
 	void EXPORT Swing();
 	void EXPORT PendulumUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
@@ -172,9 +224,9 @@ public:
 	// this touch func makes the pendulum a rope
 	void EXPORT RopeTouch(CBaseEntity *pOther);
 
-	static TYPEDESCRIPTION m_SaveData[8];
-
 public:
+	static TYPEDESCRIPTION IMPL(m_SaveData)[8];
+
 	float m_accel;		// Acceleration
 	float m_distance;
 	float m_time;

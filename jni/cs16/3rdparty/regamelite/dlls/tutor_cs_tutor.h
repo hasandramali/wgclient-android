@@ -32,6 +32,8 @@
 #pragma once
 #endif
 
+#include <map>
+
 enum TutorMessageClass
 {
 	TUTORMESSAGECLASS_NORMAL = 0,
@@ -251,13 +253,8 @@ enum TutorMessageID
 	TUTOR_NUM_MESSAGES
 };
 
-struct TutorMap
-{
-	char *name;
-	TutorMessage *msg;
-};
-
-typedef CUtlVector<TutorMap *> TutorMessageMap;
+typedef std::map<std::string, TutorMessage *> TutorMessageMap;
+typedef TutorMessageMap::iterator TutorMessageMapIter;
 
 struct ClientCorpseStruct
 {
@@ -265,7 +262,8 @@ struct ClientCorpseStruct
 	int m_team;
 };
 
-typedef CUtlLinkedList<ClientCorpseStruct *, int> ClientCorpseList;
+typedef std::STD_VECTOR<ClientCorpseStruct *> ClientCorpseList;
+typedef ClientCorpseList::iterator ClientCorpseListIter;
 
 class CCSTutor: public CBaseTutor
 {
@@ -294,11 +292,11 @@ public:
 	void ClearCurrentEvent(bool closeWindow = true, bool processDeathsForEvent = true);
 	void DeleteEvent(TutorMessageEvent *event);
 	bool ShouldShowMessageEvent(TutorMessageEvent *event, float time);
-	NOXREF bool ShouldUpdateCurrentMessage(TutorMessageID messageID);
+	bool ShouldUpdateCurrentMessage(TutorMessageID messageID);
 	void ComputeDisplayTimesForMessage();
 	void UpdateCurrentMessage(TutorMessageEvent *event);
 	void ConstructMessageAndDisplay();
-	NOXREF void LookupHotKey(TutorMessageID mid, int paramNum, wchar_t *buf, int buflen);
+	void LookupHotKey(TutorMessageID mid, int paramNum, wchar_t *buf, int buflen);
 	void CheckForWindowClose(float time);
 	void CheckForContentUpdate();
 	bool HasCurrentWindowBeenActiveLongEnough(float time);
@@ -318,10 +316,10 @@ public:
 	void HandleWeaponReloaded(CBaseEntity *entity, CBaseEntity *other);
 	void HandlePlayerDied(CBaseEntity *entity, CBaseEntity *other);
 	void HandlePlayerSpawned(CBaseEntity *entity, CBaseEntity *other);
-	NOXREF void HandleClientCorpseSpawned(CBaseEntity *entity, CBaseEntity *other);
+	void HandleClientCorpseSpawned(CBaseEntity *entity, CBaseEntity *other);
 	void HandlePlayerTookDamage(CBaseEntity *entity, CBaseEntity *other);
 	void HandlePlayerBlindedByFlashbang(CBaseEntity *entity, CBaseEntity *other);
-	NOXREF void HandleBuyTimeStart(CBaseEntity *entity, CBaseEntity *other);
+	void HandleBuyTimeStart(CBaseEntity *entity, CBaseEntity *other);
 	void HandlePlayerLeftBuyZone(CBaseEntity *entity, CBaseEntity *other);
 	void HandleBombPlanted(CBaseEntity *entity, CBaseEntity *other);
 	void HandleRoundStart(CBaseEntity *entity, CBaseEntity *other);
@@ -392,7 +390,18 @@ public:
 	CBaseEntity *GetEntityForMessageID(int messageID, CBaseEntity *last = NULL);
 	void ResetPlayerDeathInfo();
 	void ConstructRecentDeathsList(TeamName team, char *buf, int buflen, TutorMessageEvent *event);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void TutorThink_(float time);
+	void PurgeMessages_();
+	void CallEventHandler_(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
+	void ShowTutorMessage_(TutorMessageEvent *event);
+	void HandleShotFired_(Vector source, Vector target);
+	TutorMessage *GetTutorMessageDefinition_(int messageID);
+
+#endif
+
 private:
 	float m_nextViewableCheckTime;
 	TutorMessageMap m_messageMap;
@@ -407,7 +416,7 @@ private:
 	ClientCorpseList m_clientCorpseList;
 	int m_messageTypeMask;
 	bool m_haveSpawned;
-	PlayerDeathStruct m_playerDeathInfo[32];
+	PlayerDeathStruct m_playerDeathInfo[MAX_CLIENTS];
 };
 
 void ParseMessageParameters(char *&messageData, TutorMessage *ret);

@@ -1,6 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-void EscapeFromBombState::OnEnter(CCSBot *me)
+void EscapeFromBombState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	me->StandUp();
 	me->Run();
@@ -9,8 +11,7 @@ void EscapeFromBombState::OnEnter(CCSBot *me)
 }
 
 // Escape from the bomb
-
-void EscapeFromBombState::OnUpdate(CCSBot *me)
+void EscapeFromBombState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	const Vector *bombPos = me->GetGameState()->GetBombPosition();
 
@@ -38,7 +39,7 @@ void EscapeFromBombState::OnUpdate(CCSBot *me)
 	}
 }
 
-void EscapeFromBombState::OnExit(CCSBot *me)
+void EscapeFromBombState::__MAKE_VHOOK(OnExit)(CCSBot *me)
 {
 	me->EquipBestWeapon();
 }

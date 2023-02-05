@@ -57,11 +57,17 @@ public:
 	virtual void Spawn();
 	virtual int ObjectCaps() { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
+
 public:
 	void EXPORT Find();
 };
 
-float Fix2(float angle);
+float_precision Fix2(float angle);
 void FixupAngles2(Vector &v);
 
 #endif // VEHICLE_H

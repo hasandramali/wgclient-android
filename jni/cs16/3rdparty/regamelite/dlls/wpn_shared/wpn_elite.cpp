@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_elite, CELITE);
+LINK_ENTITY_TO_CLASS(weapon_elite, CELITE, CCSELITE)
 
-void CELITE::Spawn()
+void CELITE::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -15,7 +17,7 @@ void CELITE::Spawn()
 	FallInit();
 }
 
-void CELITE::Precache()
+void CELITE::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_elite.mdl");
 	PRECACHE_MODEL("models/w_elite.mdl");
@@ -34,7 +36,7 @@ void CELITE::Precache()
 	m_usFireELITE_RIGHT = PRECACHE_EVENT(1, "events/elite_right.sc");
 }
 
-int CELITE::GetItemInfo(ItemInfo *p)
+int CELITE::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "9mm";
@@ -51,7 +53,7 @@ int CELITE::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CELITE::Deploy()
+BOOL CELITE::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.88f;
 
@@ -63,7 +65,7 @@ BOOL CELITE::Deploy()
 	return DefaultDeploy("models/v_elite.mdl", "models/p_elite.mdl", ELITE_DRAW, "dualpistols", UseDecrement() != FALSE);
 }
 
-void CELITE::PrimaryAttack()
+void CELITE::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -90,9 +92,13 @@ void CELITE::ELITEFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	Vector vecAiming;
 	Vector vecSrc;
 	Vector vecDir;
-   
+
+#ifdef REGAMEDLL_FIXES
 	flCycleTime -= 0.078f;
-   
+#else
+	flCycleTime -= 0.125f;
+#endif
+
 	if (++m_iShotsFired > 1)
 	{
 		return;
@@ -149,7 +155,7 @@ void CELITE::ELITEFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	if (m_iWeaponState & WPNSTATE_ELITE_LEFT)
 	{
@@ -160,7 +166,7 @@ void CELITE::ELITEFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 			8192, BULLET_PLAYER_9MM, 1, ELITE_DAMAGE, ELITE_RANGE_MODIFER, m_pPlayer->pev, true, m_pPlayer->random_seed);
 
 		PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireELITE_LEFT, 0, (float *)&g_vecZero, (float *)&g_vecZero, flTimeDiff, vecDir.x,
-			(int)(vecDir.y * 100), m_iClip, FALSE, FALSE);
+			int(vecDir.y * 100), m_iClip, FALSE, FALSE);
 	}
 	else
 	{
@@ -171,7 +177,7 @@ void CELITE::ELITEFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 			8192, BULLET_PLAYER_9MM, 1, ELITE_DAMAGE, ELITE_RANGE_MODIFER, m_pPlayer->pev, true, m_pPlayer->random_seed);
 
 		PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireELITE_RIGHT, 0, (float *)&g_vecZero, (float *)&g_vecZero, flTimeDiff, vecDir.x,
-			(int)(vecDir.y * 100), m_iClip, FALSE, FALSE);
+			int(vecDir.y * 100), m_iClip, FALSE, FALSE);
 	}
 
 	if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
@@ -183,19 +189,19 @@ void CELITE::ELITEFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	m_pPlayer->pev->punchangle.x -= 2.0f;
 }
 
-void CELITE::Reload()
+void CELITE::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_9mm <= 0)
 		return;
 
-	if (DefaultReload(ELITE_MAX_CLIP, ELITE_RELOAD, ELITE_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), ELITE_RELOAD, ELITE_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 		m_flAccuracy = 0.88f;
 	}
 }
 
-void CELITE::WeaponIdle()
+void CELITE::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

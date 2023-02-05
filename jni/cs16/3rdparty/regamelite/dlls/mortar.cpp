@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CFuncMortarField::m_SaveData[] =
 {
 	DEFINE_FIELD(CFuncMortarField, m_iszXController, FIELD_STRING),
@@ -13,11 +17,12 @@ TYPEDESCRIPTION CFuncMortarField::m_SaveData[] =
 	DEFINE_FIELD(CFuncMortarField, m_fControl, FIELD_INTEGER),
 };
 
-LINK_ENTITY_TO_CLASS(func_mortar_field, CFuncMortarField);
+#endif
 
-IMPLEMENT_SAVERESTORE(CFuncMortarField, CBaseToggle);
+LINK_ENTITY_TO_CLASS(func_mortar_field, CFuncMortarField, CCSFuncMortarField)
+IMPLEMENT_SAVERESTORE(CFuncMortarField, CBaseToggle)
 
-void CFuncMortarField::KeyValue(KeyValueData *pkvd)
+void CFuncMortarField::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "m_iszXController"))
 	{
@@ -47,8 +52,7 @@ void CFuncMortarField::KeyValue(KeyValueData *pkvd)
 }
 
 // Drop bombs from above
-
-void CFuncMortarField::Spawn()
+void CFuncMortarField::__MAKE_VHOOK(Spawn)()
 {
 	pev->solid = SOLID_NOT;
 
@@ -61,7 +65,7 @@ void CFuncMortarField::Spawn()
 	Precache();
 }
 
-void CFuncMortarField::Precache()
+void CFuncMortarField::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_SOUND("weapons/mortar.wav");
 	PRECACHE_SOUND("weapons/mortarhit.wav");
@@ -69,7 +73,6 @@ void CFuncMortarField::Precache()
 }
 
 // If connected to a table, then use the table controllers, else hit where the trigger is.
-
 void CFuncMortarField::FieldUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	Vector vecStart;
@@ -124,7 +127,7 @@ void CFuncMortarField::FieldUse(CBaseEntity *pActivator, CBaseEntity *pCaller, U
 
 	EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "weapons/mortar.wav", VOL_NORM, ATTN_NONE, 0, pitch);
 
-	float t = 2.5;
+	float t = 2.5f;
 	for (int i = 0; i < m_iCount; ++i)
 	{
 		Vector vecSpot = vecStart;
@@ -143,17 +146,18 @@ void CFuncMortarField::FieldUse(CBaseEntity *pActivator, CBaseEntity *pCaller, U
 		CBaseEntity *pMortar = Create("monster_mortar", tr.vecEndPos, Vector(0, 0, 0), pentOwner);
 		pMortar->pev->nextthink = gpGlobals->time + t;
 		t += RANDOM_FLOAT(0.2, 0.5);
-
+#ifndef REGAMEDLL_FIXES
 		if (i == 0)
 		{
 			CSoundEnt::InsertSound(bits_SOUND_DANGER, tr.vecEndPos, 400, 0.3);
 		}
+#endif
 	}
 }
 
-LINK_ENTITY_TO_CLASS(monster_mortar, CMortar);
+LINK_ENTITY_TO_CLASS(monster_mortar, CMortar, CCSMortar)
 
-void CMortar::Spawn()
+void CMortar::__MAKE_VHOOK(Spawn)()
 {
 	pev->movetype = MOVETYPE_NONE;
 	pev->solid = SOLID_NOT;
@@ -164,7 +168,7 @@ void CMortar::Spawn()
 	Precache();
 }
 
-void CMortar::Precache()
+void CMortar::__MAKE_VHOOK(Precache)()
 {
 	m_spriteTexture = PRECACHE_MODEL("sprites/lgtning.spr");
 }

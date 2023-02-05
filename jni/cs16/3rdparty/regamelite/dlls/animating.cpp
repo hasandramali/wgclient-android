@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CBaseAnimating::m_SaveData[] =
 {
 	DEFINE_FIELD(CBaseMonster, m_flFrameRate, FIELD_FLOAT),
@@ -12,7 +16,9 @@ TYPEDESCRIPTION CBaseAnimating::m_SaveData[] =
 	DEFINE_FIELD(CBaseMonster, m_fSequenceLoops, FIELD_BOOLEAN),
 };
 
-IMPLEMENT_SAVERESTORE(CBaseAnimating, CBaseDelay);
+#endif
+
+IMPLEMENT_SAVERESTORE(CBaseAnimating, CBaseDelay)
 
 float CBaseAnimating::StudioFrameAdvance(float flInterval)
 {
@@ -36,7 +42,7 @@ float CBaseAnimating::StudioFrameAdvance(float flInterval)
 	if (pev->frame < 0.0 || pev->frame >= 256.0)
 	{
 		if (m_fSequenceLoops)
-			pev->frame -= (int)(pev->frame / 256.0) * 256.0;
+			pev->frame -= int(pev->frame / 256.0) * 256.0;
 		else
 			pev->frame = (pev->frame < 0) ? 0 : 255;
 
@@ -97,7 +103,9 @@ int CBaseAnimating::LookupSequence(const char *label)
 	return ::LookupSequence(pmodel, label);
 }
 
-void CBaseAnimating::ResetSequenceInfo()
+LINK_HOOK_CLASS_VOID_CHAIN2(CBaseAnimating, ResetSequenceInfo)
+
+void EXT_FUNC CBaseAnimating::__API_HOOK(ResetSequenceInfo)()
 {
 	void *pmodel = GET_MODEL_PTR(ENT(pev));
 
@@ -110,7 +118,7 @@ void CBaseAnimating::ResetSequenceInfo()
 	m_flLastEventCheck = gpGlobals->time;
 }
 
-BOOL CBaseAnimating::GetSequenceFlags()
+int CBaseAnimating::GetSequenceFlags()
 {
 	void *pmodel = GET_MODEL_PTR(ENT(pev));
 	return ::GetSequenceFlags(pmodel, pev);
@@ -119,7 +127,6 @@ BOOL CBaseAnimating::GetSequenceFlags()
 float CBaseAnimating::SetBoneController(int iController, float flValue)
 {
 	void *pmodel = GET_MODEL_PTR(ENT(pev));
-
 	return SetController(pmodel, pev, iController, flValue);
 }
 
@@ -199,10 +206,10 @@ void CBaseAnimating::SetSequenceBox()
 		float yaw = pev->angles.y * (M_PI / 180.0);
 
 		Vector xvector, yvector;
-		xvector.x = cos(yaw);
-		xvector.y = sin(yaw);
-		yvector.x = -sin(yaw);
-		yvector.y = cos(yaw);
+		xvector.x = Q_cos(yaw);
+		xvector.y = Q_sin(yaw);
+		yvector.x = -Q_sin(yaw);
+		yvector.y = Q_cos(yaw);
 
 		Vector bounds[2];
 		bounds[0] = mins;

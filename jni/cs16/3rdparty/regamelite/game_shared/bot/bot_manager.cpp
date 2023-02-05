@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 const char *GameEventName[NUM_GAME_EVENTS + 1] =
 {
 	"EVENT_INVALID",
@@ -103,6 +107,8 @@ const char *GameEventName[NUM_GAME_EVENTS + 1] =
 	NULL,
 };
 
+#endif // HOOK_GAMEDLL
+
 // STL uses exceptions, but we are not compiling with them - ignore warning
 #pragma warning(disable : 4530)
 
@@ -110,7 +116,6 @@ const float smokeRadius = 115.0f;		// for smoke grenades
 
 // Convert name to GameEventType
 // TODO: Find more appropriate place for this function
-
 GameEventType NameToGameEvent(const char *name)
 {
 	for (int i = 0; GameEventName[i] != NULL; ++i)
@@ -128,38 +133,34 @@ CBotManager::CBotManager()
 }
 
 // Invoked when the round is restarting
-
-void CBotManager::RestartRound()
+void CBotManager::__MAKE_VHOOK(RestartRound)()
 {
 	DestroyAllGrenades();
 }
 
 // Invoked at the start of each frame
-
-void CBotManager::StartFrame()
+void CBotManager::__MAKE_VHOOK(StartFrame)()
 {
 	// debug smoke grenade visualization
 	if (cv_bot_debug.value == 5)
 	{
 		Vector edge, lastEdge;
 
-		int it = m_activeGrenadeList.Head ();
-
-		while (it != m_activeGrenadeList.InvalidIndex ())
+		ActiveGrenadeList::iterator iter = m_activeGrenadeList.begin();
+		while (iter != m_activeGrenadeList.end())
 		{
-			ActiveGrenade *ag = m_activeGrenadeList[it];
-
-			int current = it;
-			it = m_activeGrenadeList.Next (it);
+			ActiveGrenade *ag = (*iter);
 
 			// lazy validation
-			if (!ag->IsValid ())
+			if (!ag->IsValid())
 			{
-				m_activeGrenadeList.Remove (current);
 				delete ag;
-
+				iter = m_activeGrenadeList.erase(iter);
 				continue;
 			}
+			else
+				++iter;
+
 			const Vector *pos = ag->GetDetonationPosition();
 
 			UTIL_DrawBeamPoints(*pos, *pos + Vector(0, 0, 50), 1, 255, 100, 0);
@@ -194,7 +195,7 @@ void CBotManager::StartFrame()
 	// Process each active bot
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
 
 		if (!pPlayer)
 			continue;
@@ -208,7 +209,6 @@ void CBotManager::StartFrame()
 }
 
 // Return the filename for this map's "nav map" file
-
 const char *CBotManager::GetNavMapFilename() const
 {
 	static char filename[256];
@@ -219,13 +219,12 @@ const char *CBotManager::GetNavMapFilename() const
 // Invoked when given player does given event (some events have NULL player).
 // Events are propogated to all bots.
 // TODO: This has become the game-wide event dispatcher. We should restructure this.
-
-void CBotManager::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
+void CBotManager::__MAKE_VHOOK(OnEvent)(GameEventType event, CBaseEntity *entity, CBaseEntity *other)
 {
 	// propogate event to all bots
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *player = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(i));
+		CBasePlayer *player = UTIL_PlayerByIndex(i);
 
 		if (player == NULL)
 			continue;
@@ -259,76 +258,71 @@ void CBotManager::OnEvent(GameEventType event, CBaseEntity *entity, CBaseEntity 
 }
 
 // Add an active grenade to the bot's awareness
-
 void CBotManager::AddGrenade(int type, CGrenade *grenade)
 {
-	m_activeGrenadeList.AddToTail(new ActiveGrenade (type, grenade));
+	ActiveGrenade *ag = new ActiveGrenade(type, grenade);
+
+	m_activeGrenadeList.push_back(ag);
 }
 
 // The grenade entity in the world is going away
-
 void CBotManager::RemoveGrenade(CGrenade *grenade)
 {
-	FOR_EACH_LL (m_activeGrenadeList, it)
+	for (ActiveGrenadeList::iterator iter = m_activeGrenadeList.begin(); iter != m_activeGrenadeList.end(); ++iter)
 	{
-		ActiveGrenade *ag = m_activeGrenadeList[it];
+		ActiveGrenade *ag = (*iter);
 
-		if (ag->IsEntity (grenade))
+		if (ag->IsEntity(grenade))
 		{
-			ag->OnEntityGone ();
+			ag->OnEntityGone();
 			return;
 		}
 	}
 }
 
 // Destroy any invalid active grenades
-
 NOXREF void CBotManager::ValidateActiveGrenades()
 {
-	int it = m_activeGrenadeList.Head ();
-
-	while (it != m_activeGrenadeList.InvalidIndex ())
+	ActiveGrenadeList::iterator iter = m_activeGrenadeList.begin();
+	while (iter != m_activeGrenadeList.end())
 	{
-		ActiveGrenade *ag = m_activeGrenadeList[it];
+		ActiveGrenade *ag = (*iter);
 
-		int current = it;
-		it = m_activeGrenadeList.Next (it);
-
-		// lazy validation
-		if (!ag->IsValid ())
+		if (!ag->IsValid())
 		{
-			m_activeGrenadeList.Remove (current);
 			delete ag;
-			continue;
+			iter = m_activeGrenadeList.erase(iter);
 		}
+		else
+			++iter;
 	}
 }
 
 void CBotManager::DestroyAllGrenades()
 {
-	m_activeGrenadeList.PurgeAndDeleteElements ();
+	for (ActiveGrenadeList::iterator iter = m_activeGrenadeList.begin(); iter != m_activeGrenadeList.end(); iter++)
+		delete (*iter);
+
+	m_activeGrenadeList.clear();
 }
 
 // Return true if position is inside a smoke cloud
-
 bool CBotManager::IsInsideSmokeCloud(const Vector *pos)
 {
-	int it = m_activeGrenadeList.Head ();
-
-	while (it != m_activeGrenadeList.InvalidIndex ())
+	ActiveGrenadeList::iterator iter = m_activeGrenadeList.begin();
+	while (iter != m_activeGrenadeList.end())
 	{
-		ActiveGrenade *ag = m_activeGrenadeList[it];
-
-		int current = it;
-		it = m_activeGrenadeList.Next (it);
+		ActiveGrenade *ag = (*iter);
 
 		// lazy validation
 		if (!ag->IsValid())
 		{
-			m_activeGrenadeList.Remove (current);
 			delete ag;
+			iter = m_activeGrenadeList.erase(iter);
 			continue;
 		}
+		else
+			++iter;
 
 		if (ag->GetID() == WEAPON_SMOKEGRENADE)
 		{
@@ -346,7 +340,6 @@ bool CBotManager::IsInsideSmokeCloud(const Vector *pos)
 // Determine the length of the line of sight covered by each smoke cloud,
 // and sum them (overlap is additive for obstruction).
 // If the overlap exceeds the threshold, the bot can't see through.
-
 bool CBotManager::IsLineBlockedBySmoke(const Vector *from, const Vector *to)
 {
 	const float smokeRadiusSq = smokeRadius * smokeRadius;
@@ -358,22 +351,20 @@ bool CBotManager::IsLineBlockedBySmoke(const Vector *from, const Vector *to)
 	Vector sightDir = *to - *from;
 	float sightLength = sightDir.NormalizeInPlace();
 
-	int it = m_activeGrenadeList.Head ();
-
-	while (it != m_activeGrenadeList.InvalidIndex ())
+	ActiveGrenadeList::iterator iter = m_activeGrenadeList.begin();
+	while (iter != m_activeGrenadeList.end())
 	{
-		ActiveGrenade *ag = m_activeGrenadeList[it];
-
-		int current = it;
-		it = m_activeGrenadeList.Next (it);
+		ActiveGrenade *ag = (*iter);
 
 		// lazy validation
-		if (!ag->IsValid ())
+		if (!ag->IsValid())
 		{
-			m_activeGrenadeList.Remove (current);
 			delete ag;
+			iter = m_activeGrenadeList.erase(iter);
 			continue;
 		}
+		else
+			++iter;
 
 		if (ag->GetID() == WEAPON_SMOKEGRENADE)
 		{
@@ -417,7 +408,7 @@ bool CBotManager::IsLineBlockedBySmoke(const Vector *from, const Vector *to)
 					{
 						// 'from' is inside the cloud, 'to' is outside
 						// compute half of total smoked length as if ray crosses entire cloud chord
-						float halfSmokedLength = sqrt(smokeRadiusSq - lengthSq);
+						float halfSmokedLength = Q_sqrt(smokeRadiusSq - lengthSq);
 
 						if (alongDist > 0.0f)
 						{
@@ -435,7 +426,7 @@ bool CBotManager::IsLineBlockedBySmoke(const Vector *from, const Vector *to)
 				{
 					// 'from' is outside the cloud, 'to' is inside
 					// compute half of total smoked length as if ray crosses entire cloud chord
-					float halfSmokedLength = sqrt(smokeRadiusSq - lengthSq);
+					float halfSmokedLength = Q_sqrt(smokeRadiusSq - lengthSq);
 
 					Vector v = *to - *smokeOrigin;
 					if (DotProduct(v, sightDir) > 0.0f)
@@ -454,7 +445,7 @@ bool CBotManager::IsLineBlockedBySmoke(const Vector *from, const Vector *to)
 					// 'from' and 'to' lie outside of the cloud - the line of sight completely crosses it
 					// determine the length of the chord that crosses the cloud
 
-					float smokedLength = 2.0f * sqrt(smokeRadiusSq - lengthSq);
+					float smokedLength = 2.0f * Q_sqrt(smokeRadiusSq - lengthSq);
 					totalSmokedLength += smokedLength;
 				}
 			}

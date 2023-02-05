@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_m249, CM249);
+LINK_ENTITY_TO_CLASS(weapon_m249, CM249, CCSM249)
 
-void CM249::Spawn()
+void CM249::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CM249::Spawn()
 	FallInit();
 }
 
-void CM249::Precache()
+void CM249::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_m249.mdl");
 	PRECACHE_MODEL("models/w_m249.mdl");
@@ -33,7 +35,7 @@ void CM249::Precache()
 	m_usFireM249 = PRECACHE_EVENT(1, "events/m249.sc");
 }
 
-int CM249::GetItemInfo(ItemInfo *p)
+int CM249::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "556NatoBox";
@@ -50,7 +52,7 @@ int CM249::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CM249::Deploy()
+BOOL CM249::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.2f;
 	m_iShotsFired = 0;
@@ -59,7 +61,7 @@ BOOL CM249::Deploy()
 	return DefaultDeploy("models/v_m249.mdl", "models/p_m249.mdl", M249_DRAW, "m249", UseDecrement() != FALSE);
 }
 
-void CM249::PrimaryAttack()
+void CM249::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -123,10 +125,10 @@ void CM249::M249Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireM249, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -155,13 +157,15 @@ void CM249::M249Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CM249::Reload()
+void CM249::__MAKE_VHOOK(Reload)()
 {
+#ifdef REGAMEDLL_FIXES
 	// to prevent reload if not enough ammo
 	if (m_pPlayer->ammo_556natobox <= 0)
 		return;
+#endif
 
-	if (DefaultReload(M249_MAX_CLIP, M249_RELOAD, M249_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), M249_RELOAD, M249_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -171,7 +175,7 @@ void CM249::Reload()
 	}
 }
 
-void CM249::WeaponIdle()
+void CM249::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 void CBaseSpectator::SpectatorConnect()
@@ -89,7 +91,7 @@ void CBaseSpectator::SpectatorThink()
 	}
 }
 
-void CBaseSpectator::Spawn()
+void CBaseSpectator::__MAKE_VHOOK(Spawn)()
 {
 	pev->flags = FL_SPECTATOR;
 	pev->solid = SOLID_NOT;

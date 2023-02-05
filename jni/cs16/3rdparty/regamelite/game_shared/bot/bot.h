@@ -32,9 +32,11 @@
 #pragma once
 #endif
 
+#include "gamerules.h"
+
 class BotProfile;
 
-template <class T>
+template <class T, class TWrap>
 T *CreateBot(const BotProfile *profile)
 {
 	edict_t *pentBot;
@@ -57,7 +59,7 @@ T *CreateBot(const BotProfile *profile)
 	{
 		T *pBot = NULL;
 		FREE_PRIVATE(pentBot);
-		pBot = GetClassPtr((T *)VARS(pentBot));
+		pBot = GetClassPtr<TWrap>((T *)VARS(pentBot));
 		pBot->Initialize(profile);
 
 		return pBot;
@@ -74,7 +76,7 @@ public:
 	virtual void Spawn();
 
 	// invoked when injured by something
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType)
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType)
 	{
 		return CBasePlayer::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
 	}
@@ -83,11 +85,15 @@ public:
 	{
 		CBasePlayer::Killed(pevAttacker, iGib);
 	}
+
 	virtual void Think() {};
-	virtual BOOL IsBot() { return true; }
+	virtual BOOL IsBot() { return TRUE; }
 	virtual Vector GetAutoaimVector(float flDelta);
+
 	// invoked when in contact with a CWeaponBox
 	virtual void OnTouchingWeapon(CWeaponBox *box) {}
+
+	// prepare bot for action
 	virtual bool Initialize(const BotProfile *profile);
 
 	virtual void SpawnBot() = 0;
@@ -131,8 +137,7 @@ public:
 	// return true if we can see any part of the player
 	virtual bool IsVisible(CBasePlayer *player, bool testFOV = false, unsigned char *visParts = NULL) const = 0;
 
-	//enum VisiblePartType:unsigned char // C++11 feature
-	enum VisiblePartType
+	enum VisiblePartType:uint8
 	{
 		NONE = 0x00,
 		CHEST = 0x01,
@@ -153,10 +158,37 @@ public:
 	virtual void ExecuteCommand();
 	virtual void SetModel(const char *modelName);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	Vector GetAutoaimVector_(float flDelta);
+	bool Initialize_(const BotProfile *profile);
+	void Crouch_();
+	void StandUp_();
+	void MoveForward_();
+	void MoveBackward_();
+	void StrafeLeft_();
+	void StrafeRight_();
+	bool Jump_(bool mustJump = false);
+	void ClearMovement_();
+	void UseEnvironment_();
+	void PrimaryAttack_();
+	void ClearPrimaryAttack_();
+	void TogglePrimaryAttack_();
+	void SecondaryAttack_();
+	bool IsPlayerFacingMe_(CBasePlayer *other) const;
+	bool IsPlayerLookingAtMe_(CBasePlayer *other) const;
+	void Reload_();
+	void ExecuteCommand_();
+	void SetModel_(const char *modelName);
+
+#endif
+
 public:
-	unsigned int GetID() const 	{ return m_id; }
-	bool IsRunning() const		{ return m_isRunning; }
-	bool IsCrouching() const	{ return m_isCrouching; }
+	// return bot's unique ID
+	unsigned int GetID() const { return m_id; }
+	bool IsRunning() const { return m_isRunning; }
+	bool IsCrouching() const { return m_isCrouching; }
 
 	// push the current posture context onto the top of the stack
 	void PushPostureContext();
@@ -201,22 +233,40 @@ public:
 	bool IsLocalPlayerWatchingMe() const;
 
 	// output message to console
-	NOXREF void Print(char *format,...) const;
+	void Print(char *format,...) const;
 
 	// output message to console if we are being watched by the local player
 	void PrintIfWatched(char *format,...) const;
 
 	void BotThink();
-	bool IsNetClient() const { return false; }
-	int Save(CSave &save) const;
-	int Restore(CRestore &restor) const;
 
+#ifdef REGAMEDLL_FIXES
+	BOOL IsNetClient() { return FALSE; }
+#else
+	// The ambiguous function because there is a virtual function in inherited classes.
+	bool IsNetClient() const { return false; }
+
+	int Save(CSave &save) const;
+	int Restore(CRestore &restore) const;
+#endif
 	// return our personality profile
 	const BotProfile *GetProfile() const { return m_profile; }
 
+	enum BotRelationshipTeam: uint8
+	{
+		BOT_TEAMMATE = 0,
+		BOT_ENEMY
+	};
+	BotRelationshipTeam BotRelationship(CBasePlayer *pTarget) const;
+
+#ifndef HOOK_GAMEDLL
 protected:
+#endif
+
+#ifndef REGAMEDLL_FIXES
 	// Do a "client command" - useful for invoking menu choices, etc.
 	void ClientCommand(const char *cmd, const char *arg1 = NULL, const char *arg2 = NULL, const char *arg3 = NULL);
+#endif
 
 	// the "personality" profile of this bot
 	const BotProfile *m_profile;
@@ -267,7 +317,7 @@ private:
 	int m_postureStackIndex;
 };
 
-inline void CBot::SetModel(const char *modelName)
+inline void CBot::__MAKE_VHOOK(SetModel)(const char *modelName)
 {
 	SET_CLIENT_KEY_VALUE(entindex(), GET_INFO_BUFFER(edict()), "model", (char *)modelName);
 }
@@ -306,12 +356,13 @@ inline bool CBot::IsActiveWeaponReloading() const
 
 inline bool CBot::IsActiveWeaponRecoilHigh() const
 {
-	CBasePlayerWeapon *gun = GetActiveWeapon();
-	if (gun != NULL)
+	CBasePlayerWeapon *weapon = GetActiveWeapon();
+	if (weapon != NULL)
 	{
 		const float highRecoil = 0.4f;
-		return (gun->m_flAccuracy > highRecoil) != 0;
+		return (weapon->m_flAccuracy > highRecoil) != 0;
 	}
+
 	return false;
 }
 
@@ -319,8 +370,10 @@ inline void CBot::PushPostureContext()
 {
 	if (m_postureStackIndex == MAX_POSTURE_STACK)
 	{
-		if (pev)
+		if (pev != NULL)
+		{
 			PrintIfWatched("PushPostureContext() overflow error!\n");
+		}
 		return;
 	}
 
@@ -333,9 +386,10 @@ inline void CBot::PopPostureContext()
 {
 	if (m_postureStackIndex == 0)
 	{
-		if (pev)
+		if (pev != NULL)
+		{
 			PrintIfWatched("PopPostureContext() underflow error!\n");
-
+		}
 		m_isRunning = true;
 		m_isCrouching = false;
 		return;
@@ -346,7 +400,7 @@ inline void CBot::PopPostureContext()
 	m_isCrouching = m_postureStack[m_postureStackIndex].isCrouching;
 }
 
-inline bool CBot::IsPlayerFacingMe(CBasePlayer *other) const
+inline bool CBot::__MAKE_VHOOK(IsPlayerFacingMe)(CBasePlayer *other) const
 {
 	Vector toOther = other->pev->origin - pev->origin;
 	UTIL_MakeVectors(other->pev->v_angle + other->pev->punchangle);
@@ -358,7 +412,7 @@ inline bool CBot::IsPlayerFacingMe(CBasePlayer *other) const
 	return false;
 }
 
-inline bool CBot::IsPlayerLookingAtMe(CBasePlayer *other) const
+inline bool CBot::__MAKE_VHOOK(IsPlayerLookingAtMe)(CBasePlayer *other) const
 {
 	Vector toOther = other->pev->origin - pev->origin;
 	toOther.NormalizeInPlace();
@@ -377,12 +431,22 @@ inline bool CBot::IsPlayerLookingAtMe(CBasePlayer *other) const
 	return false;
 }
 
+inline CBot::BotRelationshipTeam CBot::BotRelationship(CBasePlayer *pTarget) const
+{
+#ifdef REGAMEDLL_ADD
+	if (CSGameRules()->IsFreeForAll())
+		return BOT_ENEMY;
+#endif
+
+	return pTarget->m_iTeam == m_iTeam ? BOT_TEAMMATE : BOT_ENEMY;
+}
+
 extern float g_flBotCommandInterval;
 extern float g_flBotFullThinkInterval;
 
 extern const char *BotArgs[4];
 extern bool UseBotArgs;
 
-class BotProfile;
+extern bool AreBotsAllowed();
 
 #endif // BOT_H

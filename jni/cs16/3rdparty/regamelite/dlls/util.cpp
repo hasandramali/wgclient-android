@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 unsigned int glSeed;
@@ -6,6 +8,8 @@ CUtlVector<hash_item_t> stringsHashTable;
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 unsigned int seed_table[256] =
 {
 	28985U, 27138U, 26457U, 9451U, 17764U, 10909U, 28790U, 8716U, 6361U, 4853U, 17798U, 21977U, 19643U, 20662U, 10834U, 20103,
@@ -121,13 +125,15 @@ int g_groupop = 0;
 
 const int gSizes[18] = { 4, 4, 4, 4, 4, 4, 4, 12, 12, 4, 4, 4, 4, 2, 1, 4, 4, 4 };
 
+#endif // HOOK_GAMEDLL
+
 float UTIL_WeaponTimeBase()
 {
 #ifdef CLIENT_WEAPONS
 	return 0.0;
 #else
 	return gpGlobals->time;
-#endif // CLIENT_WEAPONS
+#endif
 }
 
 unsigned int U_Random()
@@ -167,7 +173,7 @@ float UTIL_SharedRandomFloat(unsigned int seed, float low, float high)
 	if (range)
 	{
 		int tensixrand = U_Random() & 0xFFFFu;
-		float offset = (float)tensixrand / 0x10000u;
+		float offset = float(tensixrand) / 0x10000u;
 		return (low + offset * range);
 	}
 
@@ -208,7 +214,7 @@ void UTIL_UnsetGroupTrace()
 	g_groupmask = 0;
 	g_groupop = 0;
 
-	ENGINE_SETGROUPMASK(0,0);
+	ENGINE_SETGROUPMASK(0, 0);
 }
 
 NOXREF UTIL_GroupTrace::UTIL_GroupTrace(int groupmask, int op)
@@ -238,9 +244,9 @@ NOXREF BOOL UTIL_GetNextBestWeapon(CBasePlayer *pPlayer, CBasePlayerItem *pCurre
 NOXREF float UTIL_AngleMod(float a)
 {
 	if (a < 0.0f)
-		a = a + 360.0f * ((int)(a / 360.0f) + 1);
+		a = a + 360.0f * (int(a / 360.0f) + 1);
 	else if (a >= 360.0f)
-		a = a - 360.0f * ((int)(a / 360.0f));
+		a = a - 360.0f * int(a / 360.0f);
 	return a;
 }
 
@@ -405,7 +411,7 @@ CBaseEntity *UTIL_FindEntityByString_Old(CBaseEntity *pStartEntity, const char *
 	return NULL;
 }
 
-CBaseEntity *UTIL_FindEntityByString(CBaseEntity *pStartEntity, const char *szKeyword, const char *szValue)
+CBaseEntity *EXT_FUNC UTIL_FindEntityByString(CBaseEntity *pStartEntity, const char *szKeyword, const char *szValue)
 {
 	edict_t	*pentEntity;
 	int startEntityIndex;
@@ -417,7 +423,7 @@ CBaseEntity *UTIL_FindEntityByString(CBaseEntity *pStartEntity, const char *szKe
 
 	startEntityIndex = ENTINDEX(pentEntity);
 
-	//it best each entity list
+	// it best each entity list
 	if (*szKeyword == 'c')
 	{
 		int hash;
@@ -492,7 +498,7 @@ CBaseEntity *UTIL_FindEntityByClassname(CBaseEntity *pStartEntity, const char *s
 }
 
 CBaseEntity *UTIL_FindEntityByTargetname(CBaseEntity *pStartEntity, const char *szName)
-{ 
+{
 	return UTIL_FindEntityByString(pStartEntity, "targetname", szName);
 }
 
@@ -518,18 +524,20 @@ CBaseEntity *UTIL_FindEntityGeneric(const char *szWhatever, const Vector &vecSrc
 	return pEntity;
 }
 
-CBaseEntity *EXT_FUNC UTIL_PlayerByIndex(int playerIndex)
+#ifndef REGAMEDLL_FIXES
+CBasePlayer *EXT_FUNC UTIL_PlayerByIndex(int playerIndex)
 {
-	CBaseEntity *pPlayer = NULL;
+	CBasePlayer *pPlayer = nullptr;
 	if (playerIndex > 0 && playerIndex <= gpGlobals->maxClients)
 	{
 		edict_t *pPlayerEdict = INDEXENT(playerIndex);
-		if (pPlayerEdict != NULL && !pPlayerEdict->free)
-			pPlayer = CBaseEntity::Instance(pPlayerEdict);
+		if (pPlayerEdict && !pPlayerEdict->free)
+			pPlayer = CBasePlayer::Instance(pPlayerEdict);
 	}
 
 	return pPlayer;
 }
+#endif
 
 void UTIL_MakeVectors(const Vector &vecAngles)
 {
@@ -643,9 +651,9 @@ void UTIL_ScreenFadeBuild(ScreenFade &fade, const Vector &color, float fadeTime,
 {
 	fade.duration = FixedUnsigned16(fadeTime, 1<<12);
 	fade.holdTime = FixedUnsigned16(fadeHold, 1<<12);
-	fade.r = (int)color.x;
-	fade.g = (int)color.y;
-	fade.b = (int)color.z;
+	fade.r = int(color.x);
+	fade.g = int(color.y);
+	fade.b = int(color.z);
 	fade.a = alpha;
 	fade.fadeFlags = flags;
 }
@@ -733,7 +741,7 @@ void UTIL_HudMessageAll(const hudtextparms_t &textparms, const char *pMessage)
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
 		CBaseEntity *pPlayer = UTIL_PlayerByIndex(i);
-		if (pPlayer != NULL)
+		if (pPlayer)
 			UTIL_HudMessage(pPlayer, textparms, pMessage);
 	}
 }
@@ -819,7 +827,13 @@ NOXREF char *UTIL_dtos4(int d)
 
 void UTIL_ShowMessageArgs(const char *pString, CBaseEntity *pPlayer, CUtlVector<char *> *args, bool isHint)
 {
-	if (pPlayer != NULL && pPlayer->IsNetClient())
+	if (!pPlayer)
+		return;
+
+	if (!pPlayer->IsNetClient())
+		return;
+
+	if (args)
 	{
 		MESSAGE_BEGIN(MSG_ONE, gmsgHudTextArgs, NULL, pPlayer->pev);
 			WRITE_STRING(pString);
@@ -827,7 +841,7 @@ void UTIL_ShowMessageArgs(const char *pString, CBaseEntity *pPlayer, CUtlVector<
 			WRITE_BYTE(args->Count());
 
 		for (int i = 0; i < args->Count(); ++i)
-			WRITE_STRING(args->Element(i));
+			WRITE_STRING((*args)[i]);
 
 		MESSAGE_END();
 	}
@@ -847,7 +861,7 @@ void UTIL_ShowMessage(const char *pString, CBaseEntity *pEntity, bool isHint)
 
 	MESSAGE_BEGIN(MSG_ONE, gmsgHudText, NULL, pEntity->edict());
 		WRITE_STRING(pString);
-		WRITE_BYTE((int)isHint);
+		WRITE_BYTE(int(isHint));
 	MESSAGE_END();
 }
 
@@ -856,7 +870,7 @@ void UTIL_ShowMessageAll(const char *pString, bool isHint)
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
 		CBaseEntity *pPlayer = UTIL_PlayerByIndex(i);
-		if (pPlayer != NULL)
+		if (pPlayer)
 			UTIL_ShowMessage(pString, pPlayer, isHint);
 	}
 }
@@ -887,10 +901,10 @@ NOXREF TraceResult UTIL_GetGlobalTrace()
 	TraceResult tr;
 
 	tr.flFraction = gpGlobals->trace_fraction;
-	tr.fInWater = (int)gpGlobals->trace_inwater;
-	tr.fAllSolid = (int)gpGlobals->trace_allsolid;
-	tr.fStartSolid = (int)gpGlobals->trace_startsolid;
-	tr.fInOpen = (int)gpGlobals->trace_inopen;
+	tr.fInWater = int(gpGlobals->trace_inwater);
+	tr.fAllSolid = int(gpGlobals->trace_allsolid);
+	tr.fStartSolid = int(gpGlobals->trace_startsolid);
+	tr.fInOpen = int(gpGlobals->trace_inopen);
 	tr.vecEndPos = gpGlobals->trace_endpos;
 	tr.flPlaneDist = gpGlobals->trace_plane_dist;
 	tr.vecPlaneNormal = gpGlobals->trace_plane_normal;
@@ -912,12 +926,15 @@ float UTIL_VecToYaw(const Vector &vec)
 
 void UTIL_SetOrigin(entvars_t *pev, const Vector &vecOrigin)
 {
-   SET_ORIGIN (ENT (pev), vecOrigin);
+	edict_t *ent = ENT(pev);
+
+	if (ent != NULL)
+		SET_ORIGIN(ent, vecOrigin);
 }
 
 NOXREF void UTIL_ParticleEffect(const Vector &vecOrigin, const Vector &vecDirection, ULONG ulColor, ULONG ulCount)
 {
-	PARTICLE_EFFECT(vecOrigin, vecDirection, (float)ulColor, (float)ulCount);
+	PARTICLE_EFFECT(vecOrigin, vecDirection, float(ulColor), float(ulCount));
 }
 
 float UTIL_Approach(float target, float value, float speed)
@@ -933,7 +950,7 @@ float UTIL_Approach(float target, float value, float speed)
 	return value;
 }
 
-float UTIL_ApproachAngle(float target, float value, float speed)
+float_precision UTIL_ApproachAngle(float target, float value, float speed)
 {
 	target = UTIL_AngleMod(target);
 	value = UTIL_AngleMod(target);
@@ -957,9 +974,9 @@ float UTIL_ApproachAngle(float target, float value, float speed)
 	return value;
 }
 
-float UTIL_AngleDistance(float next, float cur)
+float_precision UTIL_AngleDistance(float next, float cur)
 {
-	float delta;
+	float_precision delta;
 
 	delta = next - cur;
 
@@ -1185,7 +1202,7 @@ void UTIL_PlayerDecalTrace(TraceResult *pTrace, int playernum, int decalNumber, 
 			WRITE_COORD(pTrace->vecEndPos.x);
 			WRITE_COORD(pTrace->vecEndPos.y);
 			WRITE_COORD(pTrace->vecEndPos.z);
-			WRITE_SHORT((int)ENTINDEX(pTrace->pHit));
+			WRITE_SHORT(int(ENTINDEX(pTrace->pHit)));
 			WRITE_BYTE(index);
 		MESSAGE_END();
 	}
@@ -1209,7 +1226,7 @@ void UTIL_GunshotDecalTrace(TraceResult *pTrace, int decalNumber, bool ClientOnl
 		WRITE_COORD(pTrace->vecEndPos.x);
 		WRITE_COORD(pTrace->vecEndPos.y);
 		WRITE_COORD(pTrace->vecEndPos.z);
-		WRITE_SHORT((int)ENTINDEX(pTrace->pHit));
+		WRITE_SHORT(int(ENTINDEX(pTrace->pHit)));
 		WRITE_BYTE(index);
 	MESSAGE_END();
 }
@@ -1231,7 +1248,7 @@ void UTIL_Ricochet(const Vector &position, float scale)
 		WRITE_COORD(position.x);
 		WRITE_COORD(position.y);
 		WRITE_COORD(position.z);
-		WRITE_BYTE((int)(scale * 10.0f));
+		WRITE_BYTE(int(scale * 10.0f));
 	MESSAGE_END();
 }
 
@@ -1415,12 +1432,12 @@ void UTIL_BubbleTrail(Vector from, Vector to, int count)
 
 void UTIL_Remove(CBaseEntity *pEntity)
 {
-	if (pEntity != NULL)
-	{
-		pEntity->UpdateOnRemove();
-		pEntity->pev->flags |= FL_KILLME;
-		pEntity->pev->targetname = 0;
-	}
+	if (!pEntity)
+		return;
+
+	pEntity->UpdateOnRemove();
+	pEntity->pev->flags |= FL_KILLME;
+	pEntity->pev->targetname = 0;
 }
 
 NOXREF BOOL UTIL_IsValidEntity(edict_t *pent)
@@ -1441,7 +1458,7 @@ void UTIL_PrecacheOther(const char *szClassname)
 	}
 
 	CBaseEntity *pEntity = CBaseEntity::Instance(VARS(pent));
-	if (pEntity)
+	if (pEntity != NULL)
 	{
 		pEntity->Precache();
 	}
@@ -1449,7 +1466,50 @@ void UTIL_PrecacheOther(const char *szClassname)
 	REMOVE_ENTITY(pent);
 }
 
-void UTIL_LogPrintf(char *fmt, ...)
+void UTIL_RestartOther(const char *szClassname)
+{
+	CBaseEntity *pEntity = nullptr;
+	while ((pEntity = UTIL_FindEntityByClassname(pEntity, szClassname)) != nullptr)
+	{
+		pEntity->Restart();
+	}
+}
+
+void UTIL_ResetEntities()
+{
+	edict_t *pEdict = INDEXENT(1);
+	for (int i = 1; i < gpGlobals->maxEntities; ++i, ++pEdict)
+	{
+		if (pEdict->free)
+			continue;
+
+		CBaseEntity *pEntity = CBaseEntity::Instance(pEdict);
+		if (!pEntity)
+			continue;
+
+		// only non-player entities
+		if (pEntity->IsPlayer())
+			continue;
+
+		int caps = pEntity->ObjectCaps();
+		if ((caps & FCAP_MUST_RELEASE) == FCAP_MUST_RELEASE)
+			UTIL_Remove(pEntity);
+
+		else if ((caps & FCAP_MUST_RESET) == FCAP_MUST_RESET)
+			pEntity->Restart();
+	}
+}
+
+void UTIL_RemoveOther(const char *szClassname)
+{
+	CBaseEntity *pEntity = nullptr;
+	while ((pEntity = UTIL_FindEntityByClassname(pEntity, szClassname)) != nullptr)
+	{
+		UTIL_Remove(pEntity);
+	}
+}
+
+void UTIL_LogPrintf(const char *fmt, ...)
 {
 	va_list argptr;
 	static char string[1024];
@@ -1572,6 +1632,7 @@ void CSaveRestoreBuffer::BufferRewind(int size)
 #ifndef _WIN32
 extern "C"
 {
+	#define _rotr _rotr_
 	inline unsigned _rotr(unsigned val, int shift)
 	{
 		register unsigned lobit;
@@ -1717,7 +1778,7 @@ void CSave::WritePositionVector(const char *pname, const float *value, int count
 
 void CSave::WriteFunction(const char *pname, void **data, int count)
 {
-	const char *functionName = NAME_FOR_FUNCTION((uint32)*data);
+	const char *functionName = NAME_FOR_FUNCTION(*data);
 
 	if (functionName)
 		BufferField(pname, Q_strlen(functionName) + 1, functionName);
@@ -1931,7 +1992,7 @@ void CSave::BufferData(const char *pdata, int size)
 int CRestore::ReadField(void *pBaseData, TYPEDESCRIPTION *pFields, int fieldCount, int startField, int size, char *pName, void *pData)
 {
 	float time = 0.0f;
-	Vector position = Vector(0, 0, 0);
+	Vector position(0, 0, 0);
 
 	if (m_pdata)
 	{
@@ -2229,7 +2290,7 @@ NOXREF int CRestore::BufferCheckZString(const char *string)
 
 	if (len <= maxLen)
 	{
-		if (!strncmp(string, m_pdata->pCurrentData, len))
+		if (!Q_strncmp(string, m_pdata->pCurrentData, len))
 			return 1;
 	}
 
@@ -2276,8 +2337,8 @@ char UTIL_TextureHit(TraceResult *ptr, Vector vecSrc, Vector vecEnd)
 
 NOXREF int GetPlayerTeam(int index)
 {
-	CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(index));
-	if (pPlayer != NULL)
+	CBasePlayer *pPlayer = UTIL_PlayerByIndexSafe(index);
+	if (pPlayer)
 	{
 		return pPlayer->m_iTeam;
 	}
@@ -2294,15 +2355,15 @@ bool UTIL_IsGame(const char *gameName)
 		GET_GAME_DIR(gameDir);
 		return (Q_stricmp(gameDir, gameName) == 0);
 	}
-#endif // CSTRIKE
+#endif
 
 	return false;
 }
 
-float UTIL_GetPlayerGaitYaw(int playerIndex)
+float_precision UTIL_GetPlayerGaitYaw(int playerIndex)
 {
-	CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(playerIndex));
-	if (pPlayer != NULL)
+	CBasePlayer *pPlayer = UTIL_PlayerByIndex(playerIndex);
+	if (pPlayer)
 	{
 		return pPlayer->m_flGaityaw;
 	}
@@ -2321,8 +2382,95 @@ int UTIL_ReadFlags(const char *c)
 			flags |= (1 << (*c - 'a'));
 		}
 
-		*c++;
+		c++;
 	}
 
 	return flags;
+}
+
+// Determine whether bots can be used or not
+bool UTIL_AreBotsAllowed()
+{
+#ifdef REGAMEDLL_ADD
+	if (g_engfuncs.pfnEngCheckParm == NULL)
+		return false;
+#endif
+
+	if (g_bIsCzeroGame)
+	{
+#ifdef REGAMEDLL_ADD
+		// If they pass in -nobots, don't allow bots.  This is for people who host servers, to
+		// allow them to disallow bots to enforce CPU limits.
+		int nobots = ENG_CHECK_PARM("-nobots", NULL);
+		if (nobots)
+		{
+			return false;
+		}
+#endif
+
+		return true;
+	}
+
+#ifdef REGAMEDLL_ADD
+	// let enables zBot by default from listen server?
+	if (!IS_DEDICATED_SERVER())
+	{
+		return true;
+	}
+
+	// allow the using of bots for CS 1.6
+	int bots = ENG_CHECK_PARM("-bots", NULL);
+	if (bots)
+	{
+		return true;
+	}
+#endif
+
+	return false;
+}
+
+bool UTIL_AreHostagesImprov()
+{
+	if (g_bIsCzeroGame)
+	{
+		return true;
+	}
+
+#ifdef REGAMEDLL_ADD
+	// someday in CS 1.6
+	int improv = ENG_CHECK_PARM("-host-improv", NULL);
+	if (improv)
+	{
+		return true;
+	}
+#endif
+
+	return false;
+}
+
+void MAKE_STRING_CLASS(const char *str, entvars_t *pev)
+{
+	if (!FStringNull(pev->classname))
+	{
+		RemoveEntityHashValue(pev, STRING(pev->classname), CLASSNAME);
+	}
+
+	pev->classname = MAKE_STRING(str);
+	AddEntityHashValue(pev, STRING(pev->classname), CLASSNAME);
+}
+
+void NORETURN Sys_Error(const char *error, ...)
+{
+	va_list argptr;
+	static char text[1024];
+
+	va_start(argptr, error);
+	vsnprintf(text, sizeof(text), error, argptr);
+	va_end(argptr);
+
+	CONSOLE_ECHO("FATAL ERROR (shutting down): %s\n", text);
+
+	int *null = 0;
+	*null = 0;
+	exit(-1);
 }

@@ -1,8 +1,9 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Begin attacking
-
-void AttackState::OnEnter(CCSBot *me)
+void AttackState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	CBasePlayer *enemy = me->GetEnemy();
 
@@ -126,8 +127,7 @@ void AttackState::StopAttacking(CCSBot *me)
 }
 
 // Perform attack behavior
-
-void AttackState::OnUpdate(CCSBot *me)
+void AttackState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	// can't be stuck while attacking
 	me->ResetStuckMonitor();
@@ -458,7 +458,6 @@ void AttackState::OnUpdate(CCSBot *me)
 	if (gpGlobals->time > m_reacquireTimestamp)
 		me->FireWeaponAtEnemy();
 
-
 	// do dodge behavior
 	// If sniping or crouching, stand still.
 	if (m_dodge && !me->IsUsingSniperRifle() && !m_crouchAndHold)
@@ -537,8 +536,7 @@ void AttackState::OnUpdate(CCSBot *me)
 }
 
 // Finish attack
-
-void AttackState::OnExit(CCSBot *me)
+void AttackState::__MAKE_VHOOK(OnExit)(CCSBot *me)
 {
 	me->PrintIfWatched("AttackState:OnExit()\n");
 

@@ -1,15 +1,19 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-int GetForceCamera(CBasePlayer *pObserver)
+LINK_HOOK_CHAIN(int, GetForceCamera, (CBasePlayer *pObserver), pObserver)
+
+int EXT_FUNC __API_HOOK(GetForceCamera)(CBasePlayer *pObserver)
 {
 	int retVal;
 
 	if (!fadetoblack.value)
 	{
-		retVal = (int)CVAR_GET_FLOAT("mp_forcechasecam");
+		retVal = int(CVAR_GET_FLOAT("mp_forcechasecam"));
 
 		if (retVal == CAMERA_MODE_SPEC_ANYONE)
-			retVal = (int)CVAR_GET_FLOAT("mp_forcecamera");
+			retVal = int(CVAR_GET_FLOAT("mp_forcecamera"));
 	}
 	else
 		retVal = CAMERA_MODE_SPEC_ONLY_FRIST_PERSON;
@@ -17,20 +21,21 @@ int GetForceCamera(CBasePlayer *pObserver)
 	return retVal;
 }
 
-CBaseEntity *CBasePlayer::Observer_IsValidTarget (int iPlayerIndex, bool bSameTeam)
+LINK_HOOK_CLASS_CHAIN(CBasePlayer *, CBasePlayer, Observer_IsValidTarget, (int iPlayerIndex, bool bSameTeam), iPlayerIndex, bSameTeam)
+
+CBasePlayer *EXT_FUNC CBasePlayer::__API_HOOK(Observer_IsValidTarget)(int iPlayerIndex, bool bSameTeam)
 {
-   if (iPlayerIndex > gpGlobals->maxClients || iPlayerIndex < 1)
-      return NULL;
+	if (iPlayerIndex > gpGlobals->maxClients || iPlayerIndex < 1)
+		return NULL;
 
-   CBasePlayer *pEntity = static_cast<CBasePlayer *>(UTIL_PlayerByIndex (iPlayerIndex));
+	CBasePlayer *pPlayer = UTIL_PlayerByIndex(iPlayerIndex);
 
-   // Don't spec observers or players who haven't picked a class yet
-   if (!pEntity || pEntity == this || pEntity->has_disconnected || pEntity->IsObserver () || (pEntity->pev->effects & EF_NODRAW) || pEntity->m_iTeam == UNASSIGNED || (bSameTeam && pEntity->m_iTeam != this->m_iTeam))
-      return NULL;
+	// Don't spec observers or players who haven't picked a class yet
+	if (!pPlayer || pPlayer == this || pPlayer->has_disconnected || pPlayer->IsObserver() || (pPlayer->pev->effects & EF_NODRAW) || pPlayer->m_iTeam == UNASSIGNED || (bSameTeam && pPlayer->m_iTeam != m_iTeam))
+		return NULL;
 
-   return pEntity;
+	return pPlayer;
 }
-
 
 void UpdateClientEffects(CBasePlayer *pObserver, int oldMode)
 {
@@ -47,7 +52,7 @@ void UpdateClientEffects(CBasePlayer *pObserver, int oldMode)
 
 		if (pObserver->m_hObserverTarget->IsPlayer())
 		{
-			CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(pObserver->m_hObserverTarget->entindex()));
+			CBasePlayer *pPlayer = UTIL_PlayerByIndex(pObserver->m_hObserverTarget->entindex());
 
 			if (pPlayer)
 			{
@@ -56,7 +61,7 @@ void UpdateClientEffects(CBasePlayer *pObserver, int oldMode)
 					if (pPlayer->m_progressEnd > gpGlobals->time)
 					{
 						float percentRemaining = gpGlobals->time - pPlayer->m_progressStart;
-						pObserver->SetProgressBarTime2((int)(pPlayer->m_progressEnd - pPlayer->m_progressStart), percentRemaining);
+						pObserver->SetProgressBarTime2(int(pPlayer->m_progressEnd - pPlayer->m_progressStart), percentRemaining);
 						clearProgress = false;
 					}
 				}
@@ -71,7 +76,7 @@ void UpdateClientEffects(CBasePlayer *pObserver, int oldMode)
 						clearBlindness = false;
 
 						fadeTime = pPlayer->m_blindFadeTime;
-						alpha = (float)pPlayer->m_blindAlpha;
+						alpha = float(pPlayer->m_blindAlpha);
 						holdTime = pPlayer->m_blindHoldTime + pPlayer->m_blindStartTime - gpGlobals->time;
 
 						if (holdTime <= 0)
@@ -123,14 +128,12 @@ void UpdateClientEffects(CBasePlayer *pObserver, int oldMode)
 }
 
 // Find the next client in the game for this player to spectate
-
 void CBasePlayer::Observer_FindNextPlayer(bool bReverse, const char *name)
 {
 	int iStart;
 	int iCurrent;
 	int iDir;
 	bool bForceSameTeam;
-	CBasePlayer *pPlayer;
 
 	if (m_flNextFollowTime && m_flNextFollowTime > gpGlobals->time)
 		return;
@@ -144,7 +147,7 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse, const char *name)
 
 	iDir = bReverse ? -1 : 1;
 
-	bForceSameTeam = (GetForceCamera (this) != CAMERA_MODE_SPEC_ANYONE && m_iTeam != SPECTATOR);
+	bForceSameTeam = (GetForceCamera(this) != CAMERA_MODE_SPEC_ANYONE && m_iTeam != SPECTATOR);
 
 	do
 	{
@@ -164,8 +167,7 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse, const char *name)
 			if (!name)
 				break;
 
-			pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(m_hObserverTarget->entindex()));
-
+			CBasePlayer *pPlayer = UTIL_PlayerByIndex(m_hObserverTarget->entindex());
 			if (!Q_strcmp(name, STRING(pPlayer->pev->netname)))
 				break;
 		}
@@ -182,7 +184,7 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse, const char *name)
 			m_hObserverTarget->pev->health = 0.0f;
 
 		MESSAGE_BEGIN(MSG_ONE, gmsgSpecHealth2, NULL, pev);
-			WRITE_BYTE((int)m_hObserverTarget->pev->health);
+			WRITE_BYTE(int(m_hObserverTarget->pev->health));
 			WRITE_BYTE(ENTINDEX(m_hObserverTarget->edict()));
 		MESSAGE_END();
 
@@ -195,7 +197,6 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse, const char *name)
 }
 
 // Handle buttons in observer mode
-
 void CBasePlayer::Observer_HandleButtons()
 {
 	// Slow down mouse clicks
@@ -267,8 +268,7 @@ void CBasePlayer::Observer_CheckTarget()
 
 		if (m_hObserverTarget)
 		{
-			int iPlayerIndex = ENTINDEX(m_hObserverTarget->edict());
-			CBasePlayer *target = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(iPlayerIndex));
+			CBasePlayer *target = UTIL_PlayerByIndex(m_hObserverTarget->entindex());
 
 			// check taget
 			if (!target || target->pev->deadflag == DEAD_RESPAWNABLE || (target->pev->effects & EF_NODRAW))
@@ -302,9 +302,9 @@ void CBasePlayer::Observer_CheckTarget()
 void CBasePlayer::Observer_CheckProperties()
 {
 	// try to find a traget if we have no current one
-	if (pev->iuser1 == OBS_IN_EYE && m_hObserverTarget != NULL)
+	if (pev->iuser1 == OBS_IN_EYE && m_hObserverTarget)
 	{
-		CBasePlayer *target = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(m_hObserverTarget->entindex()));
+		CBasePlayer *target = UTIL_PlayerByIndex(m_hObserverTarget->entindex());
 
 		if (!target)
 			return;
@@ -424,7 +424,6 @@ void CBasePlayer::Observer_CheckProperties()
 }
 
 // Attempt to change the observer mode
-
 void CBasePlayer::Observer_SetMode(int iMode)
 {
 	int _forcecamera;
@@ -434,7 +433,7 @@ void CBasePlayer::Observer_SetMode(int iMode)
 	if (iMode == pev->iuser1)
 		return;
 
-	_forcecamera = GetForceCamera (this);
+	_forcecamera = GetForceCamera(this);
 
 	// is valid mode ?
 	if (iMode < OBS_CHASE_LOCKED || iMode > OBS_MAP_CHASE)
@@ -490,9 +489,11 @@ void CBasePlayer::Observer_SetMode(int iMode)
 	if (m_hObserverTarget != NULL)
 		UTIL_SetOrigin(pev, m_hObserverTarget->pev->origin);
 
+#ifndef REGAMEDLL_FIXES
 	MESSAGE_BEGIN(MSG_ONE, gmsgCrosshair, NULL, pev);
 		WRITE_BYTE((iMode == OBS_ROAMING) != 0);
 	MESSAGE_END();
+#endif
 
 	UpdateClientEffects(this, oldMode);
 
@@ -504,4 +505,11 @@ void CBasePlayer::Observer_SetMode(int iMode)
 
 	m_iObserverLastMode = iMode;
 	m_bWasFollowing = false;
+}
+
+void CBasePlayer::Observer_Think()
+{
+	Observer_HandleButtons();
+	Observer_CheckTarget();
+	Observer_CheckProperties();
 }

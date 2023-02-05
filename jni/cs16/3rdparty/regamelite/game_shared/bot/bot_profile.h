@@ -43,6 +43,9 @@
 #undef min
 #undef max
 
+#include <list>
+#include <vector>
+
 #include "bot_constants.h"
 
 enum
@@ -172,7 +175,7 @@ inline void BotProfile::Inherit(const BotProfile *parent, const BotProfile *base
 		m_voiceBank = parent->m_voiceBank;
 }
 
-typedef CUtlLinkedList <BotProfile *, int> BotProfileList;
+typedef std::STD_LIST<BotProfile *> BotProfileList;
 
 class BotProfileManager
 {
@@ -183,18 +186,16 @@ public:
 	void Init(const char *filename, unsigned int *checksum = NULL);
 	void Reset();
 
-	const BotProfile *GetProfile (const char *name, BotProfileTeamType team) const
+	const BotProfile *GetProfile(const char *name, BotProfileTeamType team) const
 	{
-		FOR_EACH_LL (m_profileList, it)
+		for (BotProfileList::const_iterator iter = m_profileList.begin(); iter != m_profileList.end(); ++iter)
 		{
-			BotProfile *profile = m_profileList[it];
-
-			if (!Q_stricmp (name, profile->GetName ()) && profile->IsValidForTeam (team))
-				return profile;
+			if (!Q_stricmp(name, (*iter)->GetName()) && (*iter)->IsValidForTeam(team))
+				return (*iter);
 		}
+
 		return NULL;
 	}
-
 	const BotProfileList *GetProfileList() const { return &m_profileList; }
 	const BotProfile *GetRandomProfile(BotDifficultyType difficulty, BotProfileTeamType team) const;
 
@@ -203,7 +204,7 @@ public:
 	const char *GetCustomSkinFname(int index);
 	int GetCustomSkinIndex(const char *name, const char *filename = NULL);
 
-	typedef CUtlVector<char *> VoiceBankList;
+	typedef std::STD_VECTOR<char *> VoiceBankList;
 
 	const VoiceBankList *GetVoiceBanks() const { return &m_voiceBanks; }
 	int FindVoiceBankIndex(const char *filename);

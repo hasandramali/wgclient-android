@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_awp, CAWP);
+LINK_ENTITY_TO_CLASS(weapon_awp, CAWP, CCSAWP)
 
-void CAWP::Spawn()
+void CAWP::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -13,7 +15,7 @@ void CAWP::Spawn()
 	FallInit();
 }
 
-void CAWP::Precache()
+void CAWP::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_awp.mdl");
 	PRECACHE_MODEL("models/w_awp.mdl");
@@ -32,7 +34,7 @@ void CAWP::Precache()
 	m_usFireAWP = PRECACHE_EVENT(1, "events/awp.sc");
 }
 
-int CAWP::GetItemInfo(ItemInfo *p)
+int CAWP::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "338Magnum";
@@ -49,7 +51,7 @@ int CAWP::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CAWP::Deploy()
+BOOL CAWP::__MAKE_VHOOK(Deploy)()
 {
 	if (DefaultDeploy("models/v_awp.mdl", "models/p_awp.mdl", AWP_DRAW, "rifle", UseDecrement() != FALSE))
 	{
@@ -63,7 +65,7 @@ BOOL CAWP::Deploy()
 	return FALSE;
 }
 
-void CAWP::SecondaryAttack()
+void CAWP::__MAKE_VHOOK(SecondaryAttack)()
 {
 	switch (m_pPlayer->m_iFOV)
 	{
@@ -83,7 +85,7 @@ void CAWP::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3;
 }
 
-void CAWP::PrimaryAttack()
+void CAWP::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -162,10 +164,10 @@ void CAWP::AWPFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireAWP, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.x * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.x * 100), FALSE, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -178,12 +180,12 @@ void CAWP::AWPFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	m_pPlayer->pev->punchangle.x -= 2.0f;
 }
 
-void CAWP::Reload()
+void CAWP::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_338mag <= 0)
 		return;
 
-	if (DefaultReload(AWP_MAX_CLIP, AWP_RELOAD, AWP_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), AWP_RELOAD, AWP_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -197,7 +199,7 @@ void CAWP::Reload()
 	}
 }
 
-void CAWP::WeaponIdle()
+void CAWP::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
@@ -209,7 +211,7 @@ void CAWP::WeaponIdle()
 	}
 }
 
-float CAWP::GetMaxSpeed()
+float CAWP::__MAKE_VHOOK(GetMaxSpeed)()
 {
 	if (m_pPlayer->m_iFOV == DEFAULT_FOV)
 		return AWP_MAX_SPEED;

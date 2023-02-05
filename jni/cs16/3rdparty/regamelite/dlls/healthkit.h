@@ -38,6 +38,15 @@ public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual BOOL MyTouch(CBasePlayer *pPlayer);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	BOOL MyTouch_(CBasePlayer *pPlayer);
+
+#endif
+
 };
 
 class CWallHealth: public CBaseToggle
@@ -51,11 +60,22 @@ public:
 	virtual int ObjectCaps() { return (CBaseToggle::ObjectCaps() | FCAP_CONTINUOUS_USE) & ~FCAP_ACROSS_TRANSITION; }
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	void EXPORT Off();
 	void EXPORT Recharge();
 
-	static TYPEDESCRIPTION m_SaveData[5];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[5];
 
 	float m_flNextCharge;
 	int m_iReactivate;

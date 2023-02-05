@@ -1,8 +1,9 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 // Plant the bomb.
-
-void PlantBombState::OnEnter(CCSBot *me)
+void PlantBombState::__MAKE_VHOOK(OnEnter)(CCSBot *me)
 {
 	me->Crouch();
 	me->SetDisposition(CCSBot::SELF_DEFENSE);
@@ -15,8 +16,7 @@ void PlantBombState::OnEnter(CCSBot *me)
 }
 
 // Plant the bomb.
-
-void PlantBombState::OnUpdate(CCSBot *me)
+void PlantBombState::__MAKE_VHOOK(OnUpdate)(CCSBot *me)
 {
 	CBasePlayerWeapon *gun = me->GetActiveWeapon();
 	bool holdingC4 = false;
@@ -46,7 +46,7 @@ void PlantBombState::OnUpdate(CCSBot *me)
 		me->Idle();
 }
 
-void PlantBombState::OnExit(CCSBot *me)
+void PlantBombState::__MAKE_VHOOK(OnExit)(CCSBot *me)
 {
 	// equip our rifle (in case we were interrupted while holding C4)
 	me->EquipBestWeapon();

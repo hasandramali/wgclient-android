@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_p228, CP228);
+LINK_ENTITY_TO_CLASS(weapon_p228, CP228, CCSP228)
 
-void CP228::Spawn()
+void CP228::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CP228::Spawn()
 	FallInit();
 }
 
-void CP228::Precache()
+void CP228::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_p228.mdl");
 	PRECACHE_MODEL("models/w_p228.mdl");
@@ -32,7 +34,7 @@ void CP228::Precache()
 	m_usFireP228 = PRECACHE_EVENT(1, "events/p228.sc");
 }
 
-int CP228::GetItemInfo(ItemInfo *p)
+int CP228::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "357SIG";
@@ -49,7 +51,7 @@ int CP228::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CP228::Deploy()
+BOOL CP228::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.9f;
 	m_fMaxSpeed = P228_MAX_SPEED;
@@ -62,7 +64,7 @@ BOOL CP228::Deploy()
 		return DefaultDeploy("models/v_p228.mdl", "models/p_p228.mdl", P228_DRAW, "onehanded", UseDecrement() != FALSE);
 }
 
-void CP228::PrimaryAttack()
+void CP228::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -82,7 +84,7 @@ void CP228::PrimaryAttack()
 	}
 }
 
-void CP228::SecondaryAttack()
+void CP228::__MAKE_VHOOK(SecondaryAttack)()
 {
 	ShieldSecondaryFire(SHIELDGUN_UP, SHIELDGUN_DOWN);
 }
@@ -150,10 +152,10 @@ void CP228::P228Fire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireP228, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -167,19 +169,19 @@ void CP228::P228Fire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	ResetPlayerShieldAnim();
 }
 
-void CP228::Reload()
+void CP228::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_357sig <= 0)
 		return;
 
-	if (DefaultReload(P228_MAX_CLIP, m_pPlayer->HasShield() ? P228_SHIELD_RELOAD : P228_RELOAD, P228_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), m_pPlayer->HasShield() ? (int)P228_SHIELD_RELOAD : (int)P228_RELOAD, P228_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 		m_flAccuracy = 0.9f;
 	}
 }
 
-void CP228::WeaponIdle()
+void CP228::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

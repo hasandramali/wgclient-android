@@ -1,13 +1,15 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-void HostageIdleState::OnEnter(CHostageImprov *improv)
+void HostageIdleState::__MAKE_VHOOK(OnEnter)(CHostageImprov *improv)
 {
 	m_moveState = MoveDone;
 	m_fleeTimer.Invalidate();
 	m_mustFlee = false;
 }
 
-void HostageIdleState::OnUpdate(CHostageImprov *improv)
+void HostageIdleState::__MAKE_VHOOK(OnUpdate)(CHostageImprov *improv)
 {
 	if (!UTIL_ActivePlayersInGame())
 		return;
@@ -226,16 +228,15 @@ void HostageIdleState::OnUpdate(CHostageImprov *improv)
 			}
 		}
 	}
-
 }
 
-void HostageIdleState::OnExit(CHostageImprov *improv)
+void HostageIdleState::__MAKE_VHOOK(OnExit)(CHostageImprov *improv)
 {
 	improv->StandUp();
 	improv->ClearFaceTo();
 }
 
-void HostageIdleState::UpdateStationaryAnimation(CHostageImprov *improv)
+void HostageIdleState::__MAKE_VHOOK(UpdateStationaryAnimation)(CHostageImprov *improv)
 {
 	if (improv->IsScared())
 	{

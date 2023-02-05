@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_fiveseven, CFiveSeven);
+LINK_ENTITY_TO_CLASS(weapon_fiveseven, CFiveSeven, CCSFiveSeven)
 
-void CFiveSeven::Spawn()
+void CFiveSeven::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CFiveSeven::Spawn()
 	FallInit();
 }
 
-void CFiveSeven::Precache()
+void CFiveSeven::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_fiveseven.mdl");
 	PRECACHE_MODEL("models/w_fiveseven.mdl");
@@ -32,7 +34,7 @@ void CFiveSeven::Precache()
 	m_usFireFiveSeven = PRECACHE_EVENT(1, "events/fiveseven.sc");
 }
 
-int CFiveSeven::GetItemInfo(ItemInfo *p)
+int CFiveSeven::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "57mm";
@@ -49,7 +51,7 @@ int CFiveSeven::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CFiveSeven::Deploy()
+BOOL CFiveSeven::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.92f;
 	m_fMaxSpeed = FIVESEVEN_MAX_SPEED;
@@ -62,7 +64,7 @@ BOOL CFiveSeven::Deploy()
 		return DefaultDeploy("models/v_fiveseven.mdl", "models/p_fiveseven.mdl", FIVESEVEN_DRAW, "onehanded", UseDecrement() != FALSE);
 }
 
-void CFiveSeven::PrimaryAttack()
+void CFiveSeven::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -82,7 +84,7 @@ void CFiveSeven::PrimaryAttack()
 	}
 }
 
-void CFiveSeven::SecondaryAttack()
+void CFiveSeven::__MAKE_VHOOK(SecondaryAttack)()
 {
 	ShieldSecondaryFire(SHIELDGUN_UP, SHIELDGUN_DOWN);
 }
@@ -150,10 +152,10 @@ void CFiveSeven::FiveSevenFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireFiveSeven, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -167,19 +169,19 @@ void CFiveSeven::FiveSevenFire(float flSpread, float flCycleTime, BOOL fUseSemi)
 	ResetPlayerShieldAnim();
 }
 
-void CFiveSeven::Reload()
+void CFiveSeven::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_57mm <= 0)
 		return;
 
-	if (DefaultReload(FIVESEVEN_MAX_CLIP, FIVESEVEN_RELOAD, FIVESEVEN_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), FIVESEVEN_RELOAD, FIVESEVEN_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 		m_flAccuracy = 0.92f;
 	}
 }
 
-void CFiveSeven::WeaponIdle()
+void CFiveSeven::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

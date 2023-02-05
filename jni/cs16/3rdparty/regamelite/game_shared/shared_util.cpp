@@ -1,13 +1,34 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
-char s_shared_token[ COM_TOKEN_LEN ];
+#ifndef HOOK_GAMEDLL
+
+char s_shared_token[ 1500 ];
 char s_shared_quote = '\"';
 
+#endif
 
-/* <2d4b0a> ../game_shared/shared_util.cpp:68 */
+NOXREF wchar_t *SharedWVarArgs(wchar_t *format, ...)
+{
+	va_list argptr;
+	const int BufLen = 1024;
+	const int NumBuffers = 4;
+	static wchar_t string[NumBuffers][BufLen];
+	static int curstring = 0;
+
+	curstring = (curstring + 1) % NumBuffers;
+
+	va_start(argptr, format);
+	Q_vsnwprintf(string[curstring], BufLen, format, argptr);
+	va_end(argptr);
+
+	return string[curstring];
+}
+
 char *SharedVarArgs(char *format, ...)
 {
 	va_list argptr;
@@ -26,7 +47,6 @@ char *SharedVarArgs(char *format, ...)
 	return string[ curstring ];
 }
 
-/* <2d4ba1> ../game_shared/shared_util.cpp:90 */
 char *BufPrintf(char *buf, int &len, const char *fmt, ...)
 {
 	va_list argptr;
@@ -43,8 +63,35 @@ char *BufPrintf(char *buf, int &len, const char *fmt, ...)
 	return NULL;
 }
 
+wchar_t *BufWPrintf(wchar_t *buf, int &len, const wchar_t *fmt, ...)
+{
+	if (len <= 0)
+		return NULL;
 
-/* <2d4d11> ../game_shared/shared_util.cpp:137 */
+	va_list argptr;
+
+	va_start(argptr, fmt);
+	Q_vsnwprintf(buf, len, fmt, argptr);
+	va_end(argptr);
+
+	len -= wcslen(buf);
+	return buf + wcslen(buf);
+}
+
+NOXREF const wchar_t *NumAsWString(int val)
+{
+	const int BufLen = 16;
+	const int NumBuffers = 4;
+	static wchar_t string[NumBuffers][BufLen];
+	static int curstring = 0;
+
+	curstring = (curstring + 1) % NumBuffers;
+
+	int len = BufLen;
+	BufWPrintf(string[curstring], len, L"%d", val);
+	return string[curstring];
+}
+
 const char *NumAsString(int val)
 {
 	const int BufLen = 16;
@@ -62,24 +109,18 @@ const char *NumAsString(int val)
 }
 
 // Returns the token parsed by SharedParse()
-
-/* <2d4da4> ../game_shared/shared_util.cpp:155 */
 char *SharedGetToken()
 {
 	return s_shared_token;
 }
 
 // Returns the token parsed by SharedParse()
-
-/* <2d4dbf> ../game_shared/shared_util.cpp:164 */
 NOXREF void SharedSetQuoteChar(char c)
 {
 	s_shared_quote = c;
 }
 
 // Parse a token out of a string
-
-/* <2d4de7> ../game_shared/shared_util.cpp:173 */
 const char *SharedParse(const char *data)
 {
 	int c;
@@ -152,15 +193,14 @@ skipwhite:
 		if (c == '{' || c == '}'|| c == ')'|| c == '(' || c == '\'' || c == ',')
 			break;
 
-	} while (c > 32);
+	}
+	while (c > 32);
 
 	s_shared_token[len] = '\0';
 	return data;
 }
 
 // Returns true if additional data is waiting to be processed on this line
-
-/* <2d4e40> ../game_shared/shared_util.cpp:247 */
 NOXREF bool SharedTokenWaiting(const char *buffer)
 {
 	const char *p;
@@ -168,7 +208,7 @@ NOXREF bool SharedTokenWaiting(const char *buffer)
 	p = buffer;
 	while (*p && *p!='\n')
 	{
-		if (!isspace(*p) || isalnum(*p))
+		if (!Q_isspace(*p) || Q_isalnum(*p))
 			return true;
 
 		p++;

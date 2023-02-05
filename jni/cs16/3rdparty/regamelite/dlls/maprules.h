@@ -65,13 +65,20 @@ public:
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 
-public:
-	static TYPEDESCRIPTION m_SaveData[1];
+#ifdef HOOK_GAMEDLL
 
-	void SetMaster(int iszMaster)
-	{
-		m_iszMaster = iszMaster;
-	}
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
+public:
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
+
+	void SetMaster(int iszMaster) { m_iszMaster = iszMaster; }
+
 protected:
 	BOOL CanFireForActivator(CBaseEntity *pActivator);
 
@@ -80,36 +87,55 @@ private:
 };
 
 // CRulePointEntity -- base class for all rule "point" entities (not brushes)
-
 class CRulePointEntity: public CRuleEntity
 {
 public:
 	virtual void Spawn();
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
+
 };
 
 // CRuleBrushEntity -- base class for all rule "brush" entities (not brushes)
 // Default behavior is to set up like a trigger, invisible, but keep the model for volume testing
-
 class CRuleBrushEntity: public CRuleEntity
 {
 public:
 	virtual void Spawn();
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
+
 };
 
 // CGameScore / game_score	-- award points to player / team
 //	Points +/- total
 //	Flag: Allow negative scores			SF_SCORE_NEGATIVE
 //	Flag: Award points to team in teamplay		SF_SCORE_TEAM
-
 class CGameScore: public CRulePointEntity
 {
 public:
 	virtual void Spawn();
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
-	int Points() const { return (int)(pev->frags); }
+	int Points() const { return int(pev->frags); }
 	BOOL AllowNegativeScore() { return pev->spawnflags & SF_SCORE_NEGATIVE; }
 	BOOL AwardToTeam() const { return pev->spawnflags & SF_SCORE_TEAM; }
 
@@ -117,16 +143,21 @@ public:
 };
 
 // CGameEnd / game_end	-- Ends the game in MP
-
 class CGameEnd: public CRulePointEntity
 {
 public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 };
 
 // CGameText / game_text	-- NON-Localized HUD Message (use env_message to display a titles.txt message)
 //	Flag: All players	SF_ENVTEXT_ALLPLAYERS
-
 class CGameText: public CRulePointEntity
 {
 public:
@@ -134,14 +165,23 @@ public:
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	BOOL MessageToAll() const { return (pev->spawnflags & SF_ENVTEXT_ALLPLAYERS) == SF_ENVTEXT_ALLPLAYERS; }
 	void MessageSet(const char *pMessage) { pev->message = ALLOC_STRING(pMessage); }
 	const char *MessageGet() const { return STRING(pev->message); }
 
 public:
-	static TYPEDESCRIPTION m_SaveData[1];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
 
 private:
 	hudtextparms_t m_textParms;
@@ -149,11 +189,10 @@ private:
 
 // CGameTeamMaster / game_team_master -- "Masters" like multisource, but based on the team of the activator
 // Only allows mastered entity to fire if the team matches my team
-
+//
 // team index (pulled from server team list "mp_teamlist"
 // Flag: Remove on Fire
 // Flag: Any team until set?		-- Any team can use this until the team is set (otherwise no teams can use it)
-
 class CGameTeamMaster: public CRulePointEntity
 {
 public:
@@ -162,6 +201,15 @@ public:
 	virtual BOOL IsTriggered(CBaseEntity *pActivator);
 	virtual const char *TeamID();
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	BOOL IsTriggered_(CBaseEntity *pActivator);
+	const char *TeamID_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	BOOL RemoveOnFire() const { return (pev->spawnflags & SF_TEAMMASTER_FIREONCE) == SF_TEAMMASTER_FIREONCE; }
@@ -178,11 +226,16 @@ public:
 // CGameTeamSet / game_team_set	-- Changes the team of the entity it targets to the activator's team
 // Flag: Fire once
 // Flag: Clear team		-- Sets the team to "NONE" instead of activator
-
 class CGameTeamSet: public CRulePointEntity
 {
 public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	BOOL RemoveOnFire() const { return (pev->spawnflags & SF_TEAMSET_FIREONCE) == SF_TEAMSET_FIREONCE; }
@@ -191,7 +244,6 @@ public:
 
 // CGamePlayerZone / game_player_zone -- players in the zone fire my target when I'm fired
 // Needs master?
-
 class CGamePlayerZone: public CRuleBrushEntity
 {
 public:
@@ -200,8 +252,17 @@ public:
 	virtual int Restore(CRestore &restore);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
-	static TYPEDESCRIPTION m_SaveData[4];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[4];
 
 private:
 	string_t m_iszInTarget;
@@ -212,11 +273,16 @@ private:
 
 // CGamePlayerHurt / game_player_hurt	-- Damages the player who fires it
 // Flag: Fire once
-
 class CGamePlayerHurt: public CRulePointEntity
 {
 public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	BOOL RemoveOnFire() const { return (pev->spawnflags & SF_PKILL_FIREONCE) == SF_PKILL_FIREONCE; }
@@ -225,24 +291,30 @@ public:
 // CGameCounter / game_counter	-- Counts events and fires target
 // Flag: Fire once
 // Flag: Reset on Fire
-
 class CGameCounter: public CRulePointEntity
 {
 public:
 	virtual void Spawn();
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	BOOL RemoveOnFire() const { return (pev->spawnflags & SF_GAMECOUNT_FIREONCE) == SF_GAMECOUNT_FIREONCE; }
 	BOOL ResetOnFire() const { return (pev->spawnflags & SF_GAMECOUNT_RESET) == SF_GAMECOUNT_RESET; }
 
-	void CountUp()		{ pev->frags++; }
-	void CountDown()	{ pev->frags--; }
-	void ResetCount()	{ pev->frags = pev->dmg; }
+	void CountUp() { pev->frags++; }
+	void CountDown() { pev->frags--; }
+	void ResetCount() { pev->frags = pev->dmg; }
 
-	int CountValue() const	{ return (int)(pev->frags); }
-	int LimitValue() const	{ return (int)(pev->health); }
-	BOOL HitLimit() const	{ return CountValue() == LimitValue(); }
+	int CountValue() const { return int(pev->frags); }
+	int LimitValue() const { return int(pev->health); }
+	BOOL HitLimit() const { return CountValue() == LimitValue(); }
 
 private:
 	void SetCountValue(int value) { pev->frags = value; }
@@ -251,11 +323,16 @@ private:
 
 // CGameCounterSet / game_counter_set	-- Sets the counter's value
 // Flag: Fire once
-
 class CGameCounterSet: public CRulePointEntity
 {
 public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	BOOL RemoveOnFire() const { return (pev->spawnflags & SF_GAMECOUNTSET_FIREONCE) == SF_GAMECOUNTSET_FIREONCE; }
@@ -263,13 +340,20 @@ public:
 
 // CGamePlayerEquip / game_playerequip	-- Sets the default player equipment
 // Flag: USE Only
-
 class CGamePlayerEquip: public CRulePointEntity
 {
 public:
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual void Touch(CBaseEntity *pOther);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	void Touch_(CBaseEntity *pOther);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	BOOL UseOnly() const { return (pev->spawnflags & SF_PLAYEREQUIP_USEONLY) == SF_PLAYEREQUIP_USEONLY; }
@@ -282,20 +366,25 @@ public:
 	int m_weaponCount[ MAX_EQUIP ];
 };
 
-// CGamePlayerTeam / game_player_team	-- Changes the team of the player who fired it
+// CGamePlayerTeam / game_player_team -- Changes the team of the player who fired it
 // Flag: Fire once
 // Flag: Kill Player
 // Flag: Gib Player
-
 class CGamePlayerTeam: public CRulePointEntity
 {
 public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 private:
-	BOOL RemoveOnFire() const	{ return (pev->spawnflags & SF_PTEAM_FIREONCE) == SF_PTEAM_FIREONCE; }
-	BOOL ShouldKillPlayer() const	{ return (pev->spawnflags & SF_PTEAM_KILL) == SF_PTEAM_KILL; }
-	BOOL ShouldGibPlayer() const	{ return (pev->spawnflags & SF_PTEAM_GIB) == SF_PTEAM_GIB; }
+	BOOL RemoveOnFire() const { return (pev->spawnflags & SF_PTEAM_FIREONCE) == SF_PTEAM_FIREONCE; }
+	BOOL ShouldKillPlayer() const { return (pev->spawnflags & SF_PTEAM_KILL) == SF_PTEAM_KILL; }
+	BOOL ShouldGibPlayer() const { return (pev->spawnflags & SF_PTEAM_GIB) == SF_PTEAM_GIB; }
 
 	const char *TargetTeamName(const char *pszTargetName);
 };

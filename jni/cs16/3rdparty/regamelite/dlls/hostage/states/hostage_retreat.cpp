@@ -1,12 +1,14 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-void HostageRetreatState::OnEnter(CHostageImprov *improv)
+void HostageRetreatState::__MAKE_VHOOK(OnEnter)(CHostageImprov *improv)
 {
 	improv->Walk();
 	improv->MoveTo(improv->GetEntity()->m_vStart);
 }
 
-void HostageRetreatState::OnUpdate(CHostageImprov *improv)
+void HostageRetreatState::__MAKE_VHOOK(OnUpdate)(CHostageImprov *improv)
 {
 	if (improv->IsAtHome())
 	{
@@ -37,7 +39,7 @@ void HostageRetreatState::OnUpdate(CHostageImprov *improv)
 		improv->Walk();
 }
 
-void HostageRetreatState::OnExit(CHostageImprov *improv)
+void HostageRetreatState::__MAKE_VHOOK(OnExit)(CHostageImprov *improv)
 {
 	;
 }

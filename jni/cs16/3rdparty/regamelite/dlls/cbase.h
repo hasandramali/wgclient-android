@@ -32,23 +32,28 @@
 #pragma once
 #endif
 
+#include "saverestore.h"
+#include "schedule.h"
 #include "monsterevent.h"
-
-#include "game_shared/perf_counter.h"
 
 #undef CREATE_NAMED_ENTITY
 #undef REMOVE_ENTITY
 
+// These are caps bits to indicate what an object's capabilities (currently used for save/restore and level transitions)
 #define FCAP_CUSTOMSAVE			0x00000001
-#define FCAP_ACROSS_TRANSITION		0x00000002
-#define FCAP_MUST_SPAWN			0x00000004
-#define FCAP_DONT_SAVE			0x80000000
-#define FCAP_IMPULSE_USE		0x00000008
-#define FCAP_CONTINUOUS_USE		0x00000010
-#define FCAP_ONOFF_USE			0x00000020
-#define FCAP_DIRECTIONAL_USE		0x00000040
-#define FCAP_MASTER			0x00000080
-#define FCAP_FORCE_TRANSITION		0x00000080
+#define FCAP_ACROSS_TRANSITION		0x00000002	// should transfer between transitions
+#define FCAP_MUST_SPAWN			0x00000004	// Spawn after restore
+#define FCAP_DONT_SAVE			0x80000000	// Don't save this
+#define FCAP_IMPULSE_USE		0x00000008	// can be used by the player
+#define FCAP_CONTINUOUS_USE		0x00000010	// can be used by the player
+#define FCAP_ONOFF_USE			0x00000020	// can be used by the player
+#define FCAP_DIRECTIONAL_USE		0x00000040	// Player sends +/- 1 when using (currently only tracktrains)
+#define FCAP_MASTER			0x00000080	// Can be used to "master" other entities (like multisource)
+#define FCAP_MUST_RESET			0x00000100	// should reset on the new round
+#define FCAP_MUST_RELEASE		0x00000200	// should release on the new round
+
+// UNDONE: This will ignore transition volumes (trigger_transition), but not the PVS!!!
+#define FCAP_FORCE_TRANSITION		0x00000080	// ALWAYS goes across transitions
 
 #define SetThink(a)\
 	m_pfnThink = static_cast<void (CBaseEntity::*)()>(a)
@@ -62,6 +67,7 @@
 #define SetMoveDone(a)\
 	m_pfnCallWhenMoveDone = static_cast<void (CBaseToggle::*)()>(a)
 
+// for Classify
 #define CLASS_NONE		0
 #define CLASS_MACHINE		1
 #define CLASS_PLAYER		2
@@ -74,12 +80,10 @@
 #define CLASS_ALIEN_PREDATOR	9
 #define CLASS_INSECT		10
 #define CLASS_PLAYER_ALLY	11
-#define CLASS_PLAYER_BIOWEAPON	12
-#define CLASS_ALIEN_BIOWEAPON	13
+#define CLASS_PLAYER_BIOWEAPON	12		// hornets and snarks.launched by players
+#define CLASS_ALIEN_BIOWEAPON	13		// hornets and snarks.launched by the alien menace
 #define CLASS_VEHICLE		14
-#define CLASS_BARNACLE		99
-
-#define GIB_HEALTH_VALUE	-30
+#define CLASS_BARNACLE		99		// special because no one pays attention to it, and it eats a wide cross-section of creatures.
 
 #define ROUTE_SIZE		8
 #define MAX_OLD_ENEMIES		4
@@ -102,37 +106,43 @@
 #define bits_CAP_FLY		(1<<15)
 #define bits_CAP_DOORS_GROUP	(bits_CAP_USE | bits_CAP_AUTO_DOORS | bits_CAP_OPEN_DOORS)
 
-#define DMG_GENERIC		0
-#define DMG_CRUSH		(1<<0)
-#define DMG_BULLET		(1<<1)
-#define DMG_SLASH		(1<<2)
-#define DMG_BURN		(1<<3)
-#define DMG_FREEZE		(1<<4)
-#define DMG_FALL		(1<<5)
-#define DMG_BLAST		(1<<6)
-#define DMG_CLUB		(1<<7)
-#define DMG_SHOCK		(1<<8)
-#define DMG_SONIC		(1<<9)
-#define DMG_ENERGYBEAM		(1<<10)
-#define DMG_NEVERGIB		(1<<12)
-#define DMG_ALWAYSGIB		(1<<13)
-#define DMG_DROWN		(1<<14)
-#define DMG_TIMEBASED		(~(0x3FFF))
+#define SF_NORESPAWN		(1<<30)		// set this bit on guns and stuff that should never respawn.
 
-#define DMG_PARALYZE		(1<<15)
-#define DMG_NERVEGAS		(1<<16)
-#define DMG_POISON		(1<<17)
-#define DMG_RADIATION		(1<<18)
-#define DMG_DROWNRECOVER	(1<<19)
-#define DMG_ACID		(1<<20)
-#define DMG_SLOWBURN		(1<<21)
-#define DMG_SLOWFREEZE		(1<<22)
-#define DMG_MORTAR		(1<<23)
+#define DMG_GENERIC		0		// generic damage was done
+#define DMG_CRUSH		(1<<0)		// crushed by falling or moving object
+#define DMG_BULLET		(1<<1)		// shot
+#define DMG_SLASH		(1<<2)		// cut, clawed, stabbed
+#define DMG_BURN		(1<<3)		// heat burned
+#define DMG_FREEZE		(1<<4)		// frozen
+#define DMG_FALL		(1<<5)		// fell too far
+#define DMG_BLAST		(1<<6)		// explosive blast damage
+#define DMG_CLUB		(1<<7)		// crowbar, punch, headbutt
+#define DMG_SHOCK		(1<<8)		// electric shock
+#define DMG_SONIC		(1<<9)		// sound pulse shockwave
+#define DMG_ENERGYBEAM		(1<<10)		// laser or other high energy beam
+#define DMG_NEVERGIB		(1<<12)		// with this bit OR'd in, no damage type will be able to gib victims upon death
+#define DMG_ALWAYSGIB		(1<<13)		// with this bit OR'd in, any damage type can be made to gib victims upon death
+#define DMG_DROWN		(1<<14)		// Drowning
+
+// time-based damage
+#define DMG_TIMEBASED		(~(0x3FFF))	// mask for time-based damage
+
+#define DMG_PARALYZE		(1<<15)		// slows affected creature down
+#define DMG_NERVEGAS		(1<<16)		// nerve toxins, very bad
+#define DMG_POISON		(1<<17)		// blood poisioning
+#define DMG_RADIATION		(1<<18)		// radiation exposure
+#define DMG_DROWNRECOVER	(1<<19)		// drowning recovery
+#define DMG_ACID		(1<<20)		// toxic chemicals or acid burns
+#define DMG_SLOWBURN		(1<<21)		// in an oven
+#define DMG_SLOWFREEZE		(1<<22)		// in a subzero freezer
+#define DMG_MORTAR		(1<<23)		// Hit by air raid (done to distinguish grenade from mortar)
 #define DMG_EXPLOSION		(1<<24)
-#define DMG_GIB_CORPSE		(DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_SONIC | DMG_CLUB)
-#define DMG_SHOWNHUD		(DMG_POISON | DMG_ACID | DMG_FREEZE | DMG_SLOWFREEZE | DMG_DROWN | DMG_BURN | DMG_SLOWBURN | DMG_NERVEGAS | DMG_RADIATION | DMG_SHOCK)
 
-#define SF_NORESPAWN		(1 << 30)
+// these are the damage types that are allowed to gib corpses
+#define DMG_GIB_CORPSE		(DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_SONIC | DMG_CLUB)
+
+// these are the damage types that have client hud art
+#define DMG_SHOWNHUD		(DMG_POISON | DMG_ACID | DMG_FREEZE | DMG_SLOWFREEZE | DMG_DROWN | DMG_BURN | DMG_SLOWBURN | DMG_NERVEGAS | DMG_RADIATION | DMG_SHOCK)
 
 #define AIRTIME			12	// lung full of air lasts this many seconds
 #define PARALYZE_DURATION	2	// number of 2 second intervals to take damage
@@ -166,9 +176,12 @@
 #define itbd_SlowFreeze		7
 #define CDMG_TIMEBASED		8
 
-#define GIB_NORMAL		0
-#define GIB_NEVER		1
-#define GIB_ALWAYS		2
+// when calling KILLED(), a value that governs gib behavior is expected to be
+// one of these three values
+#define GIB_NORMAL		0		// gib if entity was overkilled
+#define GIB_NEVER		1		// never gib, no matter how much death damage is done ( freezing, etc )
+#define GIB_ALWAYS		2		// always gib ( Houndeye Shock, Barnacle Bite )
+#define GIB_HEALTH_VALUE	-30
 
 #define SF_ITEM_USE_ONLY	256
 
@@ -181,71 +194,26 @@
 	#define EXPORT /**/
 #endif // _WIN32
 
-enum hash_types_e
-{
-	CLASSNAME
-};
-
-typedef struct hash_item_s
-{
-	entvars_t *pev;
-	struct hash_item_s *next;
-	struct hash_item_s *lastHash;
-	int pevIndex;
-
-} hash_item_t;
-
-typedef struct locksounds
-{
-	string_t sLockedSound;
-	string_t sLockedSentence;
-	string_t sUnlockedSound;
-	string_t sUnlockedSentence;
-	int iLockedSentence;
-	int iUnlockedSentence;
-	float flwaitSound;
-	float flwaitSentence;
-	BYTE bEOFLocked;
-	BYTE bEOFUnlocked;
-
-} locksound_t;
-
-typedef enum
-{
-	USE_OFF,
-	USE_ON,
-	USE_SET,
-	USE_TOGGLE,
-
-} USE_TYPE;
-
-typedef enum
-{
-	TRAIN_SAFE,
-	TRAIN_BLOCKING,
-	TRAIN_FOLLOWING
-
-} TRAIN_CODE;
-
 class CGrenade;
 class CBaseEntity;
 class CBaseMonster;
 class CBasePlayerItem;
 class CBasePlayerWeapon;
 class CSquadMonster;
+class CCSEntity;
 
 class CCineMonster;
 class CSound;
 
-class EHANDLE
-{
+// EHANDLE. Safe way to point to CBaseEntities who may die between frames
+class EHANDLE {
 public:
 	edict_t *Get();
 	edict_t *Set(edict_t *pent);
 
 	operator int();
 	operator CBaseEntity*();
-	operator CBasePlayer*()	{ return static_cast<CBasePlayer *>(GET_PRIVATE(Get())); }
+	operator CBasePlayer*() { return static_cast<CBasePlayer *>(GET_PRIVATE(Get())); }
 
 	CBaseEntity *operator=(CBaseEntity *pEntity);
 	CBaseEntity *operator->();
@@ -255,8 +223,8 @@ private:
 	int m_serialnumber;
 };
 
-class CBaseEntity
-{
+// Base Entity.  All entity types derive from this
+class CBaseEntity {
 public:
 	virtual void Spawn() {}
 	virtual void Precache() {}
@@ -270,8 +238,8 @@ public:
 	virtual int Classify() { return CLASS_NONE; }
 	virtual void DeathNotice(entvars_t *pevChild) {}
 	virtual void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
-	virtual int TakeHealth(float flHealth, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual BOOL TakeHealth(float flHealth, int bitsDamageType);
 	virtual void Killed(entvars_t *pevAttacker, int iGib);
 	virtual int BloodColor() { return DONT_BLEED; }
 	virtual void TraceBleed(float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
@@ -283,54 +251,38 @@ public:
 	virtual void AddPointsToTeam(int score, BOOL bAllowNegativeScore) {}
 	virtual BOOL AddPlayerItem(CBasePlayerItem *pItem) { return FALSE; }
 	virtual BOOL RemovePlayerItem(CBasePlayerItem *pItem) { return FALSE; }
-	virtual int GiveAmmo(int iAmount, char *szName, int iMax) { return -1; }
+	virtual int GiveAmmo(int iAmount, char *szName, int iMax = -1) { return -1; }
 	virtual float GetDelay() { return 0.0f; }
 	virtual int IsMoving() { return (pev->velocity != g_vecZero); }
 	virtual void OverrideReset() {}
 	virtual int DamageDecal(int bitsDamageType);
 	virtual void SetToggleState(int state) {}
 	virtual void StartSneaking() {}
+
+#ifndef REGAMEDLL_FIXES
 	virtual void StopSneaking() {}
+#else
+	virtual void UpdateOnRemove();
+#endif
+
 	virtual BOOL OnControls(entvars_t *onpev) { return FALSE; }
 	virtual BOOL IsSneaking() { return FALSE; }
 	virtual BOOL IsAlive() { return (pev->deadflag == DEAD_NO && pev->health > 0.0f); }
 	virtual BOOL IsBSPModel() { return (pev->solid == SOLID_BSP || pev->movetype == MOVETYPE_PUSHSTEP); }
 	virtual BOOL ReflectGauss() { return (IsBSPModel() && pev->takedamage == DAMAGE_NO); }
-	virtual BOOL HasTarget(string_t targetname) { return FStrEq(STRING(targetname),STRING(pev->targetname)); }
+	virtual BOOL HasTarget(string_t targetname) { return FStrEq(STRING(targetname), STRING(pev->targetname)); }
 	virtual BOOL IsInWorld();
 	virtual BOOL IsPlayer() { return FALSE; }
 	virtual BOOL IsNetClient() { return FALSE; }
 	virtual const char *TeamID() { return ""; }
 	virtual CBaseEntity *GetNextTarget();
-	virtual void Think()
-	{
-		if (m_pfnThink)
-		{
-			(this->*m_pfnThink)();
-		}
-	}
-	virtual void Touch(CBaseEntity *pOther)
-	{
-		if (m_pfnTouch)
-		{
-			(this->*m_pfnTouch)(pOther);
-		}
-	}
-	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType = USE_OFF, float value = 0.0f)
-	{
-		if (m_pfnUse)
-		{
-			(this->*m_pfnUse)(pActivator, pCaller, useType, value);
-		}
-	}
-	virtual void Blocked(CBaseEntity *pOther)
-	{
-		if (m_pfnBlocked)
-		{
-			(this->*m_pfnBlocked)(pOther);
-		}
-	}
+	virtual void Think() { if (m_pfnThink) (this->*m_pfnThink)(); }
+	virtual void Touch(CBaseEntity *pOther) { if (m_pfnTouch) (this->*m_pfnTouch)(pOther); }
+	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType = USE_OFF, float value = 0.0f) { if (m_pfnUse) (this->*m_pfnUse)(pActivator, pCaller, useType, value); }
+	virtual void Blocked(CBaseEntity *pOther) { if (m_pfnBlocked) (this->*m_pfnBlocked)(pOther); }
 	virtual CBaseEntity *Respawn() { return NULL; }
+
+	// used by monsters that are created by the MonsterMaker
 	virtual void UpdateOwner() {}
 	virtual BOOL FBecomeProne() { return FALSE; }
 	virtual Vector Center() { return (pev->absmax + pev->absmin) * 0.5f; }
@@ -342,17 +294,43 @@ public:
 	virtual BOOL FVisible(CBaseEntity *pEntity);
 	virtual BOOL FVisible(const Vector &vecOrigin);
 
+#ifdef HOOK_GAMEDLL
+
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void SetObjectCollisionBox_();
+	void TraceAttack_(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	BOOL TakeHealth_(float flHealth, int bitsDamageType);
+	void Killed_(entvars_t *pevAttacker, int iGib);
+	void TraceBleed_(float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	int DamageDecal_(int bitsDamageType);
+	BOOL IsInWorld_();
+	CBaseEntity *GetNextTarget_();
+	BOOL FVisible_(CBaseEntity *pEntity);
+	BOOL FVisible_(const Vector &vecOrigin);
+
+#endif
+
 public:
+	// allow engine to allocate instance data
 	void *operator new(size_t stAllocateBlock, entvars_t *pevnew) { return ALLOC_PRIVATE(ENT(pevnew), stAllocateBlock); }
-	void operator delete(void *pMem, entvars_t *pev) { pev->flags |= FL_KILLME; }
+
+	// don't use this.
+#if _MSC_VER >= 1200 // only build this code if MSVC++ 6.0 or higher
+	void operator delete(void *pMem, entvars_t *pevnew) { pevnew->flags |= FL_KILLME; }
+#endif
+
+#ifndef REGAMEDLL_FIXES
 	void UpdateOnRemove();
+#endif
+
 	void EXPORT SUB_Remove();
 	void EXPORT SUB_DoNothing();
 	void EXPORT SUB_StartFadeOut();
 	void EXPORT SUB_FadeOut();
 	void EXPORT SUB_CallUseToggle() { Use(this, this, USE_TOGGLE, 0); }
 	int ShouldToggle(USE_TYPE useType, BOOL currentState);
-	int ShouldToggle2( USE_TYPE useType );
 	void FireBullets(ULONG cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t *pevAttacker = NULL);
 	Vector FireBullets3(Vector vecSrc, Vector vecDirShooting, float vecSpread, float flDistance, int iPenetration, int iBulletType, int iDamage, float flRangeModifier, entvars_t *pevAttacker, bool bPistol, int shared_rand = 0);
 	void SUB_UseTargets(CBaseEntity *pActivator, USE_TYPE useType, float value);
@@ -362,45 +340,61 @@ public:
 	BOOL IsLockedByMaster() { return FALSE; }
 
 public:
-	static CBaseEntity *Instance(edict_t *pent) { return (CBaseEntity *)GET_PRIVATE(pent ? pent : ENT(0)); }
+	static CBaseEntity *Instance(edict_t *pent)
+	{
+		if (!pent)
+			pent = ENT(0);
+
+		CBaseEntity *pEntity = (CBaseEntity *)GET_PRIVATE(pent);
+		return pEntity;
+	}
+
 	static CBaseEntity *Instance(entvars_t *pev) { return Instance(ENT(pev)); }
-	static CBaseEntity *Instance(int offset) { return Instance(ENT(offset)); }
+	static CBaseEntity *Instance(EOFFSET offset) { return Instance(ENT(offset)); }
 
 	CBaseMonster *GetMonsterPointer(entvars_t *pevMonster)
 	{
 		CBaseEntity *pEntity = Instance(pevMonster);
 		if (pEntity != NULL)
-		{
 			return pEntity->MyMonsterPointer();
-		}
+
 		return NULL;
 	}
 	CBaseMonster *GetMonsterPointer(edict_t *pentMonster)
 	{
 		CBaseEntity *pEntity = Instance(pentMonster);
-		if (pEntity)
+		if (pEntity != NULL)
 			return pEntity->MyMonsterPointer();
+
 		return NULL;
 	}
-
 	static CBaseEntity *Create(char *szName, const Vector &vecOrigin, const Vector &vecAngles, edict_t *pentOwner = NULL);
 	edict_t *edict() { return ENT(pev); }
 	EOFFSET eoffset() { return OFFSET(pev); }
 	int entindex() { return ENTINDEX(edict()); }
 
 public:
-	entvars_t *pev;
-	CBaseEntity *m_pGoalEnt;
-	CBaseEntity *m_pLink;
+	entvars_t *pev;				// Don't need to save/restore this pointer, the engine resets it
 
-	static TYPEDESCRIPTION m_SaveData[5];
+	// path corners
+	CBaseEntity *m_pGoalEnt;		// path corner we are heading towards
+	CBaseEntity *m_pLink;			// used for temporary link-list operations.
+
+	static TYPEDESCRIPTION IMPL(m_SaveData)[5];
 
 	void (CBaseEntity::*m_pfnThink)();
 	void (CBaseEntity::*m_pfnTouch)(CBaseEntity *pOther);
 	void (CBaseEntity::*m_pfnUse)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void (CBaseEntity::*m_pfnBlocked)(CBaseEntity *pOther);
 
+#ifdef REGAMEDLL_API
+	CCSEntity *m_pEntity;
+#else
+	// We use this variables to store each ammo count.
+	// let's sacrifice this unused member, for its own needs in favor of m_pEntity
 	int *current_ammo;
+#endif
+
 	float currentammo;
 	int maxammo_buckshot;
 	int ammo_buckshot;
@@ -422,45 +416,63 @@ public:
 	int ammo_57mm;
 	int maxammo_357sig;
 	int ammo_357sig;
+
+	// Special stuff for grenades and knife.
 	float m_flStartThrow;
 	float m_flReleaseThrow;
 	int m_iSwing;
+
+	// client has left the game
 	bool has_disconnected;
 };
 
-inline int FNullEnt(CBaseEntity *ent)
-{
-	return (ent == NULL || FNullEnt(ent->edict()));
-}
+inline int FNullEnt(CBaseEntity *ent) { return (ent == NULL || FNullEnt(ent->edict())); }
+inline int FNullEnt(EHANDLE hent) { return (hent == NULL || FNullEnt(OFFSET(hent.Get()))); }
 
-inline int FNullEnt(EHANDLE hent)
-{
-	return (hent == NULL || FNullEnt(OFFSET(hent.Get())));
-}
-
-class CPointEntity: public CBaseEntity
-{
+class CPointEntity: public CBaseEntity {
 public:
 	virtual void Spawn();
 	virtual int ObjectCaps() { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
+
 };
 
-class CMultiSource: public CPointEntity
-{
+// MultiSouce
+class CMultiSource: public CPointEntity {
 public:
 	virtual void Spawn();
 	virtual void KeyValue(KeyValueData *pkvd);
-	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-	virtual int ObjectCaps() { return (CPointEntity::ObjectCaps() | FCAP_MASTER); }
-	virtual BOOL IsTriggered(CBaseEntity *pActivator);
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
+	virtual int ObjectCaps() { return (CPointEntity::ObjectCaps() | FCAP_MASTER); }
+	virtual BOOL IsTriggered(CBaseEntity *pActivator);
+	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef REGAMEDLL_FIXES
+	virtual void Restart();
+#endif
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	BOOL IsTriggered_(CBaseEntity *pActivator);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	void EXPORT Register();
 
 public:
-	static TYPEDESCRIPTION m_SaveData[4];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[4];
 
 	EHANDLE m_rgEntities[MS_MAX_TARGETS];
 	int m_rgTriggered[MS_MAX_TARGETS];
@@ -468,63 +480,80 @@ public:
 	string_t m_globalstate;
 };
 
-class CBaseDelay: public CBaseEntity
-{
+// generic Delay entity.
+class CBaseDelay: public CBaseEntity {
 public:
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
 public:
 	void SUB_UseTargets(CBaseEntity *pActivator, USE_TYPE useType, float value);
 	void EXPORT DelayThink();
 public:
-	static TYPEDESCRIPTION m_SaveData[2];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[2];
 
 	float m_flDelay;
 	int m_iszKillTarget;
 };
 
-class CBaseAnimating: public CBaseDelay
-{
+class CBaseAnimating: public CBaseDelay {
 public:
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 	virtual void HandleAnimEvent(MonsterEvent_t *pEvent) {}
-   
+
+#ifdef HOOK_GAMEDLL
+
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
 public:
-	float StudioFrameAdvance(float flInterval = 0.0f);
-	BOOL GetSequenceFlags();
+	// Basic Monster Animation functions
+	float StudioFrameAdvance(float flInterval = 0.0f);				// accumulate animation frame time from last time called until now
+	int GetSequenceFlags();
 	int LookupActivity(int activity);
 	int LookupActivityHeaviest(int activity);
 	int LookupSequence(const char *label);
 	void ResetSequenceInfo();
-	void DispatchAnimEvents(float flFutureInterval = 0.1f);
+	void ResetSequenceInfo_();
+	void DispatchAnimEvents(float flFutureInterval = 0.1f);				// Handle events that have happend since last time called up until X seconds into the future
 	float SetBoneController(int iController, float flValue = 0.0f);
 	void InitBoneControllers();
 
-	NOXREF float SetBlending(int iBlender, float flValue);
-	NOXREF void GetBonePosition(int iBone, Vector &origin, Vector &angles);
-	NOXREF void GetAutomovement(Vector &origin, Vector &angles, float flInterval = 0.1f);
-	NOXREF int FindTransition(int iEndingSequence, int iGoalSequence, int *piDir);
-	NOXREF void GetAttachment(int iAttachment, Vector &origin, Vector &angles);
-	NOXREF void SetBodygroup(int iGroup, int iValue);
-	NOXREF int GetBodygroup(int iGroup);
+	float SetBlending(int iBlender, float flValue);
+	void GetBonePosition(int iBone, Vector &origin, Vector &angles);
+	void GetAutomovement(Vector &origin, Vector &angles, float flInterval = 0.1f);
+	int FindTransition(int iEndingSequence, int iGoalSequence, int *piDir);
+	void GetAttachment(int iAttachment, Vector &origin, Vector &angles);
+	void SetBodygroup(int iGroup, int iValue);
+	int GetBodygroup(int iGroup);
 
 	int ExtractBbox(int sequence, float *mins, float *maxs);
 	void SetSequenceBox();
 public:
-	static TYPEDESCRIPTION m_SaveData[5];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[5];
 
-	float m_flFrameRate;
-	float m_flGroundSpeed;
-	float m_flLastEventCheck;
-	BOOL m_fSequenceFinished;
-	BOOL m_fSequenceLoops;
+	// animation needs
+	float m_flFrameRate;				// computed FPS for current sequence
+	float m_flGroundSpeed;				// computed linear movement rate for current sequence
+	float m_flLastEventCheck;			// last time the event list was checked
+	BOOL m_fSequenceFinished;			// flag set when StudioAdvanceFrame moves across a frame boundry
+	BOOL m_fSequenceLoops;				// true if the sequence loops
 };
 
-class CBaseToggle: public CBaseAnimating
-{
+// generic Toggle entity.
+class CBaseToggle: public CBaseAnimating {
 public:
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual int Save(CSave &save);
@@ -532,12 +561,20 @@ public:
 	virtual int GetToggleState() { return m_toggle_state; }
 	virtual float GetDelay() { return m_flWait; }
 
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
 public:
 	void LinearMove(Vector vecDest, float flSpeed);
 	void EXPORT LinearMoveDone();
 	void AngularMove(Vector vecDestAngle, float flSpeed);
 	void EXPORT AngularMoveDone();
-	NOXREF BOOL IsLockedByMaster();
+	BOOL IsLockedByMaster();
 
 public:
 	static float AxisValue(int flags, const Vector &angles);
@@ -545,47 +582,46 @@ public:
 	static float AxisDelta(int flags, const Vector &angle1, const Vector &angle2);
 
 public:
-	static TYPEDESCRIPTION m_SaveData[19];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[19];
 
 	TOGGLE_STATE m_toggle_state;
-	float m_flActivateFinished;
-	float m_flMoveDistance;
+	float m_flActivateFinished;	// like attack_finished, but for doors
+	float m_flMoveDistance;		// how far a door should slide or rotate
 	float m_flWait;
 	float m_flLip;
-	float m_flTWidth;
-	float m_flTLength;
+	float m_flTWidth;		// for plats
+	float m_flTLength;		// for plats
+
 	Vector m_vecPosition1;
 	Vector m_vecPosition2;
 	Vector m_vecAngle1;
 	Vector m_vecAngle2;
-	int m_cTriggersLeft;
+
+	int m_cTriggersLeft;		// trigger_counter only, # of activations remaining
 	float m_flHeight;
 	EHANDLE m_hActivator;
 	void (CBaseToggle::*m_pfnCallWhenMoveDone)();
 	Vector m_vecFinalDest;
 	Vector m_vecFinalAngle;
-	int m_bitsDamageInflict;
-	string_t m_sMaster;
+
+	int m_bitsDamageInflict;	// DMG_ damage type that the door or tigger does
+
+	string_t m_sMaster;		// If this button has a master switch, this is the targetname.
+						// A master switch must be of the multisource type. If all
+						// of the switches in the multisource have been triggered, then
+						// the button will be allowed to operate. Otherwise, it will be
+						// deactivated.
 };
 
 #include "basemonster.h"
 
 // Generic Button
-
-class CBaseButton: public CBaseToggle
-{
-	enum BUTTON_CODE
-	{
-		BUTTON_NOTHING,
-		BUTTON_ACTIVATE,
-		BUTTON_RETURN
-	};
+class CBaseButton: public CBaseToggle {
 public:
-
 	virtual void Spawn();
 	virtual void Precache();
 	virtual void KeyValue(KeyValueData *pkvd);
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
 	virtual int ObjectCaps()
@@ -598,12 +634,28 @@ public:
 		return (CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION);
 	}
 
-public:
-	NOXREF void RotSpawn();
-	void ButtonActivate();
-	NOXREF void SparkSoundCache();
+#ifdef REGAMEDLL_FIXES
+	virtual void Restart();
+#endif
 
-	NOXREF void EXPORT ButtonShot();
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
+public:
+	void RotSpawn();
+	void ButtonActivate();
+	void SparkSoundCache();
+
+	void EXPORT ButtonShot();
 	void EXPORT ButtonTouch(CBaseEntity *pOther);
 	void EXPORT ButtonSpark();
 	void EXPORT TriggerAndWait();
@@ -611,41 +663,68 @@ public:
 	void EXPORT ButtonBackHome();
 	void EXPORT ButtonUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+	enum BUTTON_CODE { BUTTON_NOTHING, BUTTON_ACTIVATE, BUTTON_RETURN };
 	BUTTON_CODE ButtonResponseToTouch();
 
 public:
-	static TYPEDESCRIPTION m_SaveData[8];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[8];
 
 	BOOL m_fStayPushed;
 	BOOL m_fRotating;
 	string_t m_strChangeTarget;
 	locksound_t m_ls;
-	BYTE m_bLockedSound;
-	BYTE m_bLockedSentence;
-	BYTE m_bUnlockedSound;
-	BYTE m_bUnlockedSentence;
+	byte m_bLockedSound;
+	byte m_bLockedSentence;
+	byte m_bUnlockedSound;
+	byte m_bUnlockedSentence;
 	int m_sounds;
 };
 
-class CWorld: public CBaseEntity
-{
+// This spawns first when each level begins.
+class CWorld: public CBaseEntity {
 public:
 	virtual void Spawn();
 	virtual void Precache();
 	virtual void KeyValue(KeyValueData *pkvd);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+
+#endif
+
 };
 
-template <class T>
+// Converts a entvars_t * to a class pointer
+// It will allocate the class and entity if necessary
+template <class W, class T>
 T *GetClassPtr(T *a)
 {
 	entvars_t *pev = (entvars_t *)a;
-	if (!pev)
+
+	// allocate entity if necessary
+	if (pev == nullptr)
 		pev = VARS(CREATE_ENTITY());
+
+	// get the private data
 	a = (T *)GET_PRIVATE(ENT(pev));
-	if (!a)
+
+	if (a == nullptr)
 	{
+		// allocate private data
 		a = new(pev) T;
 		a->pev = pev;
+
+#ifdef REGAMEDLL_API
+		a->m_pEntity = new W();
+		a->m_pEntity->m_pContainingEntity = a;
+#endif
+
+#if defined(HOOK_GAMEDLL) && defined(_WIN32) && !defined(REGAMEDLL_UNIT_TESTS)
+		VirtualTableInit((void *)a, stripClass(typeid(T).name()));
+#endif
 	}
 
 	return a;
@@ -653,20 +732,18 @@ T *GetClassPtr(T *a)
 
 extern CUtlVector<hash_item_t> stringsHashTable;
 
+C_DLLEXPORT int GetEntityAPI(DLL_FUNCTIONS *pFunctionTable, int interfaceVersion);
+C_DLLEXPORT int GetNewDLLFunctions(NEW_DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion);
+
 int CaseInsensitiveHash(const char *string, int iBounds);
 void EmptyEntityHashTable();
 void AddEntityHashValue(entvars_t *pev, const char *value, hash_types_e fieldType);
 void RemoveEntityHashValue(entvars_t *pev, const char *value, hash_types_e fieldType);
 void printEntities();
 edict_t *CREATE_NAMED_ENTITY(string_t iClass);
-void REMOVE_ENTITY(edict_t *e);
+void REMOVE_ENTITY(edict_t *pEntity);
 void CONSOLE_ECHO_(char *pszMsg, ...);
 void loopPerformance();
-
-C_DLLEXPORT int GetEntityAPI(DLL_FUNCTIONS *pFunctionTable, int interfaceVersion);
-NOXREF int GetEntityAPI2(DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion);
-C_DLLEXPORT int GetNewDLLFunctions(NEW_DLL_FUNCTIONS *pFunctionTable, int *interfaceVersion);
-
 int DispatchSpawn(edict_t *pent);
 void DispatchKeyValue(edict_t *pentKeyvalue, KeyValueData *pkvd);
 void DispatchTouch(edict_t *pentTouched, edict_t *pentOther);

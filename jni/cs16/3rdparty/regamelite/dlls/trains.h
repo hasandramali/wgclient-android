@@ -60,6 +60,17 @@ public:
 	virtual void Activate();
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData* pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Activate_();
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 	void SetPrevious(CPathTrack *pprevious);
 	void Link();
 
@@ -76,7 +87,7 @@ public:
 	CPathTrack *GetPrevious();
 
 public:
-	static TYPEDESCRIPTION m_SaveData[5];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[5];
 
 	float m_length;
 	string_t m_altName;
@@ -100,6 +111,21 @@ public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	virtual void Blocked(CBaseEntity *pOther);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void Restart_();
+	void KeyValue_(KeyValueData* pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void OverrideReset_();
+	BOOL OnControls_(entvars_t *pev);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void Blocked_(CBaseEntity *pOther);
+
+#endif
+
 public:
 	void EXPORT Next();
 	void EXPORT Find();
@@ -113,7 +139,7 @@ public:
 	void UpdateSound();
 
 	static CFuncTrackTrain *Instance(edict_t *pent);
-	static TYPEDESCRIPTION m_SaveData[12];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[12];
 
 	CPathTrack *m_ppath;
 	float m_length;
@@ -152,6 +178,22 @@ public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	virtual void Blocked(CBaseEntity *pOther);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void Restart_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	int Classify_();
+	void OverrideReset_();
+	BOOL OnControls_(entvars_t *pev);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void Blocked_(CBaseEntity *pOther);
+
+#endif
+
 public:
 	void EXPORT Next();
 	void EXPORT Find();
@@ -171,7 +213,7 @@ public:
 
 public:
 	static CFuncVehicle *Instance(edict_t *pent);
-	static TYPEDESCRIPTION m_SaveData[12];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[12];
 
 	CPathTrack *m_ppath;
 	float m_length;

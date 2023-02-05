@@ -36,7 +36,8 @@
 #include "hostage/hostage_states.h"
 
 class CHostage;
-//enum HostageChatterType;
+
+enum HostageChatterType;
 
 // A Counter-Strike Hostage improved
 class CHostageImprov: public CImprov
@@ -112,6 +113,50 @@ public:
 	virtual void OnGameEvent(GameEventType event, CBaseEntity *entity = NULL, CBaseEntity *other = NULL);
 	virtual void OnTouch(CBaseEntity *other);									// in contact with "other"
 
+#ifdef HOOK_GAMEDLL
+
+	void OnMoveToFailure_(const Vector &goal, MoveToFailureType reason);
+	bool IsAlive_() const;
+	void MoveTo_(const Vector &goal);
+	void LookAt_(const Vector &target);
+	void ClearLookAt_();
+	void FaceTo_(const Vector &goal);
+	void ClearFaceTo_();
+	bool IsAtMoveGoal_(float error = 20.0f) const;
+	bool IsAtFaceGoal_() const;
+	bool IsFriendInTheWay_(const Vector &goalPos) const;
+	bool IsFriendInTheWay_(CBaseEntity *myFriend, const Vector &goalPos) const;
+	bool Jump_();
+	void Crouch_();
+	void StandUp_();
+	void TrackPath_(const Vector &pathGoal, float deltaT);
+	void StartLadder_(const CNavLadder *ladder, NavTraverseType how, const Vector *approachPos, const Vector *departPos);
+	bool TraverseLadder_(const CNavLadder *ladder, NavTraverseType how, const Vector *approachPos, const Vector *departPos, float deltaT);
+	bool GetSimpleGroundHeightWithFloor_(const Vector *pos, float *height, Vector *normal = NULL);
+	void Run_();
+	void Walk_();
+	void Stop_();
+	const Vector &GetFeet_() const;
+	const Vector &GetCentroid_() const;
+	const Vector &GetEyes_() const;
+	bool IsOnGround_() const;
+	bool IsMoving_() const;
+	bool IsVisible_(const Vector &pos, bool testFOV = false) const;
+	bool IsPlayerLookingAtMe_(CBasePlayer *other, float cosTolerance = 0.95f) const;
+	CBasePlayer *IsAnyPlayerLookingAtMe_(int team = 0, float cosTolerance = 0.95f) const;
+	CBasePlayer *GetClosestPlayerByTravelDistance_(int team = 0, float *range = NULL) const;
+	void OnUpdate_(float deltaT);
+	void OnUpkeep_(float deltaT);
+	void OnReset_();
+	void OnGameEvent_(GameEventType event, CBaseEntity *entity = NULL, CBaseEntity *other = NULL);
+	void OnTouch_(CBaseEntity *other);
+
+#endif // HOOK_GAMEDLL
+
+#ifdef PLAY_GAMEDLL
+	void ApplyForce2(float_precision x, float_precision y);
+#endif
+
 public:
 	enum MoveType { Stopped, Walking, Running };
 	enum ScareType { NERVOUS, SCARED, TERRIFIED };
@@ -121,22 +166,8 @@ public:
 	void SetKnownGoodPosition(const Vector &pos);
 	const Vector &GetKnownGoodPosition() const { return m_knownGoodPos; }
 	void ResetToKnownGoodPosition();
-	void ResetJump()
-	{
-		if (m_hasJumpedIntoAir)
-		{
-			if (IsOnGround())
-			{
-				m_jumpTimer.Invalidate();
-			}
-		}
-		else if (!IsOnGround())
-		{
-			m_hasJumpedIntoAir = true;
-		}
-	}
+	void ResetJump();
 	void ApplyForce(Vector force);					// apply a force to the hostage
-
 	const Vector GetActualVelocity() const { return m_actualVel; }
 	void SetMoveLimit(MoveType limit) { m_moveLimit = limit; }
 	MoveType GetMoveLimit() const { return m_moveLimit; }
@@ -175,7 +206,7 @@ public:
 	float GetAggression() const { return m_aggression; }
 	void Chatter(HostageChatterType sayType, bool mustSpeak = true);
 	void DelayedChatter(float delayTime, HostageChatterType sayType, bool mustSpeak = false);
-	NOXREF void UpdateDelayedChatter();
+	void UpdateDelayedChatter();
 	bool IsTalking() const { return m_talkingTimer.IsElapsed(); }
 	void UpdateGrenadeReactions();
 	void Afraid();
@@ -188,7 +219,7 @@ public:
 	void UpdateStationaryAnimation();
 	CHostage *GetEntity() const { return m_hostage; }
 	void CheckForNearbyTerrorists();
-	void UpdatePosition(float);
+	void UpdatePosition(float deltaT);
 	void MoveTowards(const Vector &pos, float deltaT);
 	bool FaceTowards(const Vector &target, float deltaT);	// rotate body to face towards "target"
 	float GetSpeed();
@@ -271,7 +302,7 @@ private:
 	Vector m_jumpTarget;
 	CountdownTimer m_clearPathTimer;
 	bool m_traversingLadder;
-	EHANDLE m_visiblePlayer[ MAX_CLIENTS ];
+	EHANDLE m_visiblePlayer[MAX_CLIENTS];
 	int m_visiblePlayerCount;
 	CountdownTimer m_visionTimer;
 };
@@ -303,7 +334,6 @@ public:
 
 // Functor used with NavAreaBuildPath() for building Hostage paths.
 // Once we hook up crouching and ladders, this can be removed and ShortestPathCost() can be used instead.
-
 class HostagePathCost
 {
 public:
@@ -319,7 +349,7 @@ public:
 			// compute distance travelled along path so far
 			float dist;
 
-			if (ladder != NULL)
+			if (ladder)
 			{
 				const float ladderCost = 10.0f;
 				return ladder->m_length * ladderCost + fromArea->GetCostSoFar();
@@ -364,7 +394,7 @@ public:
 		const float space = 1.0f;
 		Vector to;
 		float range;
-		
+
 		if (entity == reinterpret_cast<CBaseEntity *>(m_improv->GetEntity()))
 			return true;
 
@@ -372,7 +402,14 @@ public:
 			return true;
 
 		to = entity->pev->origin - m_improv->GetCentroid();
+
+#ifdef PLAY_GAMEDLL
+		// TODO: fix test demo
 		range = to.NormalizeInPlace<float>();
+#else
+		range = to.NormalizeInPlace();
+#endif
+
 		CBasePlayer *player = static_cast<CBasePlayer *>(entity);
 
 		const float spring = 50.0f;
@@ -386,9 +423,15 @@ public:
 			return true;
 
 		const float minSpace = (spring - range);
-		float ds = -minSpace;
+		float_precision ds = -minSpace;
 
+#ifndef PLAY_GAMEDLL
 		m_improv->ApplyForce(to * ds);
+#else
+		// TODO: fix test demo
+		m_improv->ApplyForce2(to.x * ds, to.y * ds);
+#endif
+
 		const float force = 0.1f;
 		m_improv->ApplyForce(m_speed * -force * m_velDir);
 
@@ -413,7 +456,7 @@ public:
 	bool operator()(CBaseEntity *entity)
 	{
 		Vector to;
-		float range;
+		float_precision range;
 		const float closeRange = 60.0f;
 		const float aheadTolerance = 0.95f;
 
@@ -435,5 +478,27 @@ private:
 	Vector m_dir;
 	bool m_isBlocked;
 };
+
+#ifdef PLAY_GAMEDLL
+inline void CHostageImprov::ApplyForce2(float_precision x, float_precision y)
+{
+	m_vel.x += x;
+	m_vel.y += y;
+}
+#endif
+inline void CHostageImprov::ResetJump()
+{
+	if (m_hasJumpedIntoAir)
+	{
+		if (IsOnGround())
+		{
+			m_jumpTimer.Invalidate();
+		}
+	}
+	else if (!IsOnGround())
+	{
+		m_hasJumpedIntoAir = true;
+	}
+}
 
 #endif // HOSTAGE_IMPROV_H

@@ -35,28 +35,37 @@
 class CRevertSaved: public CPointEntity
 {
 public:
-	void KeyValue(KeyValueData *pkvd);
-	int Save(CSave &save);
-	int Restore(CRestore &restore);
-	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	virtual void KeyValue(KeyValueData *pkvd);
+	virtual int Save(CSave &save);
+	virtual int Restore(CRestore &restore);
+	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
 	void EXPORT MessageThink();
 	void EXPORT LoadThink();
 
 public:
-	float Duration() const		{ return pev->dmg_take; }
-	float HoldTime() const		{ return pev->dmg_save; }
-	float MessageTime() const	{ return m_messageTime; }
-	float LoadTime() const		{ return m_loadTime; }
+	float Duration() const { return pev->dmg_take; }
+	float HoldTime() const { return pev->dmg_save; }
+	float MessageTime() const { return m_messageTime; }
+	float LoadTime() const { return m_loadTime; }
 
-	void SetDuration(float duration)	{ pev->dmg_take = duration; }
-	void SetHoldTime(float hold)		{ pev->dmg_save = hold; }
-	void SetMessageTime(float time)		{ m_messageTime = time; }
-	void SetLoadTime(float time)		{ m_loadTime = time; }
+	void SetDuration(float duration) { pev->dmg_take = duration; }
+	void SetHoldTime(float hold) { pev->dmg_save = hold; }
+	void SetMessageTime(float time) { m_messageTime = time; }
+	void SetLoadTime(float time) { m_loadTime = time; }
 
 public:
-	static TYPEDESCRIPTION m_SaveData[2];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[2];
 
 	float m_messageTime;
 	float m_loadTime;

@@ -32,19 +32,30 @@
 #pragma once
 #endif
 
+enum MONSTERSTATE
+{
+	MONSTERSTATE_NONE = 0,
+	MONSTERSTATE_IDLE,
+	MONSTERSTATE_COMBAT,
+	MONSTERSTATE_ALERT,
+	MONSTERSTATE_HUNT,
+	MONSTERSTATE_PRONE,
+	MONSTERSTATE_SCRIPT,
+	MONSTERSTATE_PLAYDEAD,
+	MONSTERSTATE_DEAD
+};
+
 void RadiusFlash(Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore = 0, int bitsDamageType = 0);
-float GetAmountOfPlayerVisible(Vector vecSrc, CBaseEntity *entity);
 void RadiusDamage(Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, float flRadius, int iClassIgnore, int bitsDamageType);
 void RadiusDamage2(Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, float flRadius, int iClassIgnore, int bitsDamageType);
-NOXREF char *vstr(float *v);
 
 class CBaseMonster: public CBaseToggle
 {
 public:
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
-	virtual int TakeHealth(float flHealth, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual BOOL TakeHealth(float flHealth, int bitsDamageType);
 	virtual void Killed(entvars_t *pevAttacker, int iGib);
 	virtual int BloodColor() { return m_bloodColor; }
 	virtual BOOL IsAlive() { return (pev->deadflag != DEAD_DEAD); }
@@ -53,7 +64,7 @@ public:
 	virtual BOOL HasAlienGibs();
 	virtual void FadeMonster();
 	virtual void GibMonster();
-	NOXREF virtual Activity GetDeathActivity();
+	virtual Activity GetDeathActivity();
 	virtual void BecomeDead();
 	virtual BOOL ShouldFadeOnDeath();
 	virtual int IRelationship(CBaseEntity *pTarget);
@@ -65,36 +76,58 @@ public:
 	virtual CBaseEntity *BestVisibleEnemy();
 	virtual BOOL FInViewCone(CBaseEntity *pEntity);
 	virtual BOOL FInViewCone(const Vector *pOrigin);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void KeyValue_(KeyValueData *pkvd);
+	void TraceAttack_(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	BOOL TakeHealth_(float flHealth, int bitsDamageType);
+	void Killed_(entvars_t *pevAttacker, int iGib);
+	float ChangeYaw_(int speed);
+	BOOL HasHumanGibs_();
+	BOOL HasAlienGibs_();
+	void FadeMonster_();
+	void GibMonster_();
+	Activity GetDeathActivity_();
+	void BecomeDead_();
+	BOOL ShouldFadeOnDeath_();
+	int IRelationship_(CBaseEntity *pTarget);
+	void MonsterInitDead_();
+	void Look_(int iDistance);
+	CBaseEntity *BestVisibleEnemy_();
+	BOOL FInViewCone_(CBaseEntity *pEntity);
+	BOOL FInViewCone_(const Vector *pOrigin);
+
+#endif
+
 public:
 	void MakeIdealYaw(Vector vecTarget);
-	NOXREF Activity GetSmallFlinchActivity();
+	Activity GetSmallFlinchActivity();
 	BOOL ShouldGibMonster(int iGib);
 	void CallGibMonster();
 	BOOL FCheckAITrigger();
-	int DeadTakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	BOOL DeadTakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	float DamageForce(float damage);
 	void RadiusDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType);
-	NOXREF void RadiusDamage(Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType);
-	void RadiusDamage2(Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType)
-	{
-		::RadiusDamage2(vecSrc, pevInflictor, pevAttacker, flDamage, flDamage * (RANDOM_FLOAT(0.5, 1.5) + 3), iClassIgnore, bitsDamageType);
-	}
-	void SetConditions(int iConditions)	{ m_afConditions |= iConditions; }
-	void ClearConditions(int iConditions)	{ m_afConditions &= ~iConditions; }
-	BOOL HasConditions(int iConditions)	{ return (m_afConditions & iConditions) ? TRUE : FALSE; }
-	BOOL HasAllConditions(int iConditions)	{ return ((m_afConditions & iConditions) == iConditions) ? TRUE : FALSE; }
+	void RadiusDamage(Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType);
+	void RadiusDamage2(Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType);
 
-	void Remember(int iMemory)		{ m_afMemory |= iMemory; }
-	void Forget(int iMemory)		{ m_afMemory &= ~iMemory; }
-	BOOL HasMemory(int iMemory)		{ return (m_afMemory & iMemory) ? TRUE : FALSE; }
-	BOOL HasAllMemories(int iMemory)	{ return ((m_afMemory & iMemory) == iMemory) ? TRUE : FALSE; }
+	void SetConditions(int iConditions) { m_afConditions |= iConditions; }
+	void ClearConditions(int iConditions) { m_afConditions &= ~iConditions; }
+	BOOL HasConditions(int iConditions) { return (m_afConditions & iConditions) ? TRUE : FALSE; }
+	BOOL HasAllConditions(int iConditions) { return ((m_afConditions & iConditions) == iConditions) ? TRUE : FALSE; }
 
-	void StopAnimation()		{ pev->framerate = 0.0f; }
+	void Remember(int iMemory) { m_afMemory |= iMemory; }
+	void Forget(int iMemory) { m_afMemory &= ~iMemory; }
+	BOOL HasMemory(int iMemory) { return (m_afMemory & iMemory) ? TRUE : FALSE; }
+	BOOL HasAllMemories(int iMemory) { return ((m_afMemory & iMemory) == iMemory) ? TRUE : FALSE; }
 
-	NOXREF void CorpseFallThink();
-	NOXREF CBaseEntity *CheckTraceHullAttack(float flDist, int iDamage, int iDmgType);
-	NOXREF void MakeDamageBloodDecal(int cCount, float flNoise, TraceResult *ptr, Vector &vecDir);
+	void StopAnimation() { pev->framerate = 0.0f; }
+
+	void EXPORT CorpseFallThink();
+	CBaseEntity *CheckTraceHullAttack(float flDist, int iDamage, int iDmgType);
+	void MakeDamageBloodDecal(int cCount, float flNoise, TraceResult *ptr, Vector &vecDir);
 	void MonsterUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value) { m_IdealMonsterState = MONSTERSTATE_ALERT; }
 	void BloodSplat(const Vector &vecSrc, const Vector &vecDir, int HitLocation, int iVelocity);
 
@@ -103,7 +136,7 @@ public:
 	Activity m_IdealActivity;		// monster should switch to this activity
 	int m_LastHitGroup;			// the last body region that took damage
 	int m_bitsDamageType;			// what types of damage has monster (player) taken
-	BYTE m_rgbTimeBasedDamage[8];
+	byte m_rgbTimeBasedDamage[8];
 
 	MONSTERSTATE m_MonsterState;		// monster's current state
 	MONSTERSTATE m_IdealMonsterState;	// monster should change to this state

@@ -35,11 +35,16 @@
 extern const Vector g_vecZero;
 extern int g_Language;
 
+extern u_long g_ulFrameCount;
+extern u_long g_ulModelIndexEyes;
+
 extern Vector g_vecAttackDir;
 extern int g_iSkillLevel;
 extern int gDisplayTitle;
-extern BOOL g_fGameOver;
 extern bool g_bIsCzeroGame;
-extern bool g_bEnableCSBot;
+extern bool g_bAllowedCSBot;
+extern bool g_bHostageImprov;
+extern bool		g_fPhysicInitialized;
+extern int		g_iXashEngineBuildNumber;
 
 #endif // GLOBALS_H

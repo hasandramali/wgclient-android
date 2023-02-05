@@ -46,6 +46,7 @@
 #define SF_DOOR_ROTATE_X		128
 #define SF_DOOR_USE_ONLY		256		// door must be opened by player's use button.
 #define SF_DOOR_NOMONSTERS		512		// Monster can't open
+#define SF_DOOR_TOUCH_ONLY_CLIENTS	1024		// Only clients can touch
 #define SF_DOOR_SILENT			0x80000000
 
 class CBaseDoor: public CBaseToggle
@@ -68,8 +69,22 @@ public:
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	virtual void Blocked(CBaseEntity *pOther);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void Restart_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void SetToggleState_(int state);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void Blocked_(CBaseEntity *pOther);
+
+#endif
+
 public:
-	static TYPEDESCRIPTION m_SaveData[7];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[7];
 
 	// used to selectivly override defaults
 	void EXPORT DoorTouch(CBaseEntity *pOther);
@@ -80,17 +95,17 @@ public:
 	void EXPORT DoorHitBottom();
 
 public:
-	BYTE m_bHealthValue;		// some doors are medi-kit doors, they give players health
+	byte m_bHealthValue;		// some doors are medi-kit doors, they give players health
 
-	BYTE m_bMoveSnd;		// sound a door makes while moving
-	BYTE m_bStopSnd;		// sound a door makes when it stops
+	byte m_bMoveSnd;		// sound a door makes while moving
+	byte m_bStopSnd;		// sound a door makes when it stops
 
 	locksound_t m_ls;		// door lock sounds
 
-	BYTE m_bLockedSound;		// ordinals from entity selection
-	BYTE m_bLockedSentence;
-	BYTE m_bUnlockedSound;
-	BYTE m_bUnlockedSentence;
+	byte m_bLockedSound;		// ordinals from entity selection
+	byte m_bLockedSentence;
+	byte m_bUnlockedSound;
+	byte m_bUnlockedSentence;
 
 	float m_lastBlockedTimestamp;
 };
@@ -101,6 +116,15 @@ public:
 	virtual void Spawn();
 	virtual void Restart();
 	virtual void SetToggleState(int state);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Restart_();
+	void SetToggleState_(int state);
+
+#endif
+
 };
 
 class CMomentaryDoor: public CBaseToggle
@@ -113,11 +137,22 @@ public:
 	virtual int Restore(CRestore &restore);
 	virtual int ObjectCaps() { return (CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-   
-public:
-	static TYPEDESCRIPTION m_SaveData[1];
 
-	BYTE m_bMoveSnd;	// sound a door makes while moving
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
+public:
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
+
+	byte m_bMoveSnd;	// sound a door makes while moving
 };
 
 void PlayLockSounds(entvars_t *pev, locksound_t *pls, int flocked, int fbutton);

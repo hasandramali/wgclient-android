@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_aug, CAUG);
+LINK_ENTITY_TO_CLASS(weapon_aug, CAUG, CCSAUG)
 
-void CAUG::Spawn()
+void CAUG::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CAUG::Spawn()
 	FallInit();
 }
 
-void CAUG::Precache()
+void CAUG::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_aug.mdl");
 	PRECACHE_MODEL("models/w_aug.mdl");
@@ -32,7 +34,7 @@ void CAUG::Precache()
 	m_usFireAug = PRECACHE_EVENT(1, "events/aug.sc");
 }
 
-int CAUG::GetItemInfo(ItemInfo *p)
+int CAUG::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "556Nato";
@@ -49,7 +51,7 @@ int CAUG::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CAUG::Deploy()
+BOOL CAUG::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.2f;
 	m_iShotsFired = 0;
@@ -58,7 +60,7 @@ BOOL CAUG::Deploy()
 	return DefaultDeploy("models/v_aug.mdl", "models/p_aug.mdl", AUG_DRAW, "carbine", UseDecrement() != FALSE);
 }
 
-void CAUG::SecondaryAttack()
+void CAUG::__MAKE_VHOOK(SecondaryAttack)()
 {
 	if (m_pPlayer->m_iFOV == DEFAULT_FOV)
 		m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 55;
@@ -68,7 +70,7 @@ void CAUG::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3f;
 }
 
-void CAUG::PrimaryAttack()
+void CAUG::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -136,10 +138,10 @@ void CAUG::AUGFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireAug, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -168,12 +170,12 @@ void CAUG::AUGFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CAUG::Reload()
+void CAUG::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_556nato <= 0)
 		return;
 
-	if (DefaultReload(AUG_MAX_CLIP, AUG_RELOAD, AUG_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), AUG_RELOAD, AUG_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -188,7 +190,7 @@ void CAUG::Reload()
 	}
 }
 
-void CAUG::WeaponIdle()
+void CAUG::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 CHintMessage::CHintMessage(const char *hintString, bool isHint, CUtlVector<const char *> *args, float duration)
@@ -16,7 +18,7 @@ CHintMessage::CHintMessage(const char *hintString, bool isHint, CUtlVector<const
 CHintMessage::~CHintMessage()
 {
 	for (int i = 0; i < m_args.Count(); ++i)
-		delete [] m_args[i];
+		delete[] m_args[i];
 
 	m_args.RemoveAll();
 }

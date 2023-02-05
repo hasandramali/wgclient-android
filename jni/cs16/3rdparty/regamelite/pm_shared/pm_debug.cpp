@@ -1,9 +1,11 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 #undef vec3_t
 
 // Expand debugging BBOX particle hulls by this many units.
-#define BOX_GAP 0.0f
+const float BOX_GAP = 0.0f;
 
 int PM_boxpnt[6][4] =
 {
@@ -195,7 +197,6 @@ void PM_DrawBBox(vec3_t mins, vec3_t maxs, vec3_t origin, int pcolor, float life
 // Shows a particle trail from player to entity in crosshair.
 // Shows particles at that entities bbox
 // Tries to shoot a ray out by about 128 units.
-
 void PM_ViewEntity()
 {
 	vec3_t forward, right, up;
@@ -235,7 +236,9 @@ void PM_ViewEntity()
 	}
 
 	// Draw the hull or bbox.
+#ifndef REGAMEDLL_FIXES
 	if (trace.ent > 0)
+#endif
 	{
 		PM_DrawPhysEntBBox(trace.ent, pcolor, 0.3f);
 	}

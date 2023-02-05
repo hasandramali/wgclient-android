@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_c4, CC4);
+LINK_ENTITY_TO_CLASS(weapon_c4, CC4, CCSC4)
 
-void CC4::Spawn()
+void CC4::__MAKE_VHOOK(Spawn)()
 {
 	SET_MODEL(edict(), "models/w_backpack.mdl");
 
@@ -20,7 +22,6 @@ void CC4::Spawn()
 	{
 		pev->effects |= EF_NODRAW;
 		DROP_TO_FLOOR(edict());
-
 		return;
 	}
 
@@ -29,7 +30,7 @@ void CC4::Spawn()
 	pev->nextthink = UTIL_WeaponTimeBase() + 0.1f;
 }
 
-void CC4::Precache()
+void CC4::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_c4.mdl");
 	PRECACHE_MODEL("models/w_backpack.mdl");
@@ -37,7 +38,7 @@ void CC4::Precache()
 	PRECACHE_SOUND("weapons/c4_click.wav");
 }
 
-int CC4::GetItemInfo(ItemInfo *p)
+int CC4::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "C4";
@@ -54,7 +55,7 @@ int CC4::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CC4::Deploy()
+BOOL CC4::__MAKE_VHOOK(Deploy)()
 {
 	pev->body = 0;
 
@@ -70,9 +71,9 @@ BOOL CC4::Deploy()
 	return DefaultDeploy("models/v_c4.mdl", "models/p_c4.mdl", C4_DRAW, "c4", UseDecrement() != FALSE);
 }
 
-void CC4::Holster(int skiplocal)
+void CC4::__MAKE_VHOOK(Holster)(int skiplocal)
 {
-	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
+	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 	m_bStartedArming = false;	// stop arming sequence
 
 	if (!m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
@@ -88,18 +89,14 @@ void CC4::Holster(int skiplocal)
 	}
 }
 
-void CC4::PrimaryAttack()
+void CC4::__MAKE_VHOOK(PrimaryAttack)()
 {
-	BOOL PlaceBomb;
-
 	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
-	{
 		return;
-	}
 
 	int inBombZone = (m_pPlayer->m_signals.GetState() & SIGNAL_BOMB) == SIGNAL_BOMB;
 	int onGround = (m_pPlayer->pev->flags & FL_ONGROUND) == FL_ONGROUND;
-	PlaceBomb = (onGround && inBombZone);
+	bool bPlaceBomb = (onGround && inBombZone);
 
 	if (!m_bStartedArming)
 	{
@@ -132,7 +129,7 @@ void CC4::PrimaryAttack()
 	}
 	else
 	{
-		if (PlaceBomb)
+		if (bPlaceBomb)
 		{
 			CBaseEntity *pEntity = NULL;
 			CBasePlayer *pTempPlayer = NULL;
@@ -147,9 +144,9 @@ void CC4::PrimaryAttack()
 					Broadcast("BOMBPL");
 					m_pPlayer->m_bHasC4 = false;
 
-					if (pev->speed != 0 && g_pGameRules != NULL)
+					if (pev->speed != 0 && CSGameRules())
 					{
-						g_pGameRules->m_iC4Timer = (int)pev->speed;
+						CSGameRules()->m_iC4Timer = int(pev->speed);
 					}
 
 					CGrenade *pBomb = CGrenade::ShootSatchelCharge(m_pPlayer->pev, m_pPlayer->pev->origin, Vector(0, 0, 0));
@@ -166,16 +163,16 @@ void CC4::PrimaryAttack()
 						WRITE_COORD(pBomb->pev->origin.x);
 						WRITE_COORD(pBomb->pev->origin.y);
 						WRITE_COORD(pBomb->pev->origin.z);
-						WRITE_BYTE(1);
+						WRITE_BYTE(BOMB_FLAG_PLANTED);
 					MESSAGE_END();
 
 					UTIL_ClientPrintAll(HUD_PRINTCENTER, "#Bomb_Planted");
-					if (TheBots != NULL)
+					if (TheBots)
 					{
 						TheBots->OnEvent(EVENT_BOMB_PLANTED, m_pPlayer, pBomb);
 					}
 
-					if (TheCareerTasks != NULL && g_pGameRules->IsCareer() && !m_pPlayer->IsBot())
+					if (TheCareerTasks && CSGameRules()->IsCareer() && !m_pPlayer->IsBot())
 					{
 						TheCareerTasks->HandleEvent(EVENT_BOMB_PLANTED, m_pPlayer);
 					}
@@ -198,9 +195,8 @@ void CC4::PrimaryAttack()
 
 					// No more c4!
 					m_pPlayer->SetBombIcon(FALSE);
-					--m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType];
 
-					if (!m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+					if (--m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 					{
 						RetireWeapon();
 						return;
@@ -209,7 +205,7 @@ void CC4::PrimaryAttack()
 			}
 			else
 			{
-				if (m_fArmedTime - 0.75 <= gpGlobals->time && !m_bBombPlacedAnimation)
+				if (m_fArmedTime - 0.75f <= gpGlobals->time && !m_bBombPlacedAnimation)
 				{
 					// call the c4 Placement animation
 					m_bBombPlacedAnimation = true;
@@ -249,7 +245,7 @@ void CC4::PrimaryAttack()
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + RANDOM_FLOAT(10, 15);
 }
 
-void CC4::WeaponIdle()
+void CC4::__MAKE_VHOOK(WeaponIdle)()
 {
 	if (m_bStartedArming)
 	{
@@ -282,7 +278,7 @@ void CC4::WeaponIdle()
 	}
 }
 
-void CC4::KeyValue(KeyValueData *pkvd)
+void CC4::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "detonatedelay"))
 	{
@@ -305,23 +301,20 @@ void CC4::KeyValue(KeyValueData *pkvd)
 	}
 }
 
-void CC4::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CC4::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
-	if (m_pPlayer != NULL)
-	{
+	if (m_pPlayer)
 		return;
-	}
 
-	CBasePlayer *pPlayer = static_cast<CBasePlayer *>(UTIL_PlayerByIndex(1));
-
-	if (pPlayer != NULL)
+	CBasePlayer *pPlayer = UTIL_PlayerByIndex(1);
+	if (pPlayer)
 	{
 		edict_t *m_pentOldCurBombTarget = pPlayer->m_pentCurBombTarget;
 		pPlayer->m_pentCurBombTarget = NULL;
 
-		if (pev->speed != 0 && g_pGameRules)
+		if (pev->speed != 0 && CSGameRules())
 		{
-			g_pGameRules->m_iC4Timer = (int)pev->speed;
+			CSGameRules()->m_iC4Timer = int(pev->speed);
 		}
 
 		EMIT_SOUND(edict(), CHAN_WEAPON, "weapons/c4_plant.wav", VOL_NORM, ATTN_NORM);
@@ -329,7 +322,7 @@ void CC4::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, f
 		CGrenade::ShootSatchelCharge(m_pPlayer->pev, m_pPlayer->pev->origin, Vector(0, 0, 0));
 
 		CGrenade *pC4 = NULL;
-		while ((pC4 = (CGrenade *)UTIL_FindEntityByClassname(pC4, "grenade")) != NULL)
+		while ((pC4 = (CGrenade *)UTIL_FindEntityByClassname(pC4, "grenade")))
 		{
 			if (pC4->m_bIsC4 && pC4->m_flNextFreq == gpGlobals->time)
 			{
@@ -344,7 +337,7 @@ void CC4::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, f
 	}
 }
 
-float CC4::GetMaxSpeed()
+float CC4::__MAKE_VHOOK(GetMaxSpeed)()
 {
 	return C4_MAX_SPEED;
 }

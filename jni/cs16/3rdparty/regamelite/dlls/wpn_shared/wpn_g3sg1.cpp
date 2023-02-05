@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_g3sg1, CG3SG1);
+LINK_ENTITY_TO_CLASS(weapon_g3sg1, CG3SG1, CCSG3SG1)
 
-void CG3SG1::Spawn()
+void CG3SG1::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -15,7 +17,7 @@ void CG3SG1::Spawn()
 	FallInit();
 }
 
-void CG3SG1::Precache()
+void CG3SG1::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_g3sg1.mdl");
 	PRECACHE_MODEL("models/w_g3sg1.mdl");
@@ -30,7 +32,7 @@ void CG3SG1::Precache()
 	m_usFireG3SG1 = PRECACHE_EVENT(1, "events/g3sg1.sc");
 }
 
-int CG3SG1::GetItemInfo(ItemInfo *p)
+int CG3SG1::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "762Nato";
@@ -47,19 +49,23 @@ int CG3SG1::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CG3SG1::Deploy()
+BOOL CG3SG1::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.2f;
 	return DefaultDeploy("models/v_g3sg1.mdl", "models/p_g3sg1.mdl", G3SG1_DRAW, "mp5", UseDecrement() != FALSE);
 }
 
-void CG3SG1::SecondaryAttack()
+void CG3SG1::__MAKE_VHOOK(SecondaryAttack)()
 {
 	switch (m_pPlayer->m_iFOV)
 	{
 	case 90: m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 40; break;
 	case 40: m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 15; break;
+#ifdef REGAMEDLL_FIXES
 	default:
+#else
+	case 15:
+#endif
 		m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 90; break;
 	}
 
@@ -74,7 +80,7 @@ void CG3SG1::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3f;
 }
 
-void CG3SG1::PrimaryAttack()
+void CG3SG1::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -154,10 +160,10 @@ void CG3SG1::G3SG1Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireG3SG1, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.x * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.x * 100), FALSE, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -172,12 +178,12 @@ void CG3SG1::G3SG1Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	m_pPlayer->pev->punchangle.y += UTIL_SharedRandomFloat(m_pPlayer->random_seed + 5, -0.75, 0.75);
 }
 
-void CG3SG1::Reload()
+void CG3SG1::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_762nato <= 0)
 		return;
 
-	if (DefaultReload(G3SG1_MAX_CLIP, G3SG1_RELOAD, G3SG1_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), G3SG1_RELOAD, G3SG1_RELOAD_TIME))
 	{
 		m_flAccuracy = 0.2f;
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
@@ -190,7 +196,7 @@ void CG3SG1::Reload()
 	}
 }
 
-void CG3SG1::WeaponIdle()
+void CG3SG1::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
@@ -205,7 +211,7 @@ void CG3SG1::WeaponIdle()
 	}
 }
 
-float CG3SG1::GetMaxSpeed()
+float CG3SG1::__MAKE_VHOOK(GetMaxSpeed)()
 {
 	return (m_pPlayer->m_iFOV == DEFAULT_FOV) ? G3SG1_MAX_SPEED : G3SG1_MAX_SPEED_ZOOM;
 }

@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_glock18, CGLOCK18);
+LINK_ENTITY_TO_CLASS(weapon_glock18, CGLOCK18, CCSGLOCK18)
 
-void CGLOCK18::Spawn()
+void CGLOCK18::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -20,7 +22,7 @@ void CGLOCK18::Spawn()
 	FallInit();
 }
 
-void CGLOCK18::Precache()
+void CGLOCK18::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_glock18.mdl");
 	PRECACHE_MODEL("models/w_glock18.mdl");
@@ -40,7 +42,7 @@ void CGLOCK18::Precache()
 	m_usFireGlock18 = PRECACHE_EVENT(1, "events/glock18.sc");
 }
 
-int CGLOCK18::GetItemInfo(ItemInfo *p)
+int CGLOCK18::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "9mm";
@@ -57,7 +59,7 @@ int CGLOCK18::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CGLOCK18::Deploy()
+BOOL CGLOCK18::__MAKE_VHOOK(Deploy)()
 {
 	m_iWeaponState &= ~WPNSTATE_SHIELD_DRAWN;
 
@@ -82,7 +84,7 @@ BOOL CGLOCK18::Deploy()
 	return DefaultDeploy("models/v_glock18.mdl", "models/p_glock18.mdl", GLOCK18_DRAW2, "onehanded", UseDecrement() != FALSE);
 }
 
-void CGLOCK18::SecondaryAttack()
+void CGLOCK18::__MAKE_VHOOK(SecondaryAttack)()
 {
 	if (ShieldSecondaryFire(GLOCK18_SHIELD_UP, GLOCK18_SHIELD_DOWN))
 	{
@@ -103,7 +105,7 @@ void CGLOCK18::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3f;
 }
 
-void CGLOCK18::PrimaryAttack()
+void CGLOCK18::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (m_iWeaponState & WPNSTATE_GLOCK18_BURST_MODE)
 	{
@@ -218,10 +220,10 @@ void CGLOCK18::GLOCK18Fire(float flSpread, float flCycleTime, BOOL bFireBurst)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireGlock18, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), m_iClip == 0, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -243,7 +245,7 @@ void CGLOCK18::GLOCK18Fire(float flSpread, float flCycleTime, BOOL bFireBurst)
 	ResetPlayerShieldAnim();
 }
 
-void CGLOCK18::Reload()
+void CGLOCK18::__MAKE_VHOOK(Reload)()
 {
 	int iResult;
 	if (m_pPlayer->ammo_9mm <= 0)
@@ -256,14 +258,14 @@ void CGLOCK18::Reload()
 	else
 		iResult = GLOCK18_RELOAD2;
 
-	if (DefaultReload(GLOCK18_MAX_CLIP, iResult, GLOCK18_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), iResult, GLOCK18_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 		m_flAccuracy = 0.9;
 	}
 }
 
-void CGLOCK18::WeaponIdle()
+void CGLOCK18::__MAKE_VHOOK(WeaponIdle)()
 {
 	int iAnim;
 	float flRand;

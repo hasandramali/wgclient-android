@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_scout, CSCOUT);
+LINK_ENTITY_TO_CLASS(weapon_scout, CSCOUT, CCSSCOUT)
 
-void CSCOUT::Spawn()
+void CSCOUT::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -14,7 +16,7 @@ void CSCOUT::Spawn()
 	FallInit();
 }
 
-void CSCOUT::Precache()
+void CSCOUT::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_scout.mdl");
 	PRECACHE_MODEL("models/w_scout.mdl");
@@ -29,7 +31,7 @@ void CSCOUT::Precache()
 	m_usFireScout = PRECACHE_EVENT(1, "events/scout.sc");
 }
 
-int CSCOUT::GetItemInfo(ItemInfo *p)
+int CSCOUT::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "762Nato";
@@ -46,7 +48,7 @@ int CSCOUT::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CSCOUT::Deploy()
+BOOL CSCOUT::__MAKE_VHOOK(Deploy)()
 {
 	if (DefaultDeploy("models/v_scout.mdl", "models/p_scout.mdl", SCOUT_DRAW, "rifle", UseDecrement() != FALSE))
 	{
@@ -59,13 +61,17 @@ BOOL CSCOUT::Deploy()
 	return FALSE;
 }
 
-void CSCOUT::SecondaryAttack()
+void CSCOUT::__MAKE_VHOOK(SecondaryAttack)()
 {
 	switch (m_pPlayer->m_iFOV)
 	{
 	case 90: m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 40; break;
 	case 40: m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 15; break;
+#ifdef REGAMEDLL_FIXES
 	default:
+#else
+	case 15:
+#endif
 		m_pPlayer->m_iFOV = m_pPlayer->pev->fov = 90; break;
 	}
 
@@ -79,7 +85,7 @@ void CSCOUT::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.3;
 }
 
-void CSCOUT::PrimaryAttack()
+void CSCOUT::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -151,10 +157,10 @@ void CSCOUT::SCOUTFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireScout, 0, (float *)&g_vecZero, (float *)&m_pPlayer->pev->angles, (vecDir.x * 1000), (vecDir.y * 1000),
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.x * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.x * 100), FALSE, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -167,13 +173,15 @@ void CSCOUT::SCOUTFire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	m_pPlayer->pev->punchangle.x -= 2.0f;
 }
 
-void CSCOUT::Reload()
+void CSCOUT::__MAKE_VHOOK(Reload)()
 {
+#ifdef REGAMEDLL_FIXES
 	// to prevent reload if not enough ammo
 	if (m_pPlayer->ammo_762nato <= 0)
 		return;
-   
-	if (DefaultReload(SCOUT_MAX_CLIP, SCOUT_RELOAD, SCOUT_RELOAD_TIME))
+#endif
+
+	if (DefaultReload(iMaxClip(), SCOUT_RELOAD, SCOUT_RELOAD_TIME))
 	{
 		if (m_pPlayer->pev->fov != DEFAULT_FOV)
 		{
@@ -185,7 +193,7 @@ void CSCOUT::Reload()
 	}
 }
 
-void CSCOUT::WeaponIdle()
+void CSCOUT::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
@@ -202,7 +210,7 @@ void CSCOUT::WeaponIdle()
 	}
 }
 
-float CSCOUT::GetMaxSpeed()
+float CSCOUT::__MAKE_VHOOK(GetMaxSpeed)()
 {
 	return (m_pPlayer->m_iFOV == DEFAULT_FOV) ? SCOUT_MAX_SPEED : SCOUT_MAX_SPEED_ZOOM;
 }

@@ -1,3 +1,5 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 CGraph WorldGraph;
@@ -42,7 +44,7 @@ int CGraph::FindNearestNode(const Vector &vecOrigin, CBaseEntity *pEntity)
 	return 0;
 }
 
-float CBaseMonster::ChangeYaw(int speed)
+float CBaseMonster::__MAKE_VHOOK(ChangeYaw)(int speed)
 {
 	return 0.0f;
 }
@@ -63,10 +65,10 @@ NOXREF void CBaseMonster::CorpseFallThink()
 		UTIL_SetOrigin(pev, pev->origin);
 	}
 	else
-		pev->nextthink = gpGlobals->time + 0.1;
+		pev->nextthink = gpGlobals->time + 0.1f;
 }
 
-void CBaseMonster::MonsterInitDead()
+void CBaseMonster::__MAKE_VHOOK(MonsterInitDead)()
 {
 	InitBoneControllers();
 
@@ -85,10 +87,10 @@ void CBaseMonster::MonsterInitDead()
 
 	BecomeDead();
 	SetThink(&CBaseEntity::SUB_Remove);
-	pev->nextthink = gpGlobals->time + 0.5;
+	pev->nextthink = gpGlobals->time + 0.5f;
 }
 
-BOOL CBaseMonster::ShouldFadeOnDeath()
+BOOL CBaseMonster::__MAKE_VHOOK(ShouldFadeOnDeath)()
 {
 	return FALSE;
 }
@@ -98,12 +100,12 @@ BOOL CBaseMonster::FCheckAITrigger()
 	return FALSE;
 }
 
-void CBaseMonster::KeyValue(KeyValueData *pkvd)
+void CBaseMonster::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	CBaseToggle::KeyValue(pkvd);
 }
 
-int CBaseMonster::IRelationship(CBaseEntity *pTarget)
+int CBaseMonster::__MAKE_VHOOK(IRelationship)(CBaseEntity *pTarget)
 {
 	static int const iEnemy[14][14] =
 	{
@@ -136,8 +138,7 @@ int CBaseMonster::IRelationship(CBaseEntity *pTarget)
 // Function also sets the Looker's m_pLink
 // to the head of a link list that contains all visible ents.
 // (linked via each ent's m_pLink field)
-
-void CBaseMonster::Look(int iDistance)
+void CBaseMonster::__MAKE_VHOOK(Look)(int iDistance)
 {
 	int iSighted = 0;
 
@@ -150,7 +151,7 @@ void CBaseMonster::Look(int iDistance)
 	CBaseEntity *pSightEnt = NULL;
 	CBaseEntity *pList[100];
 
-	Vector delta = Vector(iDistance, iDistance, iDistance);
+	Vector delta(iDistance, iDistance, iDistance);
 
 	// Find only monsters/clients in box, NOT limited to PVS
 	int count = UTIL_EntitiesInBox(pList, ARRAYSIZE(pList), pev->origin - delta, pev->origin + delta, (FL_CLIENT | FL_MONSTER));
@@ -214,8 +215,7 @@ void CBaseMonster::Look(int iDistance)
 //
 // UNDONE: currently, this only returns the closest enemy.
 // we'll want to consider distance, relationship, attack types, back turned, etc.
-
-CBaseEntity *CBaseMonster::BestVisibleEnemy()
+CBaseEntity *CBaseMonster::__MAKE_VHOOK(BestVisibleEnemy)()
 {
 	CBaseEntity *pReturn;
 	CBaseEntity *pNextEnt;

@@ -32,6 +32,11 @@
 #pragma once
 #endif
 
+// STL uses exceptions, but we are not compiling with them - ignore warning
+#pragma warning(disable : 4530)
+
+#include <list>
+
 class CNavArea;
 class CGrenade;
 
@@ -43,9 +48,9 @@ public:
 	void OnEntityGone();
 	bool IsValid() const;
 
-	bool IsEntity(CGrenade *grenade) const		{ return (grenade == m_entity) ? true : false; }
-	int GetID() const				{ return m_id; }
-	const Vector *GetDetonationPosition() const	{ return &m_detonationPosition; }
+	bool IsEntity(CGrenade *grenade) const { return (grenade == m_entity) ? true : false; }
+	int GetID() const { return m_id; }
+	const Vector *GetDetonationPosition() const { return &m_detonationPosition; }
 
 	const Vector *GetPosition() const;
 
@@ -56,13 +61,13 @@ private:
 	float m_dieTimestamp;
 };
 
-typedef CUtlLinkedList<ActiveGrenade *, int> ActiveGrenadeList;
+typedef std::STD_LIST<ActiveGrenade *> ActiveGrenadeList;
 
 class CBotManager
 {
 public:
 	CBotManager();
-	virtual ~CBotManager(){}
+	virtual ~CBotManager() {}
 
 	virtual void ClientDisconnect(CBasePlayer *pPlayer) = 0;
 	virtual BOOL ClientCommand(CBasePlayer *pPlayer, const char *pcmd) = 0;
@@ -86,11 +91,19 @@ public:
 
 	void AddGrenade(int type, CGrenade *grenade);									// add an active grenade to the bot's awareness
 	void RemoveGrenade(CGrenade *grenade);										// the grenade entity in the world is going away
-	NOXREF void ValidateActiveGrenades();										// destroy any invalid active grenades
+	void ValidateActiveGrenades();											// destroy any invalid active grenades
 	void DestroyAllGrenades();
 
 	bool IsLineBlockedBySmoke(const Vector *from, const Vector *to);						// return true if line intersects smoke volume
 	bool IsInsideSmokeCloud(const Vector *pos);									// return true if position is inside a smoke cloud
+
+#ifdef HOOK_GAMEDLL
+
+	void RestartRound_();
+	void StartFrame_();
+	void OnEvent_(GameEventType event, CBaseEntity *entity = NULL, CBaseEntity *other = NULL);
+
+#endif
 
 private:
 	// the list of active grenades the bots are aware of

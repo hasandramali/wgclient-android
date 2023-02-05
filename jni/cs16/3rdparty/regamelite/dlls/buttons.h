@@ -34,8 +34,8 @@
 
 #define SF_BUTTON_DONTMOVE		1
 #define SF_ROTBUTTON_NOTSOLID		1
-#define	SF_BUTTON_TOGGLE		32	// button stays pushed until reactivated
-#define	SF_BUTTON_SPARK_IF_OFF		64	// button sparks in OFF state
+#define SF_BUTTON_TOGGLE		32	// button stays pushed until reactivated
+#define SF_BUTTON_SPARK_IF_OFF		64	// button sparks in OFF state
 #define SF_BUTTON_TOUCH_ONLY		256	// button only fires as a result of USE key.
 
 #define SF_GLOBAL_SET			1	// Set global state to initial state on spawn
@@ -63,10 +63,19 @@ public:
 	virtual int Restore(CRestore &restore);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
-public:
-	static TYPEDESCRIPTION m_SaveData[3];
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
 
 public:
+	static TYPEDESCRIPTION IMPL(m_SaveData)[3];
+
 	string_t m_globalstate;
 	int m_triggermode;
 	int m_initialstate;
@@ -76,6 +85,12 @@ class CRotButton: public CBaseButton
 {
 public:
 	virtual void Spawn();
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+
+#endif
 };
 
 class CMomentaryRotButton: public CBaseToggle
@@ -98,6 +113,16 @@ public:
 	}
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 public:
 	void EXPORT Off();
 	void EXPORT Return();
@@ -109,9 +134,7 @@ public:
 
 public:
 	static CMomentaryRotButton *Instance(edict_t *pent) { return (CMomentaryRotButton *)GET_PRIVATE(pent); }
-
-public:
-	static TYPEDESCRIPTION m_SaveData[6];
+	static TYPEDESCRIPTION IMPL(m_SaveData)[6];
 
 	int m_lastUsed;
 	int m_direction;
@@ -129,15 +152,24 @@ public:
 	virtual void KeyValue(KeyValueData *pkvd);
 	virtual int Save(CSave &save);
 	virtual int Restore(CRestore &restore);
-   
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	void Precache_();
+	void KeyValue_(KeyValueData *pkvd);
+	int Save_(CSave &save);
+	int Restore_(CRestore &restore);
+
+#endif
+
 public:
 	void EXPORT SparkThink();
 	void EXPORT SparkStart(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void EXPORT SparkStop(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
 public:
-	static TYPEDESCRIPTION m_SaveData[1];
-
+	static TYPEDESCRIPTION IMPL(m_SaveData)[1];
 	float m_flDelay;
 };
 
@@ -146,8 +178,18 @@ class CButtonTarget: public CBaseEntity
 public:
 	virtual void Spawn();
 	virtual int ObjectCaps();
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual BOOL TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	virtual void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#ifdef HOOK_GAMEDLL
+
+	void Spawn_();
+	int ObjectCaps_();
+	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	void Use_(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+
+#endif
+
 };
 
 char *ButtonSound(int sound);

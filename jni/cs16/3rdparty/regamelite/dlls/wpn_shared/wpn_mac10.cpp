@@ -1,8 +1,10 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
-LINK_ENTITY_TO_CLASS(weapon_mac10, CMAC10);
+LINK_ENTITY_TO_CLASS(weapon_mac10, CMAC10, CCSMAC10)
 
-void CMAC10::Spawn()
+void CMAC10::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -16,7 +18,7 @@ void CMAC10::Spawn()
 	FallInit();
 }
 
-void CMAC10::Precache()
+void CMAC10::__MAKE_VHOOK(Precache)()
 {
 	PRECACHE_MODEL("models/v_mac10.mdl");
 	PRECACHE_MODEL("models/w_mac10.mdl");
@@ -30,7 +32,7 @@ void CMAC10::Precache()
 	m_usFireMAC10 = PRECACHE_EVENT(1, "events/mac10.sc");
 }
 
-int CMAC10::GetItemInfo(ItemInfo *p)
+int CMAC10::__MAKE_VHOOK(GetItemInfo)(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "45acp";
@@ -47,7 +49,7 @@ int CMAC10::GetItemInfo(ItemInfo *p)
 	return 1;
 }
 
-BOOL CMAC10::Deploy()
+BOOL CMAC10::__MAKE_VHOOK(Deploy)()
 {
 	m_flAccuracy = 0.15f;
 	iShellOn = 1;
@@ -56,7 +58,7 @@ BOOL CMAC10::Deploy()
 	return DefaultDeploy("models/v_mac10.mdl", "models/p_mac10.mdl", MAC10_DRAW, "onehanded", UseDecrement() != FALSE);
 }
 
-void CMAC10::PrimaryAttack()
+void CMAC10::__MAKE_VHOOK(PrimaryAttack)()
 {
 	if (!(m_pPlayer->pev->flags & FL_ONGROUND))
 	{
@@ -116,10 +118,10 @@ void CMAC10::MAC10Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	flag = FEV_NOTHOST;
 #else
 	flag = 0;
-#endif // CLIENT_WEAPONS
+#endif
 
 	PLAYBACK_EVENT_FULL(flag, m_pPlayer->edict(), m_usFireMAC10, 0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y,
-		(int)(m_pPlayer->pev->punchangle.x * 100), (int)(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
+		int(m_pPlayer->pev->punchangle.x * 100), int(m_pPlayer->pev->punchangle.y * 100), FALSE, FALSE);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
@@ -148,12 +150,12 @@ void CMAC10::MAC10Fire(float flSpread, float flCycleTime, BOOL fUseAutoAim)
 	}
 }
 
-void CMAC10::Reload()
+void CMAC10::__MAKE_VHOOK(Reload)()
 {
 	if (m_pPlayer->ammo_45acp <= 0)
 		return;
 
-	if (DefaultReload(MAC10_MAX_CLIP, MAC10_RELOAD, MAC10_RELOAD_TIME))
+	if (DefaultReload(iMaxClip(), MAC10_RELOAD, MAC10_RELOAD_TIME))
 	{
 		m_pPlayer->SetAnimation(PLAYER_RELOAD);
 
@@ -162,7 +164,7 @@ void CMAC10::Reload()
 	}
 }
 
-void CMAC10::WeaponIdle()
+void CMAC10::__MAKE_VHOOK(WeaponIdle)()
 {
 	ResetEmptySound();
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);

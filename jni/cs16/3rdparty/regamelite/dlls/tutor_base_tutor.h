@@ -80,14 +80,24 @@ public:
 
 	virtual void HandleShotFired(Vector source, Vector target) = 0;
 	virtual struct TutorMessage *GetTutorMessageDefinition(int messageID) = 0;
-   
+
+#ifdef HOOK_GAMEDLL
+
+	bool IsEntityInViewOfPlayer_(CBaseEntity *entity, CBasePlayer *player);
+	bool IsBombsiteInViewOfPlayer_(CBaseEntity *entity, CBasePlayer *player);
+	bool IsEntityInBombsite_(CBaseEntity *bombsite, CBaseEntity *entity);
+	bool IsPlayerLookingAtPosition_(Vector *origin, CBasePlayer *player);
+	bool IsPlayerLookingAtEntity_(CBaseEntity *entity, CBasePlayer *player);
+
+#endif
+
 public:
 	void StartFrame(float time);
 	void OnEvent(GameEventType event, CBaseEntity *entity = NULL, CBaseEntity *other = NULL);
 
 	void ShotFired(Vector source, Vector target);
 	void DisplayMessageToPlayer(CBasePlayer *player, int id, const char *szMessage, TutorMessageEvent *event);
-	NOXREF void DrawLineToEntity(CBasePlayer *player, int entindex, int id);
+	void DrawLineToEntity(CBasePlayer *player, int entindex, int id);
 	void DisplayNewStateDescriptionToPlayer();
 	void CloseCurrentWindow();
 	void CheckForStateTransition(GameEventType event, CBaseEntity *entity, CBaseEntity *other);

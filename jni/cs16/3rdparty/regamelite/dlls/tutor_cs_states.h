@@ -70,6 +70,14 @@ public:
 	virtual bool UpdateState(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
 	virtual char *GetCurrentStateString();
 
+#ifdef HOOK_GAMEDLL
+
+	bool UpdateState_(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
+	char *GetCurrentStateString_();
+	CBaseTutorState *ConstructNewState_(int stateType);
+
+#endif
+
 protected:
 	virtual CBaseTutorState *ConstructNewState(int stateType);
 };
@@ -82,6 +90,13 @@ public:
 	virtual ~CCSTutorUndefinedState();
 	virtual int CheckForStateTransition(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
 	virtual char *GetStateString();
+
+#ifdef HOOK_GAMEDLL
+
+	int CheckForStateTransition_(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
+	char *GetStateString_();
+
+#endif
 
 protected:
 	int HandlePlayerSpawned(CBaseEntity *entity, CBaseEntity *other);
@@ -96,6 +111,13 @@ public:
 	virtual int CheckForStateTransition(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
 	virtual char *GetStateString();
 
+#ifdef HOOK_GAMEDLL
+
+	int CheckForStateTransition_(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
+	char *GetStateString_();
+
+#endif
+
 protected:
 	int HandlePlayerSpawned(CBaseEntity *entity, CBaseEntity *other);
 	int HandleBuyTimeStart(CBaseEntity *entity, CBaseEntity *other);
@@ -109,6 +131,13 @@ public:
 	virtual ~CCSTutorBuyMenuState();
 	virtual int CheckForStateTransition(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
 	virtual char *GetStateString();
+
+#ifdef HOOK_GAMEDLL
+
+	int CheckForStateTransition_(GameEventType event, CBaseEntity *entity, CBaseEntity *other);
+	char *GetStateString_();
+
+#endif
 
 protected:
 	int HandleRoundStart(CBaseEntity *entity, CBaseEntity *other);

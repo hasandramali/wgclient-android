@@ -1,8 +1,12 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "precompiled.h"
 
 /*
 * Globals initialization
 */
+#ifndef HOOK_GAMEDLL
+
 TYPEDESCRIPTION CFuncTank::m_SaveData[] =
 {
 	DEFINE_FIELD(CFuncTank, m_yawCenter, FIELD_FLOAT),
@@ -53,11 +57,13 @@ Vector gTankSpread[] =
 	Vector(0.25, 0.25, 0.25),	// extra-large cone
 };
 
-#define MAX_FIRING_SPREADS ARRAYSIZE(gTankSpread)
+#endif // HOOK_GAMEDLL
 
-IMPLEMENT_SAVERESTORE(CFuncTank, CBaseEntity);
+const int MAX_FIRING_SPREADS = ARRAYSIZE(gTankSpread);
 
-void CFuncTank::Spawn()
+IMPLEMENT_SAVERESTORE(CFuncTank, CBaseEntity)
+
+void CFuncTank::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
 
@@ -86,7 +92,7 @@ void CFuncTank::Spawn()
 	pev->oldorigin = pev->origin;
 }
 
-void CFuncTank::Precache()
+void CFuncTank::__MAKE_VHOOK(Precache)()
 {
 	if (m_iszSpriteSmoke)
 	{
@@ -104,7 +110,7 @@ void CFuncTank::Precache()
 	}
 }
 
-void CFuncTank::KeyValue(KeyValueData *pkvd)
+void CFuncTank::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "yawrate"))
 	{
@@ -215,7 +221,7 @@ void CFuncTank::KeyValue(KeyValueData *pkvd)
 		CBaseEntity::KeyValue(pkvd);
 }
 
-BOOL CFuncTank::OnControls(entvars_t *pevTest)
+BOOL CFuncTank::__MAKE_VHOOK(OnControls)(entvars_t *pevTest)
 {
 	if (!(pev->spawnflags & SF_TANK_CANCONTROL))
 		return FALSE;
@@ -252,8 +258,10 @@ BOOL CFuncTank::StartControl(CBasePlayer *pController)
 	{
 		m_pController->m_pActiveItem->Holster();
 		m_pController->pev->weaponmodel = 0;
+#ifdef REGAMEDLL_FIXES
 		m_pController->pev->viewmodel = 0;
 		m_pController->m_iFOV = DEFAULT_FOV;
+#endif
 	}
 
 	m_pController->m_iHideHUD |= HIDEHUD_WEAPONS;
@@ -317,7 +325,7 @@ void CFuncTank::ControllerPostFrame()
 	}
 }
 
-void CFuncTank::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CFuncTank::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	// player controlled turret
 	if (pev->spawnflags & SF_TANK_CANCONTROL)
@@ -331,7 +339,7 @@ void CFuncTank::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useT
 		}
 		else if (!m_pController && useType != USE_OFF)
 		{
-			((CBasePlayer*)pActivator)->m_pTank = this;
+			((CBasePlayer *)pActivator)->m_pTank = this;
 			StartControl((CBasePlayer*)pActivator);
 		}
 		else
@@ -367,12 +375,12 @@ BOOL CFuncTank::InRange(float range)
 	return TRUE;
 }
 
-void CFuncTank::Think()
+void CFuncTank::__MAKE_VHOOK(Think)()
 {
 	pev->avelocity = g_vecZero;
 	TrackTarget();
 
-	if (fabs((float)pev->avelocity.x) > 1 || fabs((float)pev->avelocity.y) > 1)
+	if (Q_fabs(float_precision(pev->avelocity.x)) > 1 || Q_fabs(float_precision(pev->avelocity.y)) > 1)
 		StartRotSound();
 	else
 		StopRotSound();
@@ -382,7 +390,7 @@ void CFuncTank::TrackTarget()
 {
 	TraceResult tr;
 	edict_t *pPlayer = FIND_CLIENT_IN_PVS(edict());
-	BOOL updateTime = FALSE, lineOfSight;
+	bool updateTime = false, lineOfSight = false;
 	Vector angles, direction, targetPosition, barrelEnd;
 	edict_t *pTarget = NULL;
 
@@ -427,17 +435,16 @@ void CFuncTank::TrackTarget()
 			return;
 
 		UTIL_TraceLine(barrelEnd, targetPosition, dont_ignore_monsters, edict(), &tr);
-		lineOfSight = FALSE;
 
 		// No line of sight, don't track
 		if (tr.flFraction == 1.0f || tr.pHit == pTarget)
 		{
-			lineOfSight = TRUE;
+			lineOfSight = true;
 
 			CBaseEntity *pInstance = CBaseEntity::Instance(pTarget);
 			if (InRange(range) && pInstance && pInstance->IsAlive())
 			{
-				updateTime = TRUE;
+				updateTime = true;
 				m_sightOrigin = UpdateTargetPosition(pInstance);
 			}
 		}
@@ -464,14 +471,14 @@ void CFuncTank::TrackTarget()
 		angles.y = m_yawCenter + m_yawRange;
 
 		// Don't update if you saw the player, but out of range
-		updateTime = FALSE;
+		updateTime = false;
 	}
 	else if (angles.y < (m_yawCenter - m_yawRange))
 	{
 		angles.y = (m_yawCenter - m_yawRange);
 
 		// Don't update if you saw the player, but out of range
-		updateTime = FALSE;
+		updateTime = false;
 	}
 
 	if (updateTime)
@@ -480,7 +487,7 @@ void CFuncTank::TrackTarget()
 	}
 
 	// Move toward target at rate or less
-	float distY = UTIL_AngleDistance(angles.y, pev->angles.y);
+	float_precision distY = UTIL_AngleDistance(angles.y, pev->angles.y);
 	pev->avelocity.y = distY * 10.0f;
 
 	if (pev->avelocity.y > m_yawRate)
@@ -503,7 +510,7 @@ void CFuncTank::TrackTarget()
 	}
 
 	// Move toward target at rate or less
-	float distX = UTIL_AngleDistance(angles.x, pev->angles.x);
+	float_precision distX = UTIL_AngleDistance(angles.x, pev->angles.x);
 	pev->avelocity.x = distX  * 10.0f;
 
 	if (pev->avelocity.x > m_pitchRate)
@@ -520,9 +527,9 @@ void CFuncTank::TrackTarget()
 		return;
 	}
 
-	if (CanFire() && ((fabs(distX) < m_pitchTolerance && fabs(distY) < m_yawTolerance) || (pev->spawnflags & SF_TANK_LINEOFSIGHT)))
+	if (CanFire() && ((Q_fabs(distX) < m_pitchTolerance && Q_fabs(distY) < m_yawTolerance) || (pev->spawnflags & SF_TANK_LINEOFSIGHT)))
 	{
-		BOOL fire = FALSE;
+		bool fire = false;
 		Vector forward;
 		UTIL_MakeVectorsPrivate(pev->angles, forward, NULL, NULL);
 
@@ -533,11 +540,11 @@ void CFuncTank::TrackTarget()
 
 			if (tr.pHit == pTarget)
 			{
-				fire = TRUE;
+				fire = true;
 			}
 		}
 		else
-			fire = TRUE;
+			fire = true;
 
 		if (fire)
 		{
@@ -551,10 +558,9 @@ void CFuncTank::TrackTarget()
 }
 
 // If barrel is offset, add in additional rotation
-
 void CFuncTank::AdjustAnglesForBarrel(Vector &angles, float distance)
 {
-	float r2, d2;
+	float_precision r2, d2;
 
 	if (m_barrelPos.y != 0.0f || m_barrelPos.z != 0.0f)
 	{
@@ -564,20 +570,19 @@ void CFuncTank::AdjustAnglesForBarrel(Vector &angles, float distance)
 		if (m_barrelPos.y)
 		{
 			r2 = m_barrelPos.y * m_barrelPos.y;
-			angles.y += (180.0f / M_PI) * atan2(m_barrelPos.y, sqrt(d2 - r2));
+			angles.y += (180.0f / M_PI) * Q_atan2(m_barrelPos.y, Q_sqrt(d2 - r2));
 		}
 
 		if (m_barrelPos.z)
 		{
 			r2 = m_barrelPos.z * m_barrelPos.z;
-			angles.x += (180.0f / M_PI) * atan2(-m_barrelPos.z, sqrt(d2 - r2));
+			angles.x += (180.0f / M_PI) * Q_atan2(-m_barrelPos.z, Q_sqrt(d2 - r2));
 		}
 	}
 }
 
 // Fire targets and spawn sprites
-
-void CFuncTank::Fire(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
+void CFuncTank::__MAKE_VHOOK(Fire)(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
 {
 	if (m_fireLast != 0.0f)
 	{
@@ -613,7 +618,7 @@ void CFuncTank::TankTrace(const Vector &vecStart, const Vector &vecForward, cons
 {
 	// get circular gaussian spread
 	float x, z;
-	float y;
+	float_precision y;
 
 	do
 	{
@@ -651,16 +656,16 @@ void CFuncTank::StopRotSound()
 	pev->spawnflags &= ~SF_TANK_SOUNDON;
 }
 
-LINK_ENTITY_TO_CLASS(func_tank, CFuncTankGun);
+LINK_ENTITY_TO_CLASS(func_tank, CFuncTankGun, CCSFuncTankGun)
 
-void CFuncTankGun::Fire(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
+void CFuncTankGun::__MAKE_VHOOK(Fire)(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
 {
 	if (m_fireLast != 0.0f)
 	{
 		// FireBullets needs gpGlobals->v_up, etc.
 		UTIL_MakeAimVectors(pev->angles);
 
-		int bulletCount = (int)((gpGlobals->time - m_fireLast) * m_fireRate);
+		int bulletCount = int((gpGlobals->time - m_fireLast) * m_fireRate);
 
 		if (bulletCount > 0)
 		{
@@ -690,11 +695,10 @@ void CFuncTankGun::Fire(const Vector &barrelEnd, const Vector &forward, entvars_
 		CFuncTank::Fire(barrelEnd, forward, pevAttacker);
 }
 
-LINK_ENTITY_TO_CLASS(func_tanklaser, CFuncTankLaser);
+LINK_ENTITY_TO_CLASS(func_tanklaser, CFuncTankLaser, CCSFuncTankLaser)
+IMPLEMENT_SAVERESTORE(CFuncTankLaser, CFuncTank)
 
-IMPLEMENT_SAVERESTORE(CFuncTankLaser, CFuncTank);
-
-void CFuncTankLaser::Activate()
+void CFuncTankLaser::__MAKE_VHOOK(Activate)()
 {
 	if (!GetLaser())
 	{
@@ -707,7 +711,7 @@ void CFuncTankLaser::Activate()
 	}
 }
 
-void CFuncTankLaser::KeyValue(KeyValueData *pkvd)
+void CFuncTankLaser::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "laserentity"))
 	{
@@ -742,7 +746,7 @@ CLaser *CFuncTankLaser::GetLaser()
 	return m_pLaser;
 }
 
-void CFuncTankLaser::Think()
+void CFuncTankLaser::__MAKE_VHOOK(Think)()
 {
 	if (m_pLaser != NULL && gpGlobals->time > m_laserTime)
 	{
@@ -752,7 +756,7 @@ void CFuncTankLaser::Think()
 	CFuncTank::Think();
 }
 
-void CFuncTankLaser::Fire(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
+void CFuncTankLaser::__MAKE_VHOOK(Fire)(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
 {
 	int i;
 	TraceResult tr;
@@ -762,7 +766,8 @@ void CFuncTankLaser::Fire(const Vector &barrelEnd, const Vector &forward, entvar
 		// TankTrace needs gpGlobals->v_up, etc.
 		UTIL_MakeAimVectors(pev->angles);
 
-		int bulletCount = (int)((gpGlobals->time - m_fireLast) * m_fireRate);
+		int bulletCount = int((gpGlobals->time - m_fireLast) * m_fireRate);
+
 		if (bulletCount)
 		{
 			for (i = 0; i < bulletCount; ++i)
@@ -786,21 +791,22 @@ void CFuncTankLaser::Fire(const Vector &barrelEnd, const Vector &forward, entvar
 	}
 }
 
-LINK_ENTITY_TO_CLASS(func_tankrocket, CFuncTankRocket);
+LINK_ENTITY_TO_CLASS(func_tankrocket, CFuncTankRocket, CCSFuncTankRocket)
 
-void CFuncTankRocket::Precache()
+void CFuncTankRocket::__MAKE_VHOOK(Precache)()
 {
 	UTIL_PrecacheOther("rpg_rocket");
 	CFuncTank::Precache();
 }
 
-void CFuncTankRocket::Fire(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
+void CFuncTankRocket::__MAKE_VHOOK(Fire)(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
 {
 	int i;
 
 	if (m_fireLast != 0.0f)
 	{
-		int bulletCount = (int)((gpGlobals->time - m_fireLast) * m_fireRate);
+		int bulletCount = int((gpGlobals->time - m_fireLast) * m_fireRate);
+
 		if (bulletCount > 0)
 		{
 			for (i = 0; i < bulletCount; ++i)
@@ -815,9 +821,9 @@ void CFuncTankRocket::Fire(const Vector &barrelEnd, const Vector &forward, entva
 		CFuncTank::Fire(barrelEnd, forward, pev);
 }
 
-LINK_ENTITY_TO_CLASS(func_tankmortar, CFuncTankMortar);
+LINK_ENTITY_TO_CLASS(func_tankmortar, CFuncTankMortar, CCSFuncTankMortar)
 
-void CFuncTankMortar::KeyValue(KeyValueData *pkvd)
+void CFuncTankMortar::__MAKE_VHOOK(KeyValue)(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "iMagnitude"))
 	{
@@ -828,11 +834,11 @@ void CFuncTankMortar::KeyValue(KeyValueData *pkvd)
 		CFuncTank::KeyValue(pkvd);
 }
 
-void CFuncTankMortar::Fire(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
+void CFuncTankMortar::__MAKE_VHOOK(Fire)(const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker)
 {
 	if (m_fireLast != 0.0f)
 	{
-		int bulletCount = (int)((gpGlobals->time - m_fireLast) * m_fireRate);
+		int bulletCount = int((gpGlobals->time - m_fireLast) * m_fireRate);
 
 		// Only create 1 explosion
 		if (bulletCount > 0)
@@ -843,9 +849,7 @@ void CFuncTankMortar::Fire(const Vector &barrelEnd, const Vector &forward, entva
 			UTIL_MakeAimVectors(pev->angles);
 
 			TankTrace(barrelEnd, forward, gTankSpread[m_spread], tr);
-
 			ExplosionCreate(tr.vecEndPos, pev->angles, edict(), pev->impulse, TRUE);
-
 			CFuncTank::Fire(barrelEnd, forward, pev);
 		}
 	}
@@ -853,14 +857,13 @@ void CFuncTankMortar::Fire(const Vector &barrelEnd, const Vector &forward, entva
 		CFuncTank::Fire(barrelEnd, forward, pev);
 }
 
-LINK_ENTITY_TO_CLASS(func_tankcontrols, CFuncTankControls);
+LINK_ENTITY_TO_CLASS(func_tankcontrols, CFuncTankControls, CCSFuncTankControls)
+IMPLEMENT_SAVERESTORE(CFuncTankControls, CBaseEntity)
 
-IMPLEMENT_SAVERESTORE(CFuncTankControls, CBaseEntity);
-
-void CFuncTankControls::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+void CFuncTankControls::__MAKE_VHOOK(Use)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	// pass the Use command onto the controls
-	if (m_pTank)
+	if (m_pTank != NULL)
 	{
 		m_pTank->Use(pActivator, pCaller, useType, value);
 	}
@@ -869,7 +872,7 @@ void CFuncTankControls::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_T
 	assert(m_pTank != NULL);
 }
 
-void CFuncTankControls::Think()
+void CFuncTankControls::__MAKE_VHOOK(Think)()
 {
 	edict_t *pTarget = NULL;
 
@@ -877,7 +880,7 @@ void CFuncTankControls::Think()
 	{
 		pTarget = FIND_ENTITY_BY_TARGETNAME(pTarget, STRING(pev->target));
 	}
-	while (!FNullEnt(pTarget) && Q_strncmp(STRING(pTarget->v.classname), "func_tank", 9));
+	while (!FNullEnt(pTarget) && Q_strncmp(STRING(pTarget->v.classname), "func_tank", 9) != 0);
 
 	if (FNullEnt(pTarget))
 	{
@@ -888,7 +891,7 @@ void CFuncTankControls::Think()
 	m_pTank = static_cast<CFuncTank *>(Instance(pTarget));
 }
 
-void CFuncTankControls::Spawn()
+void CFuncTankControls::__MAKE_VHOOK(Spawn)()
 {
 	pev->solid = SOLID_TRIGGER;
 	pev->movetype = MOVETYPE_NONE;
