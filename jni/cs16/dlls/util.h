@@ -167,19 +167,6 @@ typedef enum
 }
 MONSTERSTATE;
 
-//LRC- the values used for the new "global states" mechanism.
-typedef enum
-{
-	STATE_OFF = 0,	// disabled, inactive, invisible, closed, or stateless. Or non-alert monster.
-	STATE_TURN_ON,  // door opening, env_fade fading in, etc.
-	STATE_ON,		// enabled, active, visisble, or open. Or alert monster.
-	STATE_TURN_OFF, // door closing, monster dying (?).
-	STATE_IN_USE,	// player is in control (train/tank/barney/scientist).
-					// In_Use isn't very useful, I'll probably remove it.
-} STATE;
-
-extern const char *GetStringForState( STATE state );
-
 typedef enum
 {
 	TS_AT_TOP,
