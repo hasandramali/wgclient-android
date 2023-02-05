@@ -2191,7 +2191,7 @@ void CEnvFog :: FadeOutDone ( void )
 void CEnvFog :: Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 //	ALERT(at_console, "Fog use %s %s\n", GetStringForUseType(useType), GetStringForState(GetState()));
-	if (ShouldToggle(useType))
+	if (ShouldToggle2(useType))
 	{
 		if (pev->spawnflags & SF_FOG_ACTIVE)
 			TurnOff();
