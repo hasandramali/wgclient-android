@@ -2069,7 +2069,7 @@ void BotControl::createMenus () {
       "2. Average\n"
       "3. Normal\n"
       "4. Professional\n"
-      "5. Godlike\n\n"
+      "5. Expert\n\n"
       "0. Exit",
       &BotControl::menuDifficulty);
 
