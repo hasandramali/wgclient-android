@@ -1026,7 +1026,7 @@ int CBaseEntity::ShouldToggle(USE_TYPE useType, BOOL currentState)
 	return 1;
 }
 
-BOOL CBaseEntity::ShouldToggle( USE_TYPE useType )
+BOOL CBaseEntity::ShouldToggle2( USE_TYPE useType )
 {
 	STATE currentState = GetState();
 	if ( useType != USE_TOGGLE && useType != USE_SET )
