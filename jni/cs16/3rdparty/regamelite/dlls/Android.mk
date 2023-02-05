@@ -16,7 +16,6 @@ LOCAL_CFLAGS += -w -D_LINUX -DCLIENT_WEAPONS -Dstricmp=strcasecmp -D_strnicmp=st
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/. \
 		    $(LOCAL_PATH)/.. \
                     $(LOCAL_PATH)/hostage \
-                    $(LOCAL_PATH)/bot \
 		    $(LOCAL_PATH)/../common \
 		    $(LOCAL_PATH)/../engine/common \
 		    $(LOCAL_PATH)/../engine \
@@ -24,7 +23,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/. \
                     $(LOCAL_PATH)/../public/tier1 \
 		    $(LOCAL_PATH)/../pm_shared \
 		    $(LOCAL_PATH)/../game_shared \
-                    $(LOCAL_PATH)/../game_shared/bot \
 
 LOCAL_SRC_FILES := \
 	airtank.cpp \
@@ -32,34 +30,6 @@ LOCAL_SRC_FILES := \
 	animating.cpp \
 	animation.cpp \
 	bmodels.cpp \
-	bot/cs_bot_chatter.cpp \
-	bot/cs_bot.cpp \
-	bot/cs_bot_event.cpp \
-	bot/cs_bot_init.cpp \
-	bot/cs_bot_learn.cpp \
-	bot/cs_bot_listen.cpp \
-	bot/cs_bot_manager.cpp \
-	bot/cs_bot_nav.cpp \
-	bot/cs_bot_pathfind.cpp \
-	bot/cs_bot_radio.cpp \
-	bot/cs_bot_statemachine.cpp \
-	bot/cs_bot_update.cpp \
-	bot/cs_bot_vision.cpp \
-	bot/cs_bot_weapon.cpp \
-	bot/cs_gamestate.cpp \
-	bot/states/cs_bot_attack.cpp \
-	bot/states/cs_bot_buy.cpp \
-	bot/states/cs_bot_defuse_bomb.cpp \
-	bot/states/cs_bot_escape_from_bomb.cpp \
-	bot/states/cs_bot_fetch_bomb.cpp \
-	bot/states/cs_bot_follow.cpp \
-	bot/states/cs_bot_hide.cpp \
-	bot/states/cs_bot_hunt.cpp \
-	bot/states/cs_bot_idle.cpp \
-	bot/states/cs_bot_investigate_noise.cpp \
-	bot/states/cs_bot_move_to.cpp \
-	bot/states/cs_bot_plant_bomb.cpp \
-	bot/states/cs_bot_use_entity.cpp \
 	buttons.cpp \
 	career_tasks.cpp \
 	cbase.cpp \
@@ -148,14 +118,6 @@ LOCAL_SRC_FILES := \
 	wpn_shared/wpn_usp.cpp \
 	wpn_shared/wpn_xm1014.cpp \
 	../engine/unicode_strtools.cpp \
-	../game_shared/bot/bot.cpp \
-	../game_shared/bot/bot_manager.cpp \
-	../game_shared/bot/bot_profile.cpp \
-	../game_shared/bot/bot_util.cpp \
-	../game_shared/bot/nav_area.cpp \
-	../game_shared/bot/nav_file.cpp \
-	../game_shared/bot/nav_node.cpp \
-	../game_shared/bot/nav_path.cpp \
 	../game_shared/shared_util.cpp \
 	../game_shared/voice_gamemgr.cpp \
 	../pm_shared/pm_debug.cpp \
