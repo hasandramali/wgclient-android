@@ -353,7 +353,7 @@ void CBasePlayerWeapon::FireRemaining(int &shotsFired, float &shootTime, BOOL is
 		m_pPlayer->ammo_556nato--;
 	}
 
-	if( cl_muzzleflash->value ) {
+	if( cl_muzzleflash.value ) {
 	m_pPlayer->pev->effects |= EF_MUZZLEFLASH; } else return;
 #ifndef CLIENT_DLL
 	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
