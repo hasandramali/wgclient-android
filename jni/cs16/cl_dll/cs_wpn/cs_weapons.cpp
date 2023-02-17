@@ -57,7 +57,7 @@ extern int g_rseq;
 extern int g_gaitseq;
 extern Vector g_clorg;
 extern Vector g_clang;
-extern cvar_t *cl_muzzleflash;
+extern cvar_t cl_muzzleflash;
 
 // Pool of client side entities/entvars_t
 static entvars_t	ev[ 32 ];
