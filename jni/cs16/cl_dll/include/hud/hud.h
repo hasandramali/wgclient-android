@@ -943,6 +943,7 @@ public:
 	cvar_t *cl_lw;
 	cvar_t *cl_righthand;
 	cvar_t *cl_weather;
+	cvar_t *cl_muzzleflash;
 	cvar_t *cl_minmodels;
 	cvar_t *cl_min_t;
 	cvar_t *cl_min_ct;
