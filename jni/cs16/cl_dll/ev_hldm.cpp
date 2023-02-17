@@ -467,7 +467,7 @@ void EV_FireGlock1( event_args_t *args )
 
 	shell = gEngfuncs.pEventAPI->EV_FindModelIndex ("models/shell.mdl");// brass shell
 
-	if ( EV_IsLocal( idx ) )
+	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 	{
 		EV_MuzzleFlash();
 		gEngfuncs.pEventAPI->EV_WeaponAnimation( empty ? GLOCK_SHOOT_EMPTY : GLOCK_SHOOT, 2 );
@@ -511,7 +511,7 @@ void EV_FireGlock2( event_args_t *args )
 
 	shell = gEngfuncs.pEventAPI->EV_FindModelIndex ("models/shell.mdl");// brass shell
 
-	if ( EV_IsLocal( idx ) )
+	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 	{
 		// Add muzzle flash to current weapon model
 		EV_MuzzleFlash();
@@ -565,7 +565,7 @@ void EV_FireShotGunDouble( event_args_t *args )
 
 	shell = gEngfuncs.pEventAPI->EV_FindModelIndex ("models/shotgunshell.mdl");// brass shell
 
-	if ( EV_IsLocal( idx ) )
+	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 	{
 		// Add muzzle flash to current weapon model
 		EV_MuzzleFlash();
@@ -619,7 +619,7 @@ void EV_FireShotGunSingle( event_args_t *args )
 
 	shell = gEngfuncs.pEventAPI->EV_FindModelIndex ("models/shotgunshell.mdl");// brass shell
 
-	if ( EV_IsLocal( idx ) )
+	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 	{
 		// Add muzzle flash to current weapon model
 		EV_MuzzleFlash();
@@ -676,7 +676,7 @@ void EV_FireMP5( event_args_t *args )
 
 	shell = gEngfuncs.pEventAPI->EV_FindModelIndex ("models/shell.mdl");// brass shell
 	
-	if ( EV_IsLocal( idx ) )
+	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 	{
 		// Add muzzle flash to current weapon model
 		EV_MuzzleFlash();
@@ -764,7 +764,7 @@ void EV_FirePython( event_args_t *args )
 
 	AngleVectors( angles, forward, right, up );
 
-	if ( EV_IsLocal( idx ) )
+	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 	{
 		// Python uses different body in multiplayer versus single player
 		int multiplayer = gEngfuncs.GetMaxClients() == 1 ? 0 : 1;
@@ -916,9 +916,9 @@ void EV_FireGauss( event_args_t *args )
 		if ( tr.allsolid )
 			break;
 
-		if (cl_muzzleflash->value && fFirstBeam)
+		if (fFirstBeam)
 		{
-			if ( EV_IsLocal( idx ) )
+			if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 			{
 				// Add muzzle flash to current weapon model
 				EV_MuzzleFlash();
