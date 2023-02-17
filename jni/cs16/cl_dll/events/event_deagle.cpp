@@ -61,10 +61,10 @@ void EV_FireDEAGLE( event_args_t *args )
 	Vector forward, right, up;
 	AngleVectors( angles, forward, right, up );
 
-	if ( EV_IsLocal( idx ) )
+	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
 	{
 		++g_iShotsFired;
-		if (cl_muzzleflash->value) { EV_MuzzleFlash(); }
+		EV_MuzzleFlash();
 		if( args->bparam1 )
 		{
 			gEngfuncs.pEventAPI->EV_WeaponAnimation( Com_RandomLong(DEAGLE_SHOOT1, DEAGLE_SHOOT2), 2 );
