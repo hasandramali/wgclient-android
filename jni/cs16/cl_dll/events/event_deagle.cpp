@@ -26,6 +26,7 @@
 *
 */
 #include "events.h"
+extern cvar_t *cl_muzzleflash;
 
 enum deagle_e
 {
@@ -63,7 +64,7 @@ void EV_FireDEAGLE( event_args_t *args )
 	if ( EV_IsLocal( idx ) )
 	{
 		++g_iShotsFired;
-		EV_MuzzleFlash();
+		if (cl_muzzleflash->value) { EV_MuzzleFlash() } else return;
 		if( args->bparam1 )
 		{
 			gEngfuncs.pEventAPI->EV_WeaponAnimation( Com_RandomLong(DEAGLE_SHOOT1, DEAGLE_SHOOT2), 2 );
