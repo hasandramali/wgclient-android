@@ -14,6 +14,7 @@
 ****/
 
 #include "port.h"
+extern cvar_t *cl_muzzleflash;
 
 #include "extdll.h"
 #include "util.h"
