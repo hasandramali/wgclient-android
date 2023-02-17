@@ -14,7 +14,6 @@
 ****/
 
 #include "port.h"
-extern cvar_t *cl_muzzleflash;
 
 #include "extdll.h"
 #include "util.h"
@@ -353,8 +352,7 @@ void CBasePlayerWeapon::FireRemaining(int &shotsFired, float &shootTime, BOOL is
 		m_pPlayer->ammo_556nato--;
 	}
 
-        if (cl_muzzleflash == 1) {
-        m_pPlayer->pev->effects |= EF_MUZZLEFLASH; }
+        m_pPlayer->pev->effects |= EF_MUZZLEFLASH;
 #ifndef CLIENT_DLL
 	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 #endif
