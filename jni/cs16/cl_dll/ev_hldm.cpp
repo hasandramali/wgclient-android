@@ -45,6 +45,7 @@ void V_PunchAxis( int axis, float punch );
 void VectorAngles( const float *forward, float *angles );
 
 extern cvar_t *cl_lw;
+extern cvar_t *cl_muzzleflash;
 
 extern "C"
 {
@@ -915,7 +916,7 @@ void EV_FireGauss( event_args_t *args )
 		if ( tr.allsolid )
 			break;
 
-		if (fFirstBeam)
+		if (cl_muzzleflash->value && fFirstBeam)
 		{
 			if ( EV_IsLocal( idx ) )
 			{
