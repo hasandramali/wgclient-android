@@ -26,7 +26,6 @@
 *
 */
 #include "events.h"
-extern cvar_t *cl_muzzleflash;
 
 enum deagle_e
 {
@@ -61,7 +60,7 @@ void EV_FireDEAGLE( event_args_t *args )
 	Vector forward, right, up;
 	AngleVectors( angles, forward, right, up );
 
-	if ( cl_muzzleflash->value && EV_IsLocal( idx ) )
+	if ( EV_IsLocal( idx ) )
 	{
 		++g_iShotsFired;
 		EV_MuzzleFlash();
