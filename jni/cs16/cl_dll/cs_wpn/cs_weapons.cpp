@@ -57,7 +57,6 @@ extern int g_rseq;
 extern int g_gaitseq;
 extern Vector g_clorg;
 extern Vector g_clang;
-extern cvar_t *cl_muzzleflash;
 
 // Pool of client side entities/entvars_t
 static entvars_t	ev[ 32 ];
@@ -353,8 +352,7 @@ void CBasePlayerWeapon::FireRemaining(int &shotsFired, float &shootTime, BOOL is
 		m_pPlayer->ammo_556nato--;
 	}
 
-	if (cl_muzzleflash->value) {
-        m_pPlayer->pev->effects |= EF_MUZZLEFLASH; }
+        m_pPlayer->pev->effects |= EF_MUZZLEFLASH;
 #ifndef CLIENT_DLL
 	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 #endif
