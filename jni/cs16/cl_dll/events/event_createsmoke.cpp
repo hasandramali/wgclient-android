@@ -63,7 +63,6 @@ void EV_CreateSmoke(event_args_s *args)
 			if( pTemp )
 			{
 				if (cl_drawsmoke->value) {
-				// don't die when animation is ended
 				pTemp->flags |= (FTENT_SPRANIMATELOOP | FTENT_COLLIDEWORLD | FTENT_CLIENTCUSTOM);
 				pTemp->die = gEngfuncs.GetClientTime() + 30.0f;
 				pTemp->callback = EV_Smoke_FadeOut;
@@ -82,7 +81,7 @@ void EV_CreateSmoke(event_args_s *args)
 				pTemp->entity.baseline.origin.y = Com_RandomLong(-5, 5);
 				pTemp->entity.baseline.renderamt = 18;
 				}
-				else if
+				else
 				{
 				pTemp->flags |= (FTENT_COLLIDEWORLD | FTENT_CLIENTCUSTOM);
 				pTemp->die = gEngfuncs.GetClientTime() + 1.0f;
