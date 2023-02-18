@@ -12,13 +12,6 @@
 *   without written permission from Valve LLC.
 *
 ****/
-
-#ifdef _WIN32
-#include "port.h"
-#endif
-
-
-
 #include "hud.h"
 #include "cl_util.h"
 #include "const.h"
@@ -26,13 +19,8 @@
 #include "cl_entity.h"
 #include "entity_types.h"
 #include "usercmd.h"
-
-extern "C"
-{
 #include "pm_defs.h"
 #include "pm_materials.h"
-#include "pm_shared.h"
-}
 
 #include "eventscripts.h"
 #include "ev_hldm.h"
@@ -49,6 +37,8 @@ extern "C"
 #include "com_model.h"
 
 #include <assert.h>
+
+#include "pm_shared.h"
 
 extern float g_flRoundTime;
 
