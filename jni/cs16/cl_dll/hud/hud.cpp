@@ -187,7 +187,6 @@ void CHud :: Init( void )
 	hud_colored  = CVAR_CREATE( "hud_colored", "0", FCVAR_ARCHIVE );
 	cl_righthand = CVAR_CREATE( "cl_righthand", "1", FCVAR_ARCHIVE );
 	cl_weather   = CVAR_CREATE( "cl_weather", "1", FCVAR_ARCHIVE );
-	cl_drawsmoke = CVAR_CREATE( "cl_drawsmoke", "1", FCVAR_ARCHIVE );
 	cl_minmodels = CVAR_CREATE( "cl_minmodels", "0", FCVAR_ARCHIVE );
 	cl_min_t     = CVAR_CREATE( "cl_min_t", "1", FCVAR_ARCHIVE );
 	cl_min_ct    = CVAR_CREATE( "cl_min_ct", "2", FCVAR_ARCHIVE );
