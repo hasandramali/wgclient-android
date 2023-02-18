@@ -29,6 +29,8 @@
 
 #include "com_model.h"
 
+namespace cl::event::createsmoke {
+
 #define SMOKE_CLOUDS 20
 
 void EV_Smoke_FadeOut( struct tempent_s *te, float frametime, float currenttime )
@@ -53,7 +55,7 @@ void EV_CreateSmoke(event_args_s *args)
 		for( int i = 0; i < SMOKE_CLOUDS; i++ )
 		{
 			// randomize smoke cloud position
-			Vector org = args->origin;
+			Vector org(args->origin);
 			org.x += Com_RandomFloat(-100.0f, 100.0f);
 			org.y += Com_RandomFloat(-100.0f, 100.0f);
 			org.z += 30; 
@@ -102,4 +104,6 @@ void EV_CreateSmoke(event_args_s *args)
 			pTemp->entity.baseline.origin[0] = Com_RandomLong(10, 30);
 		}
 	}
+}
+
 }

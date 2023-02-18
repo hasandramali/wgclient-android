@@ -27,6 +27,8 @@
 */
 #include "events.h"
 
+namespace cl::event::ak47 {
+	
 enum ak47_e
 {
 	AK47_IDLE1 = 0,
@@ -65,7 +67,7 @@ void EV_FireAK47( event_args_t *args )
 		EV_MuzzleFlash();
 		if( !gHUD.cl_righthand->value )
 		{
-			EV_GetDefaultShellInfo( args, origin, velocity, ShellVelocity, ShellOrigin, forward, right, up, 20.0, -8.0, -10.0 );
+			EV_GetDefaultShellInfo( args, origin, velocity, ShellVelocity, ShellOrigin, forward, right, up, 20.0, -8.0, -10.0, 0);
 		}
 		else
 		{
@@ -101,4 +103,6 @@ void EV_FireAK47( event_args_t *args )
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_762MM,
 		2 );
+}
+
 }
