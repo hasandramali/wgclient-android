@@ -62,7 +62,7 @@ void EV_CreateSmoke(event_args_s *args)
 			pTemp = gEngfuncs.pEfxAPI->CL_TempEntAlloc( org, (model_s*)pGasModel );
 			if( pTemp )
 			{
-				if (cl_drawsmoke->value) {
+				if ( cl_drawsmoke->value != 0.0f) {
 				pTemp->flags |= (FTENT_SPRANIMATELOOP | FTENT_COLLIDEWORLD | FTENT_CLIENTCUSTOM);
 				pTemp->die = gEngfuncs.GetClientTime() + 30.0f;
 				pTemp->callback = EV_Smoke_FadeOut;
