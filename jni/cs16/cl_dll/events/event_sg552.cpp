@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::sg552 {
-
 enum sg552_e
 {
 	SG552_IDLE = 0,
@@ -94,6 +92,4 @@ void EV_FireSG552( event_args_t *args )
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_556MM,
 		2 );
-}
-
 }

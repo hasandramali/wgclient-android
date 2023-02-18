@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::usp {
-
 enum usp_e
 {
 	USP_IDLE,
@@ -145,6 +143,4 @@ void EV_FireUSP( event_args_t *args )
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_45ACP,
 		2 );
-}
-
 }

@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::ak47 {
-	
 enum ak47_e
 {
 	AK47_IDLE1 = 0,
@@ -103,6 +101,4 @@ void EV_FireAK47( event_args_t *args )
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_762MM,
 		2 );
-}
-
 }

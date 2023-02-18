@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::mac10 {
-
 enum mac10_e
 {
 	MAC10_IDLE1,
@@ -92,6 +90,4 @@ void EV_FireMAC10(event_args_s *args)
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_45ACP,
 		2 );
-}
-
 }

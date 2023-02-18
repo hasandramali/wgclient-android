@@ -29,8 +29,6 @@
 
 #include <string.h>
 
-namespace cl::event::vehicle {
-
 static const char *SOUNDS_NAME[] =
 {
 	"plats/vehicle1.wav",
@@ -98,6 +96,4 @@ void EV_TrainPitchAdjust( event_args_t *args )
 	{
 		gEngfuncs.pEventAPI->EV_PlaySound( idx, origin, CHAN_STATIC, SOUNDS_NAME_TRAIN[noise], m_flVolume, ATTN_NORM, 0, pitch );
 	}
-}
-
 }

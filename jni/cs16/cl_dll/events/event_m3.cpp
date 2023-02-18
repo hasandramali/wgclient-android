@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::m3 {
-
 enum m3_e
 {
 	M3_IDLE1 = 0,
@@ -76,6 +74,4 @@ void EV_FireM3( event_args_t *args )
 		9, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_BUCKSHOT,
 		1 );
-}
-
 }

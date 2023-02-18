@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::m4a1 {
-
 enum m4a1_e
 {
 	M4A1_IDLE1 = 0,
@@ -114,6 +112,4 @@ void EV_FireM4A1( event_args_t *args )
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_556MM,
 		2 );
-}
-
 }

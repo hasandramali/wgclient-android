@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::awp {
-
 enum awp_e
 {
 	AWP_IDLE = 0,
@@ -76,6 +74,4 @@ void EV_FireAWP( event_args_t *args )
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_338MAG,
 		3 );
-}
-
 }

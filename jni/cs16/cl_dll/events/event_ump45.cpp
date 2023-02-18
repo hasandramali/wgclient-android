@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::ump45 {
-
 enum ump45_e
 {
 	UMP45_IDLE1,
@@ -90,6 +88,4 @@ void EV_FireUMP45(event_args_s *args)
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_45ACP,
 		2 );
-}
-
 }

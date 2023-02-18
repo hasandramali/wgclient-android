@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::tmp {
-
 enum tmp_e
 {
 	TMP_IDLE1,
@@ -93,6 +91,4 @@ void EV_FireTMP(event_args_s *args)
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_9MM,
 		2 );
-}
-
 }

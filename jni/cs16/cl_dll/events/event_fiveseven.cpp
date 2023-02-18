@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::fiveseven {
-
 enum fiveseven_e
 {
 	FIVESEVEN_IDLE,
@@ -102,6 +100,4 @@ void EV_Fire57(event_args_t *args)
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_57MM,
 		2 );
-}
-
 }

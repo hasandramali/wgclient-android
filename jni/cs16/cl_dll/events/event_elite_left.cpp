@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::elite {
-
 enum elite_e
 {
 	ELITE_IDLE,
@@ -89,7 +87,7 @@ void EV_FireElite( event_args_s *args, int sequence )
 	EV_GetGunPosition( args, vecSrc, origin );
 	VectorCopy( forward, vecAiming );
 	Vector vSpread;
-
+	
 	vSpread.x = args->fparam1;
 	vSpread.y = args->fparam2;
 	EV_HLDM_FireBullets( idx,
@@ -99,24 +97,12 @@ void EV_FireElite( event_args_s *args, int sequence )
 		2 );
 }
 
-}
-
-namespace cl::event::elite_left {
-
-using namespace cl::event::elite;
 void EV_FireEliteLeft(event_args_s *args)
 {
 	EV_FireElite( args, Com_RandomLong( ELITE_SHOOTLEFT1, ELITE_SHOOTLEFT4 ));
 }
 
-}
-
-namespace cl::event::elite_right {
-
-using namespace cl::event::elite;
 void EV_FireEliteRight( event_args_s *args )
 {
 	EV_FireElite( args, Com_RandomLong( ELITE_SHOOTRIGHT1, ELITE_SHOOTRIGHT4 ));
-}
-
 }

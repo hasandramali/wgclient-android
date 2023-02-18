@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::knife {
-
 enum knife_e
 {
 	KNIFE_IDLE1 = 0,
@@ -53,6 +51,4 @@ void EV_Knife( struct event_args_s *args )
 
 	//Play Swing sound
 	PLAY_EVENT_SOUND( SOUNDS_NAME );
-}
-
 }

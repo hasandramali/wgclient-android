@@ -27,8 +27,6 @@
 */
 #include "events.h"
 
-namespace cl::event::g3sg1 {
-
 enum g3sg1_e
 {
 	G3SG1_IDLE,
@@ -91,6 +89,4 @@ void EV_FireG3SG1(event_args_s *args)
 		1, vecSrc, vecAiming,
 		vSpread, 8192.0, BULLET_PLAYER_762MM,
 		2 );
-}
-
 }
