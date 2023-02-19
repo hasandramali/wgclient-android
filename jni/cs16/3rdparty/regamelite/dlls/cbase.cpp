@@ -955,6 +955,19 @@ void CBaseEntity::__MAKE_VHOOK(SetObjectCollisionBox)()
 	::SetObjectCollisionBox(pev);
 }
 
+// LRC
+void CBaseEntity::DontThink( void )
+{
+	m_fNextThink = 0;
+	if (m_pMoveWith == NULL && m_pChildMoveWith == NULL)
+	{
+		pev->nextthink = 0;
+		m_fPevNextThink = 0;
+	}
+
+//	ALERT(at_console, "DontThink for %s\n", STRING(pev->targetname));
+}
+
 int CBaseEntity::Intersects(CBaseEntity *pOther)
 {
 	if (pOther->pev->absmin.x > pev->absmax.x
