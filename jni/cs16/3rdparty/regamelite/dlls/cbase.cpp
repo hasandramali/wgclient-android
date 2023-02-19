@@ -987,7 +987,7 @@ void CBaseEntity::MakeDormant()
 	pev->movetype = MOVETYPE_NONE;	// Don't move
 	pev->effects |= EF_NODRAW;	// Don't draw
 	pev->nextthink = 0;		// Don't think
-
+	DontThink();
 	// Relink
 	UTIL_SetOrigin(pev, pev->origin);
 }
