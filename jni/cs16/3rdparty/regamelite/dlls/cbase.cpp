@@ -859,6 +859,13 @@ CBaseEntity *CBaseEntity::__MAKE_VHOOK(GetNextTarget)()
 {
 	if (FStringNull(pev->target))
 		return NULL;
+	TYPEDESCRIPTION	CBaseEntity::m_SaveData[] = 
+	{
+	DEFINE_FIELD( CBaseEntity, m_pMoveWith, FIELD_CLASSPTR ), //LRC
+	DEFINE_FIELD( CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CBaseEntity, m_fNextThink, FIELD_TIME ), //LRC
+	DEFINE_FIELD( CBaseEntity, m_fPevNextThink, FIELD_TIME ),
+	}
 
 	edict_t *pTarget = FIND_ENTITY_BY_TARGETNAME(NULL, STRING(pev->target));
 	if (FNullEnt(pTarget))
