@@ -1539,6 +1539,20 @@ void UTIL_StripToken(const char *pKey, char *pDest)
 	pDest[i] = '\0';
 }
 
+char* GetStringForState( STATE state )
+{
+	switch(state)
+	{
+	case STATE_ON: return "ON";
+	case STATE_OFF: return "OFF";
+	case STATE_TURN_ON: return "TURN ON";
+	case STATE_TURN_OFF: return "TURN OFF";
+	case STATE_IN_USE: return "IN USE";
+	default:
+		return "STATE_UNKNOWN!?";
+	}
+}
+
 CSaveRestoreBuffer::CSaveRestoreBuffer()
 {
 	m_pdata = NULL;
