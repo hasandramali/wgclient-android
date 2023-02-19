@@ -30,7 +30,6 @@
 #include "com_model.h"
 
 #define SMOKE_CLOUDS 20
-extern cvar_t *cl_drawsmoke;
 
 void EV_Smoke_FadeOut( struct tempent_s *te, float frametime, float currenttime )
 {
@@ -62,7 +61,7 @@ void EV_CreateSmoke(event_args_s *args)
 			pTemp = gEngfuncs.pEfxAPI->CL_TempEntAlloc( org, (model_s*)pGasModel );
 			if( pTemp )
 			{
-				if ( cl_drawsmoke->value != 0.0f) {
+				// don't die when animation is ended
 				pTemp->flags |= (FTENT_SPRANIMATELOOP | FTENT_COLLIDEWORLD | FTENT_CLIENTCUSTOM);
 				pTemp->die = gEngfuncs.GetClientTime() + 30.0f;
 				pTemp->callback = EV_Smoke_FadeOut;
@@ -80,26 +79,6 @@ void EV_CreateSmoke(event_args_s *args)
 				pTemp->entity.baseline.origin.x = Com_RandomLong(-5, 5);
 				pTemp->entity.baseline.origin.y = Com_RandomLong(-5, 5);
 				pTemp->entity.baseline.renderamt = 18;
-				}
-				else
-				{
-				pTemp->flags |= (FTENT_COLLIDEWORLD | FTENT_CLIENTCUSTOM);
-				pTemp->die = gEngfuncs.GetClientTime() + 1.0f;
-				pTemp->callback = EV_CS16Client_KillEveryRound;
-				pTemp->entity.curstate.fuser3 = gEngfuncs.GetClientTime() + 1.0f;
-				pTemp->entity.curstate.fuser4 = gEngfuncs.GetClientTime(); // entity creation time
-
-				pTemp->entity.curstate.renderamt = 0;
-				pTemp->entity.curstate.rendermode = kRenderTransTexture;
-				pTemp->entity.curstate.rendercolor.r = Com_RandomLong(210, 230);
-				pTemp->entity.curstate.rendercolor.g = Com_RandomLong(210, 230);
-				pTemp->entity.curstate.rendercolor.b = Com_RandomLong(210, 230);
-				pTemp->entity.curstate.scale = 0.0f;
-
-				pTemp->entity.baseline.origin.x = Com_RandomLong(-5, 5);
-				pTemp->entity.baseline.origin.y = Com_RandomLong(-5, 5);
-				pTemp->entity.baseline.renderamt = 0;
-				}
 			}
 		}
 	}
