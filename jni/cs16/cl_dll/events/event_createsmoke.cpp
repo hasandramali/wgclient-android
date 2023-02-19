@@ -30,7 +30,6 @@
 #include "com_model.h"
 
 #define SMOKE_CLOUDS 20
-extern cvar_t *cl_drawsmoke;
 
 void EV_Smoke_FadeOut( struct tempent_s *te, float frametime, float currenttime )
 {
@@ -69,7 +68,7 @@ void EV_CreateSmoke(event_args_s *args)
 				pTemp->entity.curstate.fuser3 = gEngfuncs.GetClientTime() + 15.0f; // start fading after 15 sec
 				pTemp->entity.curstate.fuser4 = gEngfuncs.GetClientTime(); // entity creation time
 
-				pTemp->entity.curstate.renderamt = cl_drawsmoke;
+				pTemp->entity.curstate.renderamt = 200;
 				pTemp->entity.curstate.rendermode = kRenderTransTexture;
 				pTemp->entity.curstate.rendercolor.r = Com_RandomLong(210, 230);
 				pTemp->entity.curstate.rendercolor.g = Com_RandomLong(210, 230);
