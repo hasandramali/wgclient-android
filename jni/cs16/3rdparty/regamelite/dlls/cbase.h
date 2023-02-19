@@ -301,6 +301,7 @@ public:
 	int Save_(CSave &save);
 	int Restore_(CRestore &restore);
 	void SetObjectCollisionBox_();
+	void DontThink( void );
 	void TraceAttack_(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	BOOL TakeDamage_(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	BOOL TakeHealth_(float flHealth, int bitsDamageType);
