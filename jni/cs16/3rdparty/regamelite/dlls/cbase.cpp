@@ -1020,6 +1020,26 @@ int CBaseEntity::ShouldToggle(USE_TYPE useType, BOOL currentState)
 	return 1;
 }
 
+BOOL CBaseEntity::ShouldToggle( USE_TYPE useType )
+{
+	STATE currentState = GetState();
+	if ( useType != USE_TOGGLE && useType != USE_SET )
+	{
+		switch(currentState)
+		{
+		case STATE_ON:
+		case STATE_TURN_ON:
+			if (useType == USE_ON) return FALSE;
+			break;
+		case STATE_OFF:
+		case STATE_TURN_OFF:
+			if (useType == USE_OFF) return FALSE;
+			break;
+		}
+	}
+	return TRUE;
+}
+
 int CBaseEntity::__MAKE_VHOOK(DamageDecal)(int bitsDamageType)
 {
 	if (pev->rendermode == kRenderTransAlpha)
