@@ -258,6 +258,8 @@ public:
 	virtual int DamageDecal(int bitsDamageType);
 	virtual void SetToggleState(int state) {}
 	virtual void StartSneaking() {}
+	virtual STATE GetState ( void ) { return STATE_OFF; };
+	virtual STATE GetState ( CBaseEntity* pEnt ) { return GetState(); };
 
 #ifndef REGAMEDLL_FIXES
 	virtual void StopSneaking() {}
