@@ -78,6 +78,10 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 	DEFINE_FIELD(CBaseEntity, m_pfnTouch, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnUse, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnBlocked, FIELD_FUNCTION),
+	DEFINE_FIELD( CBaseEntity, m_pMoveWith, FIELD_CLASSPTR ), //LRC
+	DEFINE_FIELD( CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CBaseEntity, m_fNextThink, FIELD_TIME ), //LRC
+	DEFINE_FIELD( CBaseEntity, m_fPevNextThink, FIELD_TIME ),
 };
 
 CMemoryPool hashItemMemPool(sizeof(hash_item_t), 64);
@@ -867,14 +871,6 @@ CBaseEntity *CBaseEntity::__MAKE_VHOOK(GetNextTarget)()
 	}
 
 	return Instance(pTarget);
-}
-
-TYPEDESCRIPTION	CBaseEntity::m_SaveData[] = 
-{
-	DEFINE_FIELD( CBaseEntity, m_pMoveWith, FIELD_CLASSPTR ), //LRC
-	DEFINE_FIELD( CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR ),
-	DEFINE_FIELD( CBaseEntity, m_fNextThink, FIELD_TIME ), //LRC
-	DEFINE_FIELD( CBaseEntity, m_fPevNextThink, FIELD_TIME ),
 }
 
 int CBaseEntity::__MAKE_VHOOK(Save)(CSave &save)
