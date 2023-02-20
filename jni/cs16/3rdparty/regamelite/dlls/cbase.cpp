@@ -70,6 +70,8 @@ NEW_DLL_FUNCTIONS gNewDLLFunctions =
 	NULL
 };
 
+CMemoryPool hashItemMemPool(sizeof(hash_item_t), 64);
+
 // Global Savedata for Delay
 TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 {
@@ -82,9 +84,7 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 	DEFINE_FIELD(CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR),
 	DEFINE_FIELD(CBaseEntity, m_fNextThink, FIELD_TIME), //LRC
 	DEFINE_FIELD(CBaseEntity, m_fPevNextThink, FIELD_TIME),
-};
-
-CMemoryPool hashItemMemPool(sizeof(hash_item_t), 64);
+}
 
 #endif // HOOK_GAMEDLL
 
