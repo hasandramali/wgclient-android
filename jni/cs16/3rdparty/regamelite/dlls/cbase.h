@@ -394,8 +394,8 @@ public:
 	void (CBaseEntity::*m_pfnBlocked)(CBaseEntity *pOther);
 	void (CBaseEntity::*m_pMoveWith)();
 	void (CBaseEntity::*m_pChildMoveWith)();
-	void (CBaseEntity::*m_fPevNextThink)(float value);
-	void (CBaseEntity::*m_fNextThink)(float value);
+	void (CBaseEntity::*m_fPevNextThink)();
+	void (CBaseEntity::*m_fNextThink)();
 
 #ifdef REGAMEDLL_API
 	CCSEntity *m_pEntity;
