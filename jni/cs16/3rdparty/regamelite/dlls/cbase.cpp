@@ -72,7 +72,6 @@ NEW_DLL_FUNCTIONS gNewDLLFunctions =
 
 CMemoryPool hashItemMemPool(sizeof(hash_item_t), 64);
 
-// Global Savedata for Delay
 TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 {
 	DEFINE_FIELD(CBaseEntity, m_pGoalEnt, FIELD_CLASSPTR),
@@ -80,10 +79,6 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 	DEFINE_FIELD(CBaseEntity, m_pfnTouch, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnUse, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnBlocked, FIELD_FUNCTION),
-	DEFINE_FIELD(CBaseEntity, m_pMoveWith, FIELD_CLASSPTR), //LRC
-	DEFINE_FIELD(CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR),
-	DEFINE_FIELD(CBaseEntity, m_fNextThink, FIELD_TIME), //LRC
-	DEFINE_FIELD(CBaseEntity, m_fPevNextThink, FIELD_TIME);
 };
 
 #endif // HOOK_GAMEDLL
