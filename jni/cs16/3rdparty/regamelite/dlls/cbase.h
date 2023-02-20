@@ -260,10 +260,6 @@ public:
 	virtual void StartSneaking() {}
 	virtual STATE GetState ( void ) { return STATE_OFF; };
 	virtual STATE GetState ( CBaseEntity* pEnt ) { return GetState(); };
-	CBaseEntity *m_pMoveWith;
-	CBaseEntity *m_pChildMoveWith;
-	float m_fPevNextThink;
-	float m_fNextThink;
 	virtual void SetNextThink( float delay ) { SetNextThink(delay, FALSE); }
 	virtual void SetNextThink( float delay, BOOL correctSpeed );
 
