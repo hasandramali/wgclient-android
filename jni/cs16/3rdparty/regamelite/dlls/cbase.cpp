@@ -492,6 +492,39 @@ void EXT_FUNC DispatchKeyValue(edict_t *pentKeyvalue, KeyValueData *pkvd)
 	pEntity->KeyValue(pkvd);
 }
 
+void CBaseEntity :: SetNextThink( float delay, BOOL correctSpeed )
+{
+	// now monsters use this method, too.
+	if (m_pMoveWith || m_pChildMoveWith || pev->flags & FL_MONSTER)
+	{
+		// use the Assist system, so that thinking doesn't mess up movement.
+		if (pev->movetype == MOVETYPE_PUSH)
+			m_fNextThink = pev->ltime + delay;
+		else
+			m_fNextThink = gpGlobals->time + delay;
+		SetEternalThink( );
+		UTIL_MarkForAssist( this, correctSpeed );
+
+//		ALERT(at_console, "SetAssistedThink for %s: %f\n", STRING(pev->targetname), m_fNextThink);
+	}
+	else
+	{
+		// set nextthink as normal.
+		if (pev->movetype == MOVETYPE_PUSH)
+		{
+			pev->nextthink = pev->ltime + delay;
+		}
+		else
+		{
+			pev->nextthink = gpGlobals->time + delay;
+		}
+
+		m_fPevNextThink = m_fNextThink = pev->nextthink;
+
+//		if (pev->classname) ALERT(at_console, "SetNormThink for %s: %f\n", STRING(pev->targetname), m_fNextThink);
+	}
+}
+
 // HACKHACK -- this is a hack to keep the node graph entity from "touching" things (like triggers)
 // while it builds the graph
 void EXT_FUNC DispatchTouch(edict_t *pentTouched, edict_t *pentOther)
