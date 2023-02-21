@@ -143,6 +143,8 @@ extern globalvars_t *gpGlobals;
 #define VEC_DUCK_HULL_MIN	Vector(-16, -16, -18)
 #define VEC_DUCK_HULL_MAX	Vector(16, 16, 32)
 #define VEC_DUCK_VIEW		Vector(0, 0, 12)
+#define LF_CORRECTSPEED			(1<<6)
+#define LF_DOASSIST			(1<<5)
 
 #define PLAYBACK_EVENT(flags, who, index)\
 		PLAYBACK_EVENT_FULL(flags, who, index, 0, (float *)&g_vecZero, (float *)&g_vecZero, 0.0, 0.0, 0, 0, 0, 0)
