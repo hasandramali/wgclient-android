@@ -214,6 +214,7 @@ inline BOOL FClassnameIs(edict_t *pent, const char *szClassname) { return FStrEq
 inline void UTIL_MakeVectorsPrivate(Vector vecAngles, float *p_vForward, float *p_vRight, float *p_vUp) { g_engfuncs.pfnAngleVectors(vecAngles, p_vForward, p_vRight, p_vUp); }
 
 extern void EMIT_SOUND_DYN(edict_t *entity, int channel, const char *sample, float volume, float attenuation, int flags, int pitch);
+extern void UTIL_MarkForAssist ( CBaseEntity *pEnt, BOOL correctSpeed );
 
 typedef enum
 {
