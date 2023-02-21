@@ -1004,6 +1004,22 @@ void CBaseEntity::DontThink( void )
 //	ALERT(at_console, "DontThink for %s\n", STRING(pev->targetname));
 }
 
+void CBaseEntity :: SetEternalThink( void )
+{
+	if (pev->movetype == MOVETYPE_PUSH)
+	{
+		// record m_fPevNextThink as well, because we want to be able to
+		// tell when the bloody engine CHANGES IT!
+//		pev->nextthink = 1E9;
+		pev->nextthink = pev->ltime + 1E6;
+		m_fPevNextThink = pev->nextthink;
+	}
+
+	CBaseEntity *pChild;
+	for (pChild = m_pChildMoveWith; pChild != NULL; pChild = pChild->m_pSiblingMoveWith)
+		pChild->SetEternalThink( );
+}
+
 int CBaseEntity::Intersects(CBaseEntity *pOther)
 {
 	if (pOther->pev->absmin.x > pev->absmax.x
