@@ -263,6 +263,7 @@ public:
 	virtual void SetNextThink( float delay ) { SetNextThink(delay, FALSE); }
 	virtual void SetNextThink( float delay, BOOL correctSpeed );
 	void SetEternalThink( );  // LRC
+	CBaseEntity *m_pSiblingMoveWith;
 	CBaseEntity *m_pMoveWith;
 	CBaseEntity *m_pChildMoveWith;
 	float m_fPevNextThink;
