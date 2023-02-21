@@ -262,6 +262,10 @@ public:
 	virtual STATE GetState ( CBaseEntity* pEnt ) { return GetState(); };
 	virtual void SetNextThink( float delay ) { SetNextThink(delay, FALSE); }
 	virtual void SetNextThink( float delay, BOOL correctSpeed );
+	CBaseEntity *m_pMoveWith;
+	CBaseEntity *m_pChildMoveWith;
+	float m_fPevNextThink;
+	float m_fNextThink;
 
 #ifndef REGAMEDLL_FIXES
 	virtual void StopSneaking() {}
@@ -392,10 +396,6 @@ public:
 	void (CBaseEntity::*m_pfnTouch)(CBaseEntity *pOther);
 	void (CBaseEntity::*m_pfnUse)(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void (CBaseEntity::*m_pfnBlocked)(CBaseEntity *pOther);
-	void (CBaseEntity::*m_pMoveWith)();
-	void (CBaseEntity::*m_pChildMoveWith)();
-	void (CBaseEntity::*m_fPevNextThink)();
-	void (CBaseEntity::*m_fNextThink)();
 
 #ifdef REGAMEDLL_API
 	CCSEntity *m_pEntity;
