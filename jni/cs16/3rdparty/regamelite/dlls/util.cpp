@@ -148,6 +148,16 @@ void U_Srand(unsigned int seed)
 	glSeed = seed_table[seed & 0xFF];
 }
 
+void UTIL_MarkForAssist( CBaseEntity *pEnt, BOOL correctSpeed )
+{
+	pEnt->m_iLFlags |= LF_DOASSIST;
+
+	if (correctSpeed)
+		pEnt->m_iLFlags |= LF_CORRECTSPEED;
+	else
+		pEnt->m_iLFlags &= ~LF_CORRECTSPEED;
+}
+
 int UTIL_SharedRandomLong(unsigned int seed, int low, int high)
 {
 	unsigned int range = high - low + 1;
