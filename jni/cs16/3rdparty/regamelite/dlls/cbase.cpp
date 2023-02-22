@@ -82,6 +82,8 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 	DEFINE_FIELD(CBaseEntity, m_pMoveWith, FIELD_CLASSPTR), //LRC: Bu ve altindakiler yeni.
 	DEFINE_FIELD(CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR),
 	DEFINE_FIELD(CBaseEntity, m_pSiblingMoveWith, FIELD_CLASSPTR),
+	DEFINE_FIELD(CBaseEntity, m_fNextThink, FIELD_TIME),
+	DEFINE_FIELD(CBaseEntity, m_fPevNextThink, FIELD_TIME),
 };
 
 #endif // HOOK_GAMEDLL
