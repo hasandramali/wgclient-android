@@ -79,6 +79,9 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 	DEFINE_FIELD(CBaseEntity, m_pfnTouch, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnUse, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnBlocked, FIELD_FUNCTION),
+	DEFINE_FIELD(CBaseEntity, m_pMoveWith, FIELD_CLASSPTR), //LRC: Bu ve altindakiler yeni.
+	DEFINE_FIELD(CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR),
+	DEFINE_FIELD(CBaseEntity, m_pSiblingMoveWith, FIELD_CLASSPTR),
 };
 
 #endif // HOOK_GAMEDLL
