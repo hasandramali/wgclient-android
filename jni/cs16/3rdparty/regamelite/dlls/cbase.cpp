@@ -83,7 +83,7 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 	DEFINE_FIELD(CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR),
 	DEFINE_FIELD(CBaseEntity, m_fNextThink, FIELD_TIME),
 	DEFINE_FIELD(CBaseEntity, m_fPevNextThink, FIELD_TIME),
-	DEFINE_FIELD(CBaseEntity, m_pSiblingMoveWith, FIELD_CLASSPTR),
+	DEFINE_FIELD(CBaseEntity, m_pSiblingMoveWith, FIELD_CLASSPTR);
 };
 
 #endif // HOOK_GAMEDLL
