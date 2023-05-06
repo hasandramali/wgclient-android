@@ -1704,3 +1704,4 @@ void EV_Dummy( struct event_args_s *args )
 	gEngfuncs.pEventAPI->EV_WeaponAnimation( 1, 1 );
 	return;
 }
+

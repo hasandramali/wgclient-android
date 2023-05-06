@@ -143,8 +143,6 @@ extern globalvars_t *gpGlobals;
 #define VEC_DUCK_HULL_MIN	Vector(-16, -16, -18)
 #define VEC_DUCK_HULL_MAX	Vector(16, 16, 32)
 #define VEC_DUCK_VIEW		Vector(0, 0, 12)
-#define LF_CORRECTSPEED			(1<<6)
-#define LF_DOASSIST			(1<<5)
 
 #define PLAYBACK_EVENT(flags, who, index)\
 		PLAYBACK_EVENT_FULL(flags, who, index, 0, (float *)&g_vecZero, (float *)&g_vecZero, 0.0, 0.0, 0, 0, 0, 0)
@@ -216,19 +214,6 @@ inline BOOL FClassnameIs(edict_t *pent, const char *szClassname) { return FStrEq
 inline void UTIL_MakeVectorsPrivate(Vector vecAngles, float *p_vForward, float *p_vRight, float *p_vUp) { g_engfuncs.pfnAngleVectors(vecAngles, p_vForward, p_vRight, p_vUp); }
 
 extern void EMIT_SOUND_DYN(edict_t *entity, int channel, const char *sample, float volume, float attenuation, int flags, int pitch);
-extern void UTIL_MarkForAssist ( CBaseEntity *pEnt, BOOL correctSpeed );
-
-typedef enum
-{
-	STATE_OFF = 0,	// disabled, inactive, invisible, closed, or stateless. Or non-alert monster.
-	STATE_TURN_ON,  // door opening, env_fade fading in, etc.
-	STATE_ON,		// enabled, active, visisble, or open. Or alert monster.
-	STATE_TURN_OFF, // door closing, monster dying (?).
-	STATE_IN_USE,	// player is in control (train/tank/barney/scientist).
-					// In_Use isn't very useful, I'll probably remove it.
-} STATE;
- 
-extern char* GetStringForState( STATE state );
 
 // NOTE: use EMIT_SOUND_DYN to set the pitch of a sound. Pitch of 100
 // is no pitch shift.  Pitch > 100 up to 255 is a higher pitch, pitch < 100

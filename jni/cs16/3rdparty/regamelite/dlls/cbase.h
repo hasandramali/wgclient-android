@@ -258,16 +258,6 @@ public:
 	virtual int DamageDecal(int bitsDamageType);
 	virtual void SetToggleState(int state) {}
 	virtual void StartSneaking() {}
-	virtual STATE GetState ( void ) { return STATE_OFF; };
-	virtual STATE GetState ( CBaseEntity* pEnt ) { return GetState(); };
-	virtual void SetNextThink( float delay ) { SetNextThink(delay, FALSE); }
-	virtual void SetNextThink( float delay, BOOL correctSpeed );
-	void SetEternalThink( );  // LRC
-	CBaseEntity *m_pSiblingMoveWith;
-	CBaseEntity *m_pMoveWith;
-	CBaseEntity *m_pChildMoveWith;
-	float m_fPevNextThink;
-	float m_fNextThink;
 
 #ifndef REGAMEDLL_FIXES
 	virtual void StopSneaking() {}
@@ -303,7 +293,6 @@ public:
 
 	virtual BOOL FVisible(CBaseEntity *pEntity);
 	virtual BOOL FVisible(const Vector &vecOrigin);
-	void DontThink( void );
 
 #ifdef HOOK_GAMEDLL
 
@@ -342,7 +331,6 @@ public:
 	void EXPORT SUB_FadeOut();
 	void EXPORT SUB_CallUseToggle() { Use(this, this, USE_TOGGLE, 0); }
 	int ShouldToggle(USE_TYPE useType, BOOL currentState);
-	int ShouldToggle( USE_TYPE useType );
 	void FireBullets(ULONG cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t *pevAttacker = NULL);
 	Vector FireBullets3(Vector vecSrc, Vector vecDirShooting, float vecSpread, float flDistance, int iPenetration, int iBulletType, int iDamage, float flRangeModifier, entvars_t *pevAttacker, bool bPistol, int shared_rand = 0);
 	void SUB_UseTargets(CBaseEntity *pActivator, USE_TYPE useType, float value);

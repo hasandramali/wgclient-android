@@ -70,8 +70,7 @@ NEW_DLL_FUNCTIONS gNewDLLFunctions =
 	NULL
 };
 
-CMemoryPool hashItemMemPool(sizeof(hash_item_t), 64);
-
+// Global Savedata for Delay
 TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 {
 	DEFINE_FIELD(CBaseEntity, m_pGoalEnt, FIELD_CLASSPTR),
@@ -79,12 +78,9 @@ TYPEDESCRIPTION	CBaseEntity::m_SaveData[] =
 	DEFINE_FIELD(CBaseEntity, m_pfnTouch, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnUse, FIELD_FUNCTION),
 	DEFINE_FIELD(CBaseEntity, m_pfnBlocked, FIELD_FUNCTION),
-	DEFINE_FIELD(CBaseEntity, m_pMoveWith, FIELD_CLASSPTR), //LRC: Bu ve altindakiler yeni.
-	DEFINE_FIELD(CBaseEntity, m_pChildMoveWith, FIELD_CLASSPTR),
-	DEFINE_FIELD(CBaseEntity, m_pSiblingMoveWith, FIELD_CLASSPTR),
-	DEFINE_FIELD(CBaseEntity, m_fNextThink, FIELD_TIME),
-	DEFINE_FIELD(CBaseEntity, m_fPevNextThink, FIELD_TIME),
 };
+
+CMemoryPool hashItemMemPool(sizeof(hash_item_t), 64);
 
 #endif // HOOK_GAMEDLL
 
@@ -491,39 +487,6 @@ void EXT_FUNC DispatchKeyValue(edict_t *pentKeyvalue, KeyValueData *pkvd)
 		return;
 
 	pEntity->KeyValue(pkvd);
-}
-
-void CBaseEntity :: SetNextThink( float delay, BOOL correctSpeed )
-{
-	// now monsters use this method, too.
-	if (m_pMoveWith || m_pChildMoveWith || pev->flags & FL_MONSTER)
-	{
-		// use the Assist system, so that thinking doesn't mess up movement.
-		if (pev->movetype == MOVETYPE_PUSH)
-			m_fNextThink = pev->ltime + delay;
-		else
-			m_fNextThink = gpGlobals->time + delay;
-		SetEternalThink( );
-		UTIL_MarkForAssist( this, correctSpeed );
-
-//		ALERT(at_console, "SetAssistedThink for %s: %f\n", STRING(pev->targetname), m_fNextThink);
-	}
-	else
-	{
-		// set nextthink as normal.
-		if (pev->movetype == MOVETYPE_PUSH)
-		{
-			pev->nextthink = pev->ltime + delay;
-		}
-		else
-		{
-			pev->nextthink = gpGlobals->time + delay;
-		}
-
-		m_fPevNextThink = m_fNextThink = pev->nextthink;
-
-//		if (pev->classname) ALERT(at_console, "SetNormThink for %s: %f\n", STRING(pev->targetname), m_fNextThink);
-	}
 }
 
 // HACKHACK -- this is a hack to keep the node graph entity from "touching" things (like triggers)
@@ -992,35 +955,6 @@ void CBaseEntity::__MAKE_VHOOK(SetObjectCollisionBox)()
 	::SetObjectCollisionBox(pev);
 }
 
-// LRC
-void CBaseEntity::DontThink( void )
-{
-	m_fNextThink = 0;
-	if (m_pMoveWith == NULL && m_pChildMoveWith == NULL)
-	{
-		pev->nextthink = 0;
-		m_fPevNextThink = 0;
-	}
-
-//	ALERT(at_console, "DontThink for %s\n", STRING(pev->targetname));
-}
-
-void CBaseEntity :: SetEternalThink( void )
-{
-	if (pev->movetype == MOVETYPE_PUSH)
-	{
-		// record m_fPevNextThink as well, because we want to be able to
-		// tell when the bloody engine CHANGES IT!
-//		pev->nextthink = 1E9;
-		pev->nextthink = pev->ltime + 1E6;
-		m_fPevNextThink = pev->nextthink;
-	}
-
-	CBaseEntity *pChild;
-	for (pChild = m_pChildMoveWith; pChild != NULL; pChild = pChild->m_pSiblingMoveWith)
-		pChild->SetEternalThink( );
-}
-
 int CBaseEntity::Intersects(CBaseEntity *pOther)
 {
 	if (pOther->pev->absmin.x > pev->absmax.x
@@ -1040,7 +974,7 @@ void CBaseEntity::MakeDormant()
 	pev->movetype = MOVETYPE_NONE;	// Don't move
 	pev->effects |= EF_NODRAW;	// Don't draw
 	pev->nextthink = 0;		// Don't think
-	DontThink();
+
 	// Relink
 	UTIL_SetOrigin(pev, pev->origin);
 }
@@ -1084,26 +1018,6 @@ int CBaseEntity::ShouldToggle(USE_TYPE useType, BOOL currentState)
 	}
 
 	return 1;
-}
-
-BOOL CBaseEntity::ShouldToggle( USE_TYPE useType )
-{
-	STATE currentState = GetState();
-	if ( useType != USE_TOGGLE && useType != USE_SET )
-	{
-		switch(currentState)
-		{
-		case STATE_ON:
-		case STATE_TURN_ON:
-			if (useType == USE_ON) return FALSE;
-			break;
-		case STATE_OFF:
-		case STATE_TURN_OFF:
-			if (useType == USE_OFF) return FALSE;
-			break;
-		}
-	}
-	return TRUE;
 }
 
 int CBaseEntity::__MAKE_VHOOK(DamageDecal)(int bitsDamageType)

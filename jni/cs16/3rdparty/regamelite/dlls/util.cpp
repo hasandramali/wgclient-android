@@ -148,16 +148,6 @@ void U_Srand(unsigned int seed)
 	glSeed = seed_table[seed & 0xFF];
 }
 
-void UTIL_MarkForAssist( CBaseEntity *pEnt, BOOL correctSpeed )
-{
-	pEnt->m_iLFlags |= LF_DOASSIST;
-
-	if (correctSpeed)
-		pEnt->m_iLFlags |= LF_CORRECTSPEED;
-	else
-		pEnt->m_iLFlags &= ~LF_CORRECTSPEED;
-}
-
 int UTIL_SharedRandomLong(unsigned int seed, int low, int high)
 {
 	unsigned int range = high - low + 1;
@@ -1547,20 +1537,6 @@ void UTIL_StripToken(const char *pKey, char *pDest)
 		++i;
 	}
 	pDest[i] = '\0';
-}
-
-char* GetStringForState( STATE state )
-{
-	switch(state)
-	{
-	case STATE_ON: return "ON";
-	case STATE_OFF: return "OFF";
-	case STATE_TURN_ON: return "TURN ON";
-	case STATE_TURN_OFF: return "TURN OFF";
-	case STATE_IN_USE: return "IN USE";
-	default:
-		return "STATE_UNKNOWN!?";
-	}
 }
 
 CSaveRestoreBuffer::CSaveRestoreBuffer()

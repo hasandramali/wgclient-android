@@ -68,7 +68,7 @@ void EV_CreateSmoke(event_args_s *args)
 				pTemp->entity.curstate.fuser3 = gEngfuncs.GetClientTime() + 15.0f; // start fading after 15 sec
 				pTemp->entity.curstate.fuser4 = gEngfuncs.GetClientTime(); // entity creation time
 
-				pTemp->entity.curstate.renderamt = 200;
+				pTemp->entity.curstate.renderamt = 255;
 				pTemp->entity.curstate.rendermode = kRenderTransTexture;
 				pTemp->entity.curstate.rendercolor.r = Com_RandomLong(210, 230);
 				pTemp->entity.curstate.rendercolor.g = Com_RandomLong(210, 230);
