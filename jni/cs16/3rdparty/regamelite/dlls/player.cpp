@@ -6783,6 +6783,7 @@ void CBasePlayer::SendHostageIcons()
 	}
 }
 
+*/
 void CBasePlayer::SendWeatherInfo()
 {
 	CBaseEntity *pPoint = UTIL_FindEntityByClassname(NULL, "env_rain");
