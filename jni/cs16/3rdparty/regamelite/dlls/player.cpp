@@ -88,6 +88,8 @@ int gmsgBotProgress = 0;
 int gmsgBrass = 0;
 int gmsgFog = 0;
 int gmsgShowTimer = 0;
+int gmsgSetFog = 0;
+extern DLL_GLOBAL int		gLevelLoaded;
 
 BOOL gInitHUD = TRUE;
 
@@ -250,6 +252,7 @@ void LinkUserMessages()
 	gmsgBotProgress = REG_USER_MSG("BotProgress", -1);
 	gmsgBrass = REG_USER_MSG("Brass", -1);
 	gmsgFog = REG_USER_MSG("Fog", 7);
+	gmsgSetFog = REG_USER_MSG( "SetFog", -1 );
 	gmsgShowTimer = REG_USER_MSG("ShowTimer", 0);
 	gmsgHudTextArgs = REG_USER_MSG("HudTextArgs", -1);
 }
@@ -3699,6 +3702,7 @@ void CBasePlayer::PlayerDeathThink()
 			respawn(pev, FALSE);
 			pev->button = 0;
 			pev->nextthink = -1;
+			m_fUpdateFog = TRUE;
 		}
 	}
 }
@@ -6808,7 +6812,7 @@ void CBasePlayer::SendWeatherInfo()
 		}
 	}
 }
-
+*/
 LINK_HOOK_CLASS_VOID_CHAIN2(CBasePlayer, UpdateClientData)
 
 // resends any changed player HUD info to the client.
@@ -6835,7 +6839,7 @@ void EXT_FUNC CBasePlayer::__API_VHOOK(UpdateClientData)()
 			CBaseEntity *pEntity = UTIL_FindEntityByClassname(NULL, "env_fog");
 			if (pEntity)
 			{
-				CClientFog *pFog = static_cast<CClientFog *>(pEntity);
+				MyClientFog *pFog = static_cast<MyClientFog *>(pEntity);
 
 				int r = clamp(int(pFog->pev->rendercolor[0]), 0, 255);
 				int g = clamp(int(pFog->pev->rendercolor[1]), 0, 255);
@@ -7104,6 +7108,19 @@ void EXT_FUNC CBasePlayer::__API_VHOOK(UpdateClientData)()
 	{
 		UpdateStatusBar();
 		m_flNextSBarUpdateTime = gpGlobals->time + 0.2f;
+	}
+
+	if( m_fUpdateFog )
+	{
+		m_fUpdateFog = FALSE;
+		MyClientFog::CheckFogForClient( edict() );
+	}
+
+	//Enable fog after level load (singleplayer only)
+	if( gLevelLoaded )
+	{
+		MyClientFog::CheckFogForClient( edict() );
+		gLevelLoaded = FALSE;
 	}
 
 	if (!(m_flDisplayHistory & DHF_AMMO_EXHAUSTED))

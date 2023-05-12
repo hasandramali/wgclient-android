@@ -774,6 +774,7 @@ public:
 	float m_rgflSuitNoRepeatTime[CSUITNOREPEAT];
 	int m_lastDamageAmount;
 	float m_tbdPrev;
+	BOOL m_fUpdateFog;
 	float m_flgeigerRange;
 	float m_flgeigerDelay;
 	int m_igeigerRangePrev;
