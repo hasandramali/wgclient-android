@@ -5,7 +5,6 @@
 edict_t *g_pBodyQueueHead;
 CGlobalState gGlobalState;
 float g_flWeaponCheat;
-extern DLL_GLOBAL int gLevelLoaded;
 
 /*
 * Globals initialization
@@ -489,7 +488,6 @@ void CWorld::__MAKE_VHOOK(Spawn)()
 void CWorld::__MAKE_VHOOK(Precache)()
 {
 	g_pLastSpawn = NULL;
-	gLevelLoaded = TRUE;
 	g_pLastCTSpawn = NULL;
 	g_pLastTerroristSpawn = NULL;
 

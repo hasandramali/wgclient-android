@@ -13,7 +13,6 @@ NOXREF u_long g_ulFrameCount = 0;
 #endif
 
 int g_Language;
-DLL_GLOBAL int			gLevelLoaded;
 
 NOXREF u_long g_ulModelIndexEyes;
 Vector g_vecAttackDir;
