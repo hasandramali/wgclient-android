@@ -6838,7 +6838,7 @@ void EXT_FUNC CBasePlayer::__API_VHOOK(UpdateClientData)()
 			CBaseEntity *pEntity = UTIL_FindEntityByClassname(NULL, "env_fog");
 			if (pEntity)
 			{
-				CClientFog *pFog = static_cast<CClientFog *>(pEntity);
+				MyClientFog *pFog = static_cast<MyClientFog *>(pEntity);
 
 				int r = clamp(int(pFog->pev->rendercolor[0]), 0, 255);
 				int g = clamp(int(pFog->pev->rendercolor[1]), 0, 255);
@@ -7112,13 +7112,13 @@ void EXT_FUNC CBasePlayer::__API_VHOOK(UpdateClientData)()
 	if( m_fUpdateFog )
 	{
 		m_fUpdateFog = FALSE;
-		CClientFog::CheckFogForClient( edict() );
+		MyClientFog::CheckFogForClient( edict() );
 	}
 
 	//Enable fog after level load (singleplayer only)
 	if( gLevelLoaded )
 	{
-		CClientFog::CheckFogForClient( edict() );
+		MyClientFog::CheckFogForClient( edict() );
 		gLevelLoaded = FALSE;
 	}
 

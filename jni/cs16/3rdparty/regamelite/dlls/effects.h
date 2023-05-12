@@ -649,7 +649,7 @@ int IsPointEntity(CBaseEntity *pEnt);
 //=======================
 // ClientFog
 //=======================
-class CClientFog : public CBaseEntity
+class MyClientFog : public CBaseEntity
 {
 public:
 	void Spawn();
@@ -682,7 +682,7 @@ private:
 	static void SetFogAll( const Vector& color, float startDistance, float endDistance );
 
 public:
-	static CClientFog *FogCreate();
+	static MyClientFog *FogCreate();
 };
 
 #endif // EFFECTS_H

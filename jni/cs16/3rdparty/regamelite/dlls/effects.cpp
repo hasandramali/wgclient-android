@@ -2006,27 +2006,27 @@ extern int gmsgSetFog;
 
 const int SF_FOG_STARTON = 1;
 
-LINK_ENTITY_TO_CLASS( env_fog, CClientFog );
+LINK_ENTITY_TO_CLASS( env_fog, MyClientFog );
 
-TYPEDESCRIPTION CClientFog::m_SaveData[] =
+TYPEDESCRIPTION MyClientFog::m_SaveData[] =
 {
-	DEFINE_FIELD( CClientFog, m_fActive, FIELD_BOOLEAN ),
-	DEFINE_FIELD( CClientFog, m_iStartDist, FIELD_INTEGER ),
-	DEFINE_FIELD( CClientFog, m_iEndDist, FIELD_INTEGER ),
+	DEFINE_FIELD( MyClientFog, m_fActive, FIELD_BOOLEAN ),
+	DEFINE_FIELD( MyClientFog, m_iStartDist, FIELD_INTEGER ),
+	DEFINE_FIELD( MyClientFog, m_iEndDist, FIELD_INTEGER ),
 };
 
-IMPLEMENT_SAVERESTORE( CClientFog, CBaseEntity );
+IMPLEMENT_SAVERESTORE( MyClientFog, CBaseEntity );
 
-CClientFog *CClientFog::FogCreate()
+MyClientFog *MyClientFog::FogCreate()
 {
-	CClientFog *pFog = GetClassPtr( ( CClientFog * ) NULL );
+	MyClientFog *pFog = GetClassPtr( ( MyClientFog * ) NULL );
 	pFog->pev->classname = MAKE_STRING( "env_fog" );
 	pFog->Spawn();
 
 	return pFog;
 }
 
-void CClientFog::KeyValue( KeyValueData *pkvd )
+void MyClientFog::KeyValue( KeyValueData *pkvd )
 {
 	if( FStrEq( pkvd->szKeyName, "startdist" ) )
 	{
@@ -2042,7 +2042,7 @@ void CClientFog::KeyValue( KeyValueData *pkvd )
 		CBaseEntity::KeyValue( pkvd );
 }
 
-void CClientFog::Spawn()
+void MyClientFog::Spawn()
 {
 	pev->effects |= EF_NODRAW;
 
@@ -2052,10 +2052,10 @@ void CClientFog::Spawn()
 	//Delay fog startup to the next frame
 	pev->nextthink = gpGlobals->time + 0.01;
 
-	SetThink( &CClientFog::FogThink );
+	SetThink( &MyClientFog::FogThink );
 }
 
-void CClientFog::FogThink()
+void MyClientFog::FogThink()
 {
 	if( !( pev->spawnflags & SF_FOG_STARTON ) )
 	{
@@ -2070,7 +2070,7 @@ void CClientFog::FogThink()
 	SetThink( NULL );
 }
 
-void CClientFog::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+void MyClientFog::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	if( !m_fActive )
 	{
@@ -2084,11 +2084,11 @@ void CClientFog::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 	}
 }
 
-void CClientFog::CheckFogForClient( edict_t* pClient )
+void MyClientFog::CheckFogForClient( edict_t* pClient )
 {
 	//TODO: currently only one fog entity can exist in a map
 	//This can be updated to use a fog manager object that keeps track of which fog entity is active to automatically change fog settings
-	CClientFog* pFog = ( CClientFog* ) UTIL_FindEntityByClassname( NULL, "env_fog" );
+	MyClientFog* pFog = ( MyClientFog* ) UTIL_FindEntityByClassname( NULL, "env_fog" );
 
 	if( pFog && pFog->m_fActive == TRUE )
 	{
@@ -2100,7 +2100,7 @@ void CClientFog::CheckFogForClient( edict_t* pClient )
 	}
 }
 
-void CClientFog::EnableForAll()
+void MyClientFog::EnableForAll()
 {
 	SetFogAll( pev->rendercolor, m_iStartDist, m_iEndDist );
 }
@@ -2116,18 +2116,18 @@ static void InternalSetFog( edict_t* pClient, const Vector& color, float startDi
 	MESSAGE_END();
 }
 
-void CClientFog::SetFog( edict_t* pClient, const Vector& color, float startDistance, float endDistance )
+void MyClientFog::SetFog( edict_t* pClient, const Vector& color, float startDistance, float endDistance )
 {
 	if( pClient == NULL )
 	{
-		ALERT( at_error, "CClientFog::SetFog called with NULL client\n" );
+		ALERT( at_error, "MyClientFog::SetFog called with NULL client\n" );
 		return;
 	}
 
 	InternalSetFog( pClient, color, startDistance, endDistance );
 }
 
-void CClientFog::SetFogAll( const Vector& color, float startDistance, float endDistance )
+void MyClientFog::SetFogAll( const Vector& color, float startDistance, float endDistance )
 {
 	InternalSetFog( NULL, color, startDistance, endDistance );
 }
