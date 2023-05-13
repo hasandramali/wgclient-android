@@ -156,8 +156,8 @@ private:
 class CNullEnvFog: public CBaseEntity
 {
 public:
-    virtual void Spawn() override {}
-    virtual void Precache() override {}
+    void Spawn() override {}
+    void Precache() override {}
 };
 
 class CBeam: public CBaseEntity
