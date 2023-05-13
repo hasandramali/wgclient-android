@@ -65,6 +65,7 @@ TYPEDESCRIPTION CGibShooter::m_SaveData[] =
 
 LINK_ENTITY_TO_CLASS(info_target, CPointEntity, CCSPointEntity)
 LINK_ENTITY_TO_CLASS(env_bubbles, CBubbling, CCSBubbling)
+LINK_ENTITY_TO_CLASS(env_fog, CNullEnvFog)
 IMPLEMENT_SAVERESTORE(CBubbling, CBaseEntity)
 
 void CBubbling::__MAKE_VHOOK(Spawn)()
@@ -1998,5 +1999,3 @@ void CItemSoda::CanTouch(CBaseEntity *pOther)
 	SetThink(&CItemSoda::SUB_Remove);
 	pev->nextthink = gpGlobals->time;
 }
-
-LINK_ENTITY_TO_CLASS(env_fog, CNullEnvFog);
