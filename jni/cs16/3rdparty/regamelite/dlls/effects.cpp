@@ -65,10 +65,10 @@ TYPEDESCRIPTION CGibShooter::m_SaveData[] =
 
 LINK_ENTITY_TO_CLASS(info_target, CPointEntity, CCSPointEntity)
 LINK_ENTITY_TO_CLASS(env_bubbles, CBubbling, CCSBubbling)
-LINK_ENTITY_TO_CLASS(env_fog, CNullEnvFog)
+LINK_ENTITY_TO_CLASS(env_fog, CNullEnvFog, CCSNullEnvFog)
 IMPLEMENT_SAVERESTORE(CBubbling, CBaseEntity)
 
-void CNullEnvFog::NullFog(CBaseEntity)
+void CNullEnvFog::__MAKE_VHOOK(Spawn)()
 {
 }
 	
