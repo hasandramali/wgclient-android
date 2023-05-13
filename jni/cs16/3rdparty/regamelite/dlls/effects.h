@@ -153,6 +153,13 @@ private:
 	float m_maxFrame;
 };
 
+class CNullEntity: public CBaseEntity
+{
+public:
+    virtual void Spawn() override {}
+    virtual void Precache() override {}
+};
+
 class CBeam: public CBaseEntity
 {
 public:
