@@ -1998,3 +1998,5 @@ void CItemSoda::CanTouch(CBaseEntity *pOther)
 	SetThink(&CItemSoda::SUB_Remove);
 	pev->nextthink = gpGlobals->time;
 }
+
+LINK_ENTITY_TO_CLASS(env_fog, CNullEntity);
