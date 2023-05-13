@@ -1999,4 +1999,4 @@ void CItemSoda::CanTouch(CBaseEntity *pOther)
 	pev->nextthink = gpGlobals->time;
 }
 
-LINK_ENTITY_TO_CLASS(env_fog, CNullEntity);
+LINK_ENTITY_TO_CLASS(env_fog, CNullEnvFog);
