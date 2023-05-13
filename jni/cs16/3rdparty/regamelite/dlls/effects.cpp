@@ -68,7 +68,7 @@ LINK_ENTITY_TO_CLASS(env_bubbles, CBubbling, CCSBubbling)
 LINK_ENTITY_TO_CLASS(env_fog, CNullEnvFog, CCSNullEnvFog)
 IMPLEMENT_SAVERESTORE(CBubbling, CBaseEntity)
 
-void CNullEnvFog::__MAKE_VHOOK(Spawn)()
+void CNullEnvFog::NULL()
 {
 }
 	
