@@ -153,7 +153,7 @@ private:
 	float m_maxFrame;
 };
 
-class CNullEntity: public CBaseEntity
+class CNullEnvFog: public CBaseEntity
 {
 public:
     virtual void Spawn() override {}
