@@ -68,6 +68,10 @@ LINK_ENTITY_TO_CLASS(env_bubbles, CBubbling, CCSBubbling)
 LINK_ENTITY_TO_CLASS(env_fog, CNullEnvFog)
 IMPLEMENT_SAVERESTORE(CBubbling, CBaseEntity)
 
+void CNullEnvFog::NullFog(CBaseEntity)
+{
+}
+	
 void CBubbling::__MAKE_VHOOK(Spawn)()
 {
 	Precache();
