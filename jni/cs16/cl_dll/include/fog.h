@@ -11,6 +11,8 @@
 #pragma once
 #endif
 
+#include "ref_params.h"
+
 /*
 ====================
 CFog
@@ -33,10 +35,10 @@ public:
 
 	int MsgFunc_Fog( const char *pszName, int iSize, void *pBuf );
 
-	void SetGLFog( vec3_t& color );
+	void SetGLFog( float color );
 	void BlendFog( void );
 
-	bool CullFogBBox ( const vec3_t& mins, const vec3_t& maxs );
+	bool CullFogBBox ( const float mins, const float maxs );
 
 	void HUD_CreateEntities( void );
 	void V_CalcRefDef( const ref_params_t* pparams );
