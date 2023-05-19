@@ -8,7 +8,7 @@
 // Client side entity management functions
 
 #include <memory.h>
-
+#include "fog.h"
 #include "hud.h"
 #include "pm_defs.h"
 #include "pmtrace.h"
@@ -226,7 +226,7 @@ Gives us a chance to add additional entities to the render this frame
 void DLLEXPORT HUD_CreateEntities( void )
 {
 	// Add in any game specific objects
-
+	gFog.HUD_CreateEntities();
 	//GetClientVoiceMgr()->CreateEntities();
 }
 

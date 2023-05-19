@@ -261,6 +261,7 @@ void CHud :: Init( void )
 	m_Scoreboard.Init();
 	m_HeadName.Init();
 	m_Rainbow.Init( );
+	gFog.Init();
 
 	InitRain();
 
@@ -442,6 +443,7 @@ void CHud :: VidInit( void )
 	m_SniperScope.VidInit();
 	m_Radar.VidInit();
 	m_SpectatorGui.VidInit();*/
+	gFog.VidInit();
 
 	for( HUDLIST *pList = m_pHudList; pList; pList = pList->pNext )
 		pList->p->VidInit();

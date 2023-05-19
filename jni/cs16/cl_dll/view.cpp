@@ -15,7 +15,7 @@
 #include "cvardef.h"
 #include "usercmd.h"
 #include "const.h"
-
+#include "fog.h"
 #include "entity_state.h"
 #include "cl_entity.h"
 #include "ref_params.h"
@@ -849,6 +849,7 @@ void V_CalcNormalRefdef ( struct ref_params_s *pparams )
 	v_origin = pparams->vieworg;
 
 	RenderFog();
+	gFog.V_CalcRefDef(pparams);
 }
 
 void V_SmoothInterpolateAngles( float * startAngle, float * endAngle, float * finalAngle, float degreesPerSec )

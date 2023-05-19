@@ -197,6 +197,7 @@ set (CLDLL_SOURCES
     ./tri.cpp
 	./util.cpp
 	./view.cpp
+	./fog.cpp
 	./input.cpp
 	./input_xash3d.cpp
 	#./input_sdl.cpp
