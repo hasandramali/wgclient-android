@@ -11,8 +11,6 @@
 #pragma once
 #endif
 
-#include "ref_params.h"
-
 /*
 ====================
 CFog
