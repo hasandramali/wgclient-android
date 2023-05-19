@@ -12,7 +12,6 @@
 #endif
 
 #include "ref_params.h"
-#include "const.h"
 #include "mathlib.h"
 
 /*
