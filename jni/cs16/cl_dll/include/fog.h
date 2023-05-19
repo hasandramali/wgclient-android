@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose: 
 //
@@ -12,6 +12,7 @@
 #endif
 
 #include "ref_params.h"
+#include "const.h"
 
 /*
 ====================
