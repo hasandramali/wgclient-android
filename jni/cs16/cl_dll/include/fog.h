@@ -12,6 +12,7 @@
 #endif
 
 #include "ref_params.h"
+#include "mathlib.h"
 
 /*
 ====================
@@ -26,7 +27,7 @@ public:
 	{
 		int enddist;
 		int startdist;
-		float color;
+		vec3_origin color;
 	};
 
 public:
@@ -35,10 +36,10 @@ public:
 
 	int MsgFunc_Fog( const char *pszName, int iSize, void *pBuf );
 
-	void SetGLFog( float color );
+	void SetGLFog( vec3_origin color );
 	void BlendFog( void );
 
-	bool CullFogBBox ( const float mins, const float maxs );
+	bool CullFogBBox ( const vec3_origin mins, const vec3_origin maxs );
 
 	void HUD_CreateEntities( void );
 	void V_CalcRefDef( const ref_params_t* pparams );
@@ -53,8 +54,8 @@ private:
 	float m_fogChangeTime;
 	float m_fogBlendTime;
 
-	float m_vFogBBoxMin;
-	float m_vFogBBoxMax;
+	vec3_origin m_vFogBBoxMin;
+	vec3_origin m_vFogBBoxMax;
 
 	int m_clientWaterLevel;
 };
