@@ -27,7 +27,7 @@ public:
 	{
 		int enddist;
 		int startdist;
-		vec3_t color;
+		float color;
 	};
 
 public:
@@ -54,8 +54,8 @@ private:
 	float m_fogChangeTime;
 	float m_fogBlendTime;
 
-	vec3_t m_vFogBBoxMin;
-	vec3_t m_vFogBBoxMax;
+	float m_vFogBBoxMin;
+	float m_vFogBBoxMax;
 
 	int m_clientWaterLevel;
 };
