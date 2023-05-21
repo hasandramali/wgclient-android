@@ -42,6 +42,4 @@ void AngleQuaternion( float *angles, vec4_t quaternion );
 }
 #endif
 
-void VectorRotate (const float *in1, float in2[3][4], float *out);
-
 #endif // STUDIO_UTIL_H

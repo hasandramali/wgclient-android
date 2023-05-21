@@ -29,7 +29,6 @@ SRCS := \
 	./util.cpp \
 	./parsemsg.cpp \
 	./view.cpp \
-	./fog.cpp \
 	./input_xash3d.cpp \
 	./vgui_parser.cpp \
 	./unicode_strtools.cpp \

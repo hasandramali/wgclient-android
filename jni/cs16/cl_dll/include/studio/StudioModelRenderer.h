@@ -54,8 +54,6 @@ public:
 	virtual void StudioProcessGait(entity_state_t *pplayer);
 	virtual void StudioSetShadowSprite(int idx);
 	virtual void StudioDrawShadow(Vector origin, float scale);
-	// Sets bounding box
-	virtual void StudioGetMinsMaxs ( vec3_t& outMins, vec3_t& outMaxs );
 
 
 public:

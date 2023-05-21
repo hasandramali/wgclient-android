@@ -16,7 +16,6 @@
 #include "triangleapi.h"
 #include "rain.h"
 #include "particlemgr.h"
-#include "fog.h"
 
 extern float g_fFogColor[3];
 extern float g_fStartDist;
@@ -33,7 +32,6 @@ Non-transparent triangles-- add them here
 void DLLEXPORT HUD_DrawNormalTriangles( void )
 {
 	gHUD.m_Spectator.DrawOverview();
-	gFog.HUD_DrawNormalTriangles();
 }
 
 /*
@@ -49,7 +47,6 @@ void DLLEXPORT HUD_DrawTransparentTriangles( void )
 	ProcessRain();
 	DrawRain();
 	DrawFXObjects();
-	gFog.HUD_DrawTransparentTriangles();
 }
 
 void BlackFog ( void )
