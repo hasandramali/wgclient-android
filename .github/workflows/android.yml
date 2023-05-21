@@ -27,6 +27,7 @@ jobs:
       ndk-version: r10e
       add-to-path: false
    - run: |
+           sudo apt-get update
            sudo apt install build-essential gcc-multilib g++-multilib gcc g++ -y
            ./build
      env:
