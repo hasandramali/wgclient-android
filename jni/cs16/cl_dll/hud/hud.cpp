@@ -576,7 +576,7 @@ int CHud::MsgFunc_SetFOV(const char *pszName,  int iSize, void *pbuf)
 	BufferReader reader( pszName, pbuf, iSize );
 
 	int newfov = reader.ReadByte();
-	int def_fov = default_fov->value;
+	int def_fov = CVAR_GET_FLOAT( "default_fov" );
 
 	g_lastFOV = newfov;
 	m_iFOV = newfov ? newfov : def_fov;
