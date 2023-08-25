@@ -616,13 +616,13 @@ void V_CalcNormalRefdef ( struct ref_params_s *pparams )
 	AngleVectors ( angles, pparams->forward, pparams->right, pparams->up );
 
 	// don't allow cheats in multiplayer
-	if ( pparams->maxclients <= 1 )
+	/*if ( pparams->maxclients <= 1 )
 	{
 		for ( i=0 ; i<3 ; i++ )
 		{
 			pparams->vieworg[i] += scr_ofsx->value*pparams->forward[i] + scr_ofsy->value*pparams->right[i] + scr_ofsz->value*pparams->up[i];
 		}
-	}
+	}*/
 
 	// Treating cam_ofs[2] as the distance
 	/*if( CL_IsThirdPerson() )
