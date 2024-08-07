@@ -109,6 +109,12 @@ int CHudSpectatorGui::Init()
 
 int CHudSpectatorGui::VidInit()
 {
+	if( !g_iXash )
+	{
+		m_iFlags = 0;
+		return 0;
+	}
+
 	m_fTextScale = ScreenWidth / 1024.0f;
 	if( m_fTextScale < 1.0f )
 		m_fTextScale = 1.0f;
