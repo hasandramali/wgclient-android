@@ -109,13 +109,6 @@ int CHudSpectatorGui::Init()
 
 int CHudSpectatorGui::VidInit()
 {
-	if( !g_iXash )
-	{
-		ConsolePrint("Warning: CHudSpectatorGui is disabled! Dude, are you running me on old GoldSrc?\n");
-		m_iFlags = 0;
-		return 0;
-	}
-
 	m_fTextScale = ScreenWidth / 1024.0f;
 	if( m_fTextScale < 1.0f )
 		m_fTextScale = 1.0f;
