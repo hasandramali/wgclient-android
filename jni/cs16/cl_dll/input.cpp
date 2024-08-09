@@ -26,8 +26,6 @@
 
 #include "vgui_parser.h"
 #include "com_weapons.h"
-#include "discord_integration.h"
-
 
 
 extern int g_weaponselect;
@@ -1075,5 +1073,4 @@ void Input_Shutdown (void)
 {
 	IN_Shutdown();
 	KB_Shutdown();
-	discord_integration::shutdown( );
 }

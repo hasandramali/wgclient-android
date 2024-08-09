@@ -30,7 +30,6 @@
 #include "render_api.h"
 #include "mobility_int.h"
 #include "vgui_parser.h"
-#include "discord_integration.h"
 
 cl_enginefunc_t gEngfuncs = { };
 render_api_t gRenderAPI = { };
@@ -61,8 +60,6 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	g_iXash = (int)CVAR_GET_FLOAT("buildnum");
 
 	Game_HookEvents();
-
-	discord_integration::initialize( );
 
 	return 1;
 }
@@ -248,8 +245,6 @@ int DLLEXPORT HUD_UpdateClientData(client_data_t *pcldata, float flTime )
 {
 	IN_Commands();
 
-	discord_integration::on_update_client_data( );
-
 	return gHUD.UpdateClientData(pcldata, flTime );
 }
 
@@ -276,11 +271,6 @@ Called by engine every frame that client .dll is loaded
 
 void DLLEXPORT HUD_Frame( double time )
 {
-#ifdef _CS16CLIENT_ENABLE_GSRC_SUPPORT
-	gEngfuncs.VGui_ViewportPaintBackground(HUD_GetRect());
-#endif
-
-	discord_integration::on_frame( );
 }
 
 
