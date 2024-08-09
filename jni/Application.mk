@@ -9,6 +9,6 @@ APPLICATIONMK_PATH = $(call my-dir)
 XASH3D_CONFIG := $(APPLICATIONMK_PATH)/bs_config.mk
 
 APP_ABI := armeabi-v7a-hard x86 arm64-v8a
-APP_MODULES := server client yapb
+APP_MODULES := server client
 APP_PLATFORM := android-15
 APP_STL := gnustl_static
