@@ -184,7 +184,7 @@ void CHud :: Init( void )
 	CVAR_CREATE( "hud_color", "255 160 0", 0 );
 
 	hud_textmode = CVAR_CREATE( "hud_textmode", "0", FCVAR_ARCHIVE );
-	hud_colored  = CVAR_CREATE( "hud_colored", "0", FCVAR_ARCHIVE );
+	hud_colored  = CVAR_CREATE( "hud_colored", "1", FCVAR_ARCHIVE );
 	cl_righthand = CVAR_CREATE( "cl_righthand", "1", FCVAR_ARCHIVE );
 	cl_weather   = CVAR_CREATE( "cl_weather", "1", FCVAR_ARCHIVE );
 	cl_minmodels = CVAR_CREATE( "cl_minmodels", "0", FCVAR_ARCHIVE );
@@ -204,7 +204,8 @@ void CHud :: Init( void )
 	cl_weapon_wallpuff = CVAR_CREATE( "cl_weapon_wallpuff", "1", FCVAR_ARCHIVE );
 	zoom_sens_ratio = CVAR_CREATE( "zoom_sensitivity_ratio", "1.2", 0 );
 	sv_skipshield = gEngfuncs.pfnGetCvarPointer( "sv_skipshield" );
-	cl_headname = CVAR_CREATE("cl_headname", "1", FCVAR_ARCHIVE);
+	cl_headname = CVAR_CREATE("cl_headname", "0", FCVAR_ARCHIVE);
+	cl_muzzleflash = CVAR_CREATE("cl_muzzleflash", "1", FCVAR_ARCHIVE);
 	CVAR_CREATE( "cscl_ver", "1096", 1<<14 | FCVAR_USERINFO ); // init and userinfo
 
 	m_iLogo = 0;

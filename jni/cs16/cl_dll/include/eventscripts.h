@@ -82,16 +82,19 @@ Flag weapon/view model for muzzle flash
 */
 inline void EV_MuzzleFlash( void )
 {
-	if( gHUD.cl_lw->value )
-		return;
+	if (gEngfuncs.pfnGetCvarFloat("cl_muzzleflash") != 0.0f)
+	{
+		if( gHUD.cl_lw->value )
+			return;
 
-	// Add muzzle flash to current weapon model
-	cl_entity_t *ent = gEngfuncs.GetViewModel();
-	if ( !ent )
-		return;
+		// Add muzzle flash to current weapon model
+		cl_entity_t *ent = gEngfuncs.GetViewModel();
+		if ( !ent )
+			return;
 
-	// Or in the muzzle flash
-	ent->curstate.effects |= EF_MUZZLEFLASH;
+		// Or in the muzzle flash
+		ent->curstate.effects |= EF_MUZZLEFLASH;
+	}
 }
 
 /*
