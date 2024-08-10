@@ -13,6 +13,7 @@
 #include "pm_shared.h"
 #include "event_api.h"
 #include "r_efx.h"
+#include "hud.h"
 
 // defaults for clientinfo messages
 #define	DEFAULT_VIEWHEIGHT	28
