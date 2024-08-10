@@ -82,7 +82,7 @@ Flag weapon/view model for muzzle flash
 */
 inline void EV_MuzzleFlash( void )
 {
-	if (CVAR_GET_FLOAT("cl_muzzleflash") != 0.0f)
+	if (cl_muzzleflash->value != 0.0f)
 	{
 		if( gHUD.cl_lw->value )
 			return;
