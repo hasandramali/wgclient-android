@@ -13,7 +13,6 @@
 #include "pm_shared.h"
 #include "event_api.h"
 #include "r_efx.h"
-#include "hud.h"
 
 // defaults for clientinfo messages
 #define	DEFAULT_VIEWHEIGHT	28
@@ -83,8 +82,8 @@ Flag weapon/view model for muzzle flash
 */
 inline void EV_MuzzleFlash( void )
 {
-	if (cl_muzzleflash->value != 0.0f)
-        {
+	if (CVAR_GET_FLOAT("cl_muzzleflash") != 0.0f)
+	{
 		if( gHUD.cl_lw->value )
 			return;
 
