@@ -31,8 +31,8 @@
 #include "demo_api.h"
 #include "vgui_parser.h"
 #include "rain.h"
-
 #include "camera.h"
+#include "eventscripts.h"
 
 cvar_t *cl_muzzleflash = 0;
 
