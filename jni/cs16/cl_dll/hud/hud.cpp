@@ -32,7 +32,6 @@
 #include "vgui_parser.h"
 #include "rain.h"
 #include "camera.h"
-#include "eventscripts.h"
 
 extern client_sprite_t *GetSpriteList(client_sprite_t *pList, const char *psz, int iRes, int iCount);
 
@@ -204,7 +203,6 @@ void CHud :: Init( void )
 	zoom_sens_ratio = CVAR_CREATE( "zoom_sensitivity_ratio", "1.2", 0 );
 	sv_skipshield = gEngfuncs.pfnGetCvarPointer( "sv_skipshield" );
 	cl_headname = CVAR_CREATE("cl_headname", "0", FCVAR_ARCHIVE);
-	cl_muzzleflash = CVAR_CREATE("cl_muzzleflash", "1", FCVAR_ARCHIVE);
 	CVAR_CREATE( "cscl_ver", "1096", 1<<14 | FCVAR_USERINFO ); // init and userinfo
 
 	m_iLogo = 0;
