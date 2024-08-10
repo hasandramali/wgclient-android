@@ -82,8 +82,8 @@ Flag weapon/view model for muzzle flash
 */
 inline void EV_MuzzleFlash( void )
 {
-	if (gEngfuncs.pfnGetCvarFloat("cl_muzzleflash") != 0.0f)
-	{
+	if (cl_muzzleflash->value != 0.0f)
+        {
 		if( gHUD.cl_lw->value )
 			return;
 
