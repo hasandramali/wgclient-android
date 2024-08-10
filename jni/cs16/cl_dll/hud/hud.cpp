@@ -34,6 +34,7 @@
 
 #include "camera.h"
 
+cvar_t *cl_muzzleflash = 0;
 
 extern client_sprite_t *GetSpriteList(client_sprite_t *pList, const char *psz, int iRes, int iCount);
 
