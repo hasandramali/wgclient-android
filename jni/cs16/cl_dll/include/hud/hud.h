@@ -952,7 +952,6 @@ public:
 	cvar_t *hud_colored;
 	cvar_t *sv_skipshield;
 	cvar_t *cl_headname;
-        cvar_t *cl_muzzleflash;
 
 #ifdef __ANDROID__
 	cvar_t *cl_android_force_defaults;
